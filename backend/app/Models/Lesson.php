@@ -5,22 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Announcement extends Model
+class Lesson extends Model
 {
     protected $fillable = [
         'course_id',
-        'author_id',
         'title',
-        'body',
+        'description',
+        'content',
+        'period',
+        'week_in_period',
+        'lesson_order',
+        'duration',
+        'status',
         'published_at',
-        'expires_at',
-        'is_pinned',
+        'created_by',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
-        'expires_at' => 'datetime',
-        'is_pinned' => 'boolean',
     ];
 
     public function course(): BelongsTo
@@ -30,6 +32,6 @@ class Announcement extends Model
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'author_id');
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

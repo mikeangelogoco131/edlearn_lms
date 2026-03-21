@@ -6,9 +6,16 @@ use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\ClassSessionController;
 use App\Http\Controllers\Api\CourseController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EnrollmentController;
 use App\Http\Controllers\Api\MeController;
+use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\GradebookController;
+use App\Http\Controllers\Api\LessonController;
+use App\Http\Controllers\Api\MaterialController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\SubmissionController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +28,12 @@ Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('jwt')->group(function () {
     Route::get('/me', [MeController::class, 'show']);
     Route::patch('/me', [MeController::class, 'update']);
+
+    // Programs (Course list, e.g., BSIT/BSN/BSA) - admin only
+    Route::get('/programs', [ProgramController::class, 'index'])->middleware('role:admin');
+    Route::post('/programs', [ProgramController::class, 'store'])->middleware('role:admin');
+    Route::patch('/programs/{program}', [ProgramController::class, 'update'])->middleware('role:admin');
+    Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->middleware('role:admin');
 
     // Courses
     Route::get('/courses', [CourseController::class, 'index']);
@@ -47,10 +60,27 @@ Route::middleware('jwt')->group(function () {
     Route::patch('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update'])->middleware('role:admin,teacher');
     Route::delete('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'destroy'])->middleware('role:admin,teacher');
 
+    // Lessons
+    Route::get('/courses/{course}/lessons', [LessonController::class, 'index']);
+    Route::post('/courses/{course}/lessons', [LessonController::class, 'store'])->middleware('role:admin,teacher');
+    Route::patch('/courses/{course}/lessons/{lesson}', [LessonController::class, 'update'])->middleware('role:admin,teacher');
+    Route::delete('/courses/{course}/lessons/{lesson}', [LessonController::class, 'destroy'])->middleware('role:admin,teacher');
+
+    // Materials
+    Route::get('/courses/{course}/materials', [MaterialController::class, 'index']);
+    Route::post('/courses/{course}/materials', [MaterialController::class, 'store'])->middleware('role:admin,teacher');
+    Route::get('/materials/{material}/download', [MaterialController::class, 'download']);
+    Route::delete('/courses/{course}/materials/{material}', [MaterialController::class, 'destroy'])->middleware('role:admin,teacher');
+
     // Submissions
     Route::get('/assignments/{assignment}/submissions', [SubmissionController::class, 'index']);
     Route::post('/assignments/{assignment}/submissions', [SubmissionController::class, 'store'])->middleware('role:student');
     Route::patch('/submissions/{submission}/grade', [SubmissionController::class, 'grade'])->middleware('role:admin,teacher');
+
+    // Grades
+    Route::get('/courses/{course}/grades', [GradebookController::class, 'index'])->middleware('role:admin,teacher');
+    Route::patch('/courses/{course}/grades/{student}', [GradebookController::class, 'upsert'])->middleware('role:admin,teacher');
+    Route::get('/courses/{course}/my-grade', [GradebookController::class, 'showMine'])->middleware('role:student');
 
     // Announcements
     Route::get('/courses/{course}/announcements', [AnnouncementController::class, 'index']);
@@ -62,6 +92,21 @@ Route::middleware('jwt')->group(function () {
     Route::get('/analytics/admin', [AnalyticsController::class, 'admin'])->middleware('role:admin');
     Route::get('/analytics/teacher', [AnalyticsController::class, 'teacher'])->middleware('role:teacher');
     Route::get('/analytics/student', [AnalyticsController::class, 'student'])->middleware('role:student');
+
+    // Notifications (admin)
+    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('role:admin');
+
+    // Messages (mailbox)
+    Route::get('/messages', [MessageController::class, 'index']);
+    Route::get('/messages/thread/{user}', [MessageController::class, 'thread']);
+    Route::post('/messages', [MessageController::class, 'store']);
+    Route::patch('/messages/{message}', [MessageController::class, 'update']);
+    Route::post('/messages/{message}/trash', [MessageController::class, 'trash']);
+    Route::post('/messages/{message}/restore', [MessageController::class, 'restore']);
+    Route::post('/messages/{message}/read', [MessageController::class, 'read']);
+
+    // Chat (contacts)
+    Route::get('/chat/users', [ChatController::class, 'users']);
 
     // Events (calendar)
     Route::get('/events', [EventController::class, 'index']);

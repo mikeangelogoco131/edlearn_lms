@@ -40,6 +40,17 @@ class CourseController extends Controller
             $query->whereHas('enrollments', function ($q) use ($user) {
                 $q->where('student_id', $user->id)->where('status', 'enrolled');
             });
+
+            // Show most-recently enrolled courses first so newly enrolled subjects
+            // appear immediately on the student dashboard.
+            $query->orderByDesc(
+                Enrollment::query()
+                    ->select('enrolled_at')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('student_id', $user->id)
+                    ->where('status', 'enrolled')
+                    ->limit(1)
+            )->orderByDesc('id');
         }
 
         $courses = $query

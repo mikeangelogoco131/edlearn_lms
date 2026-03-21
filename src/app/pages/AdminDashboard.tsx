@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { BookOpen, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
 import {
 	Area,
 	AreaChart,
@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import {
@@ -29,6 +30,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '../components/ui/select';
+import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
 import {
@@ -37,16 +39,21 @@ import {
 	ApiCourse,
 	ApiEnrollment,
 	ApiEnrollmentCourse,
+	ApiMessage,
+	ApiProgram,
 	ApiUser,
 	ApiUserRole,
 } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 type AdminTab =
 	| 'analytics'
 	| 'calendar'
 	| 'announcements'
+	| 'messages'
 	| 'users'
 	| 'courses'
+	| 'courseManagement'
 	| 'settings';
 
 const EMPTY_ANALYTICS: ApiAnalyticsAdmin = {
@@ -69,10 +76,18 @@ function isAdminTab(value: string | null): value is AdminTab {
 		value === 'analytics' ||
 		value === 'calendar' ||
 		value === 'announcements' ||
+		value === 'messages' ||
 		value === 'users' ||
 		value === 'courses' ||
+		value === 'courseManagement' ||
 		value === 'settings'
 	);
+}
+
+type MessageFolder = 'inbox' | 'sent' | 'drafts' | 'deleted';
+
+function isMessageFolder(value: string | null): value is MessageFolder {
+	return value === 'inbox' || value === 'sent' || value === 'drafts' || value === 'deleted';
 }
 
 function roleDomain(role: ApiUserRole) {
@@ -92,7 +107,94 @@ function roleBadgeVariant(role: ApiUserRole): 'default' | 'secondary' | 'outline
 	return 'outline';
 }
 
+type AdminSystemSettings = {
+	academicTerm: {
+		termName: string;
+		schoolYear: string;
+		semester: '1st Semester' | '2nd Semester' | 'Summer';
+		startsOn: string;
+		endsOn: string;
+	};
+	security: {
+		minPasswordLength: number;
+		requireComplexPassword: boolean;
+		sessionTimeoutMinutes: number;
+		lockoutAfterFailedLogins: number;
+	};
+	backup: {
+		autoBackupEnabled: boolean;
+		frequency: 'daily' | 'weekly' | 'monthly';
+		retentionDays: number;
+		lastBackupAt: string | null;
+	};
+};
+
+const SYSTEM_SETTINGS_STORAGE_KEY = 'edlearn_admin_system_settings_v1';
+
+const DEFAULT_SYSTEM_SETTINGS: AdminSystemSettings = {
+	academicTerm: {
+		termName: '',
+		schoolYear: '',
+		semester: '1st Semester',
+		startsOn: '',
+		endsOn: '',
+	},
+	security: {
+		minPasswordLength: 8,
+		requireComplexPassword: false,
+		sessionTimeoutMinutes: 60,
+		lockoutAfterFailedLogins: 5,
+	},
+	backup: {
+		autoBackupEnabled: false,
+		frequency: 'weekly',
+		retentionDays: 30,
+		lastBackupAt: null,
+	},
+};
+
+function loadSystemSettings(): AdminSystemSettings {
+	try {
+		const raw = localStorage.getItem(SYSTEM_SETTINGS_STORAGE_KEY);
+		if (!raw) return DEFAULT_SYSTEM_SETTINGS;
+		const parsed = JSON.parse(raw) as Partial<AdminSystemSettings>;
+		return {
+			academicTerm: { ...DEFAULT_SYSTEM_SETTINGS.academicTerm, ...(parsed.academicTerm || {}) },
+			security: { ...DEFAULT_SYSTEM_SETTINGS.security, ...(parsed.security || {}) },
+			backup: { ...DEFAULT_SYSTEM_SETTINGS.backup, ...(parsed.backup || {}) },
+		};
+	} catch {
+		return DEFAULT_SYSTEM_SETTINGS;
+	}
+}
+
+function saveSystemSettings(next: AdminSystemSettings) {
+	try {
+		localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, JSON.stringify(next));
+	} catch {
+		// ignore
+	}
+}
+
+function csvCell(value: unknown) {
+	const str = value === null || value === undefined ? '' : String(value);
+	const needsQuotes = /[\n\r,\"]/g.test(str);
+	const escaped = str.replace(/\"/g, '""');
+	return needsQuotes ? `"${escaped}"` : escaped;
+}
+
+function downloadTextFile(filename: string, content: string, mimeType: string) {
+	const blob = new Blob([content], { type: mimeType });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename;
+	a.click();
+	setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
 export default function AdminDashboard() {
+	const { user: me } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -101,6 +203,93 @@ export default function AdminDashboard() {
 		const raw = searchParams.get('tab');
 		return isAdminTab(raw) ? raw : 'analytics';
 	});
+
+	const [messageFolder, setMessageFolder] = useState<MessageFolder>(() => {
+		const raw = searchParams.get('folder');
+		return isMessageFolder(raw) ? raw : 'inbox';
+	});
+	const [messageComposeOpen, setMessageComposeOpen] = useState(() => searchParams.get('compose') === '1');
+	const [messagesRefreshKey, setMessagesRefreshKey] = useState(0);
+	const [messagesLoading, setMessagesLoading] = useState(false);
+	const [messagesError, setMessagesError] = useState('');
+	const [messages, setMessages] = useState<ApiMessage[]>([]);
+	const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+	const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(() => new Set());
+
+	const currentUserId = me?.id ? String(me.id) : null;
+	const [chatUser, setChatUser] = useState<ApiUser | null>(null);
+	const [chatThreadLoading, setChatThreadLoading] = useState(false);
+	const [chatThreadError, setChatThreadError] = useState('');
+	const [chatThreadMessages, setChatThreadMessages] = useState<ApiMessage[]>([]);
+	const chatLastIsoRef = useRef<string | null>(null);
+	const chatThreadScrollRef = useRef<HTMLDivElement | null>(null);
+	const [chatReplyBody, setChatReplyBody] = useState('');
+	const [chatReplySending, setChatReplySending] = useState(false);
+
+	const [composeDraftId, setComposeDraftId] = useState<string | null>(null);
+	const [composeTo, setComposeTo] = useState('');
+	const [composeToUserId, setComposeToUserId] = useState<string | null>(null);
+	const [composeSubject, setComposeSubject] = useState('');
+	const [composeBody, setComposeBody] = useState('');
+	const [composeSaving, setComposeSaving] = useState(false);
+	const [composeError, setComposeError] = useState('');
+	const [composeSuccess, setComposeSuccess] = useState('');
+	const [composeSuggestions, setComposeSuggestions] = useState<ApiUser[]>([]);
+	const [composeSuggestionsLoading, setComposeSuggestionsLoading] = useState(false);
+
+	const selectedMessage = useMemo(() => {
+		return selectedMessageId ? messages.find((m) => m.id === selectedMessageId) || null : null;
+	}, [messages, selectedMessageId]);
+
+	const mergeUniqueMessages = (prev: ApiMessage[], incoming: ApiMessage[]) => {
+		if (!incoming.length) return prev;
+		const seen = new Set(prev.map((m) => m.id));
+		const merged = [...prev];
+		for (const m of incoming) {
+			if (!seen.has(m.id)) {
+				seen.add(m.id);
+				merged.push(m);
+			}
+		}
+		merged.sort((a, b) => {
+			const ai = a.sentAt || a.createdAt || '';
+			const bi = b.sentAt || b.createdAt || '';
+			if (ai === bi) return Number(a.id) - Number(b.id);
+			return ai.localeCompare(bi);
+		});
+		return merged;
+	};
+
+	const loadChatThread = async (targetUserId: string, mode: 'replace' | 'append') => {
+		setChatThreadError('');
+		if (mode === 'replace') setChatThreadLoading(true);
+		try {
+			const after = mode === 'append' ? chatLastIsoRef.current : undefined;
+			const res = await api.messageThread(targetUserId, { after: after || undefined, limit: 200 });
+			setChatThreadMessages((prev) => (mode === 'replace' ? res.data : mergeUniqueMessages(prev, res.data)));
+			const last = res.data.length ? res.data[res.data.length - 1] : null;
+			const lastIso = last ? last.sentAt || last.createdAt || null : null;
+			if (lastIso) chatLastIsoRef.current = lastIso;
+
+			for (const m of res.data) {
+				if (m.status !== 'sent') continue;
+				if (!m.recipient?.id || !currentUserId) continue;
+				if (String(m.recipient.id) !== String(currentUserId)) continue;
+				if (m.readAt) continue;
+				api
+					.messageRead(m.id)
+					.then((readRes) => {
+						setChatThreadMessages((prev) => prev.map((x) => (x.id === m.id ? readRes.data : x)));
+						setMessages((prev) => prev.map((x) => (x.id === m.id ? readRes.data : x)));
+					})
+					.catch(() => undefined);
+			}
+		} catch (e: any) {
+			setChatThreadError(e?.message || 'Failed to load chat.');
+		} finally {
+			setChatThreadLoading(false);
+		}
+	};
 
 	const [analytics, setAnalytics] = useState<ApiAnalyticsAdmin>(EMPTY_ANALYTICS);
 	const [userCounts, setUserCounts] = useState(() => ({
@@ -112,8 +301,18 @@ export default function AdminDashboard() {
 
 	const [courses, setCourses] = useState<ApiCourse[]>([]);
 	const [manageCourses, setManageCourses] = useState<ApiCourse[]>([]);
+	const [programs, setPrograms] = useState<ApiProgram[]>([]);
+	const [programArchiveFilter, setProgramArchiveFilter] = useState<'active' | 'archived'>('active');
 	const [teachers, setTeachers] = useState<ApiUser[]>([]);
 	const [courseArchiveFilter, setCourseArchiveFilter] = useState<'active' | 'archived'>('active');
+
+	const [manageCoursesPage, setManageCoursesPage] = useState(1);
+	const manageCoursesPerPage = 10;
+	const [manageCoursesSearch, setManageCoursesSearch] = useState('');
+
+	const [programsPage, setProgramsPage] = useState(1);
+	const programsPerPage = 10;
+	const [programsSearch, setProgramsSearch] = useState('');
 
 	const [userRoleFilter, setUserRoleFilter] = useState<'all' | ApiUserRole>(() => {
 		const raw = searchParams.get('role');
@@ -125,9 +324,14 @@ export default function AdminDashboard() {
 		return raw === '1' ? 'archived' : 'active';
 	});
 	const [usersRefreshKey, setUsersRefreshKey] = useState(0);
-	const [recentUsers, setRecentUsers] = useState<ApiUser[]>([]);
+	const [pagedUsers, setPagedUsers] = useState<ApiUser[]>([]);
+	const [usersTotal, setUsersTotal] = useState(0);
+	const [usersPageCount, setUsersPageCount] = useState(1);
 	const [usersError, setUsersError] = useState('');
 	const [usersLoading, setUsersLoading] = useState(false);
+	const [usersPage, setUsersPage] = useState(1);
+	const usersPerPage = 10;
+	const [usersSearch, setUsersSearch] = useState('');
 
 	const [studentCourseByUserId, setStudentCourseByUserId] = useState<
 		Record<string, ApiEnrollmentCourse | null>
@@ -180,6 +384,25 @@ export default function AdminDashboard() {
 	const [enrollFromLoading, setEnrollFromLoading] = useState(false);
 	const [enrollFromError, setEnrollFromError] = useState('');
 
+	// Program (Course list) form state
+	const [showProgramForm, setShowProgramForm] = useState(false);
+	const [programFormMode, setProgramFormMode] = useState<'create' | 'edit'>('create');
+	const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+	const [programSaving, setProgramSaving] = useState(false);
+	const [programError, setProgramError] = useState('');
+	const [programCode, setProgramCode] = useState('');
+	const [programTitle, setProgramTitle] = useState('');
+
+	const [systemSettings, setSystemSettings] = useState<AdminSystemSettings>(() => loadSystemSettings());
+	const [settingsNotice, setSettingsNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(
+		null,
+	);
+
+	const [reportType, setReportType] = useState<'users' | 'courses' | 'analytics'>('users');
+	const [reportFormat, setReportFormat] = useState<'csv' | 'json'>('csv');
+	const [reportIncludeArchived, setReportIncludeArchived] = useState(false);
+	const [reportGenerating, setReportGenerating] = useState(false);
+
 	const dashboardReturnTo = `${location.pathname}${location.search}`;
 
 	const setDashboardSearchParam = (key: string, value: string | null) => {
@@ -187,6 +410,496 @@ export default function AdminDashboard() {
 		if (value === null) next.delete(key);
 		else next.set(key, value);
 		setSearchParams(next, { replace: true });
+	};
+
+	useEffect(() => {
+		const rawTab = searchParams.get('tab');
+		if (!rawTab) return;
+		if (!isAdminTab(rawTab)) return;
+		setActiveTab((prev) => (prev === rawTab ? prev : rawTab));
+	}, [searchParams]);
+
+	const resetCompose = () => {
+		setComposeDraftId(null);
+		setComposeTo('');
+		setComposeToUserId(null);
+		setComposeSubject('');
+		setComposeBody('');
+		setComposeError('');
+		setComposeSuccess('');
+		setComposeSuggestions([]);
+	};
+
+	const openCompose = (opts?: { draft?: ApiMessage | null }) => {
+		setDashboardSearchParam('tab', 'messages');
+		setActiveTab('messages');
+		setDashboardSearchParam('compose', '1');
+		setMessageComposeOpen(true);
+		setSelectedMessageId(null);
+		setComposeError('');
+		setComposeSuccess('');
+
+		if (opts?.draft) {
+			const d = opts.draft;
+			setComposeDraftId(d.id);
+			setComposeToUserId(d.recipient?.id || null);
+			setComposeTo(d.recipient ? `${d.recipient.name} <${d.recipient.email}>` : '');
+			setComposeSubject(d.subject || '');
+			setComposeBody(d.body || '');
+		} else {
+			resetCompose();
+		}
+	};
+
+	const closeCompose = () => {
+		setDashboardSearchParam('compose', null);
+		setMessageComposeOpen(false);
+		setComposeError('');
+		setComposeSuccess('');
+		setComposeSuggestions([]);
+		setComposeSuggestionsLoading(false);
+	};
+
+	const parseEmail = (value: string): string | null => {
+		const m = value.match(/<([^>]+)>/);
+		if (m?.[1]) return m[1].trim();
+		if (value.includes('@')) return value.trim();
+		return null;
+	};
+
+	const syncComposeRecipientFromInput = (value: string) => {
+		const email = parseEmail(value);
+		if (!email) {
+			setComposeToUserId(null);
+			return;
+		}
+		const found = composeSuggestions.find((u) => u.email.toLowerCase() === email.toLowerCase());
+		setComposeToUserId(found ? found.id : null);
+	};
+
+	const handleSelectMessage = async (m: ApiMessage) => {
+		if (m.status === 'draft') {
+			openCompose({ draft: m });
+			return;
+		}
+
+		setSelectedMessageId(m.id);
+		if (currentUserId) {
+			const other =
+				String(m.sender?.id || '') === String(currentUserId) ? (m.recipient as any) : (m.sender as any);
+			if (other?.id) {
+				setChatUser({
+					id: String(other.id),
+					name: other.name,
+					email: other.email,
+					role: other.role,
+				} as ApiUser);
+			}
+		}
+		if (messageFolder === 'inbox' && !m.readAt) {
+			try {
+				const res = await api.messageRead(m.id);
+				setMessages((prev) => prev.map((x) => (x.id === m.id ? res.data : x)));
+			} catch {
+				// ignore
+			}
+		}
+	};
+
+	useEffect(() => {
+		if (activeTab !== 'messages') return;
+		if (messageComposeOpen) return;
+		if (!selectedMessage || selectedMessage.status === 'draft') {
+			setChatThreadMessages([]);
+			setChatThreadError('');
+			chatLastIsoRef.current = null;
+			return;
+		}
+
+		if (currentUserId) {
+			const other =
+				String(selectedMessage.sender?.id || '') === String(currentUserId)
+					? (selectedMessage.recipient as any)
+					: (selectedMessage.sender as any);
+			if (other?.id) {
+				setChatUser({
+					id: String(other.id),
+					name: other.name,
+					email: other.email,
+					role: other.role,
+				} as ApiUser);
+			}
+		}
+	}, [activeTab, currentUserId, messageComposeOpen, selectedMessage]);
+
+	useEffect(() => {
+		const el = chatThreadScrollRef.current;
+		if (!el) return;
+		el.scrollTop = el.scrollHeight;
+	}, [chatThreadMessages.length, chatThreadLoading]);
+
+	useEffect(() => {
+		if (activeTab !== 'messages') return;
+		if (!chatUser?.id) return;
+		if (messageComposeOpen) return;
+
+		let cancelled = false;
+		chatLastIsoRef.current = null;
+		setChatThreadMessages([]);
+		loadChatThread(chatUser.id, 'replace');
+
+		const interval = window.setInterval(() => {
+			if (cancelled) return;
+			loadChatThread(chatUser.id, 'append');
+		}, 3000);
+
+		return () => {
+			cancelled = true;
+			window.clearInterval(interval);
+		};
+	}, [activeTab, chatUser?.id, messageComposeOpen]);
+
+	const handleSendChatReply = async () => {
+		if (!chatUser?.id) return;
+		const trimmed = chatReplyBody.trim();
+		if (!trimmed) return;
+		setChatReplySending(true);
+		setChatThreadError('');
+		try {
+			const res = await api.messageCreate({ toUserId: chatUser.id, body: trimmed, status: 'sent', subject: null });
+			setChatThreadMessages((prev) => mergeUniqueMessages(prev, [res.data]));
+			setChatReplyBody('');
+			const iso = res.data.sentAt || res.data.createdAt || null;
+			if (iso) chatLastIsoRef.current = iso;
+			if (messageFolder === 'sent') {
+				setMessages((prev) => {
+					const exists = prev.some((m) => m.id === res.data.id);
+					return exists ? prev : [res.data, ...prev];
+				});
+			}
+		} catch (e: any) {
+			setChatThreadError(e?.message || 'Failed to send message.');
+		} finally {
+			setChatReplySending(false);
+		}
+	};
+
+	const handleSaveDraft = async () => {
+		setComposeError('');
+		setComposeSuccess('');
+		setComposeSaving(true);
+		try {
+			if (composeDraftId) {
+				await api.messageUpdate(composeDraftId, {
+					toUserId: composeToUserId,
+					subject: composeSubject || null,
+					body: composeBody,
+				});
+			} else {
+				await api.messageCreate({
+					toUserId: composeToUserId,
+					subject: composeSubject || null,
+					body: composeBody,
+					status: 'draft',
+				});
+			}
+			setComposeSuccess('Draft saved.');
+			setMessageFolder('drafts');
+			setDashboardSearchParam('folder', 'drafts');
+			closeCompose();
+			setMessagesRefreshKey((k) => k + 1);
+		} catch (e: any) {
+			setComposeError(e?.message || 'Failed to save draft.');
+		} finally {
+			setComposeSaving(false);
+		}
+	};
+
+	const handleSendMessage = async () => {
+		setComposeError('');
+		setComposeSuccess('');
+		if (!composeToUserId) {
+			setComposeError('Please select a recipient from the list.');
+			return;
+		}
+		if (!composeBody.trim()) {
+			setComposeError('Message body is required.');
+			return;
+		}
+
+		setComposeSaving(true);
+		try {
+			if (composeDraftId) {
+				await api.messageUpdate(composeDraftId, {
+					toUserId: composeToUserId,
+					subject: composeSubject || null,
+					body: composeBody,
+					send: true,
+				});
+			} else {
+				await api.messageCreate({
+					toUserId: composeToUserId,
+					subject: composeSubject || null,
+					body: composeBody,
+					status: 'sent',
+				});
+			}
+			setComposeSuccess('Message sent.');
+			setMessageFolder('sent');
+			setDashboardSearchParam('folder', 'sent');
+			closeCompose();
+			setMessagesRefreshKey((k) => k + 1);
+		} catch (e: any) {
+			setComposeError(e?.message || 'Failed to send message.');
+		} finally {
+			setComposeSaving(false);
+		}
+	};
+
+	const handleTrashSelectedMessage = async () => {
+		if (!selectedMessage) return;
+		try {
+			await api.messageTrash(selectedMessage.id);
+			setSelectedMessageId(null);
+			setMessagesRefreshKey((k) => k + 1);
+		} catch {
+			// ignore
+		}
+	};
+
+	const toggleSelectedMessage = (id: string, checked: boolean) => {
+		setSelectedMessageIds((prev) => {
+			const next = new Set(prev);
+			if (checked) next.add(id);
+			else next.delete(id);
+			return next;
+		});
+	};
+
+	const handleBulkDeleteSelected = async () => {
+		if (messageFolder === 'deleted') return;
+		const ids = Array.from(selectedMessageIds);
+		if (!ids.length) return;
+		try {
+			await Promise.allSettled(ids.map((id) => api.messageTrash(id)));
+		} finally {
+			setSelectedMessageIds(new Set());
+			if (selectedMessageId && ids.includes(selectedMessageId)) {
+				setSelectedMessageId(null);
+				setChatUser(null);
+				setChatThreadMessages([]);
+				chatLastIsoRef.current = null;
+			}
+			setMessagesRefreshKey((k) => k + 1);
+		}
+	};
+
+	const handleRestoreSelectedMessage = async () => {
+		if (!selectedMessage) return;
+		try {
+			await api.messageRestore(selectedMessage.id);
+			setSelectedMessageId(null);
+			setMessagesRefreshKey((k) => k + 1);
+		} catch {
+			// ignore
+		}
+	};
+
+	useEffect(() => {
+		if (activeTab !== 'messages') return;
+		const rawFolder = searchParams.get('folder');
+		setMessageFolder(isMessageFolder(rawFolder) ? rawFolder : 'inbox');
+		setMessageComposeOpen(searchParams.get('compose') === '1');
+	}, [activeTab, searchParams]);
+
+	useEffect(() => {
+		if (activeTab !== 'messages') return;
+		setSelectedMessageIds(new Set());
+		setSelectedMessageId(null);
+	}, [activeTab, messageFolder]);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function loadMessages() {
+			if (activeTab !== 'messages') return;
+			setMessagesError('');
+			setMessagesLoading(true);
+			try {
+				const res = await api.messages({ folder: messageFolder, limit: 30 });
+				if (cancelled) return;
+				setMessages(res.data);
+			} catch (e: any) {
+				if (!cancelled) setMessagesError(e?.message || 'Failed to load messages.');
+			} finally {
+				if (!cancelled) setMessagesLoading(false);
+			}
+		}
+
+		loadMessages();
+		return () => {
+			cancelled = true;
+		};
+	}, [activeTab, messageFolder, messagesRefreshKey]);
+
+	useEffect(() => {
+		let cancelled = false;
+		const query = composeTo.trim();
+		if (!messageComposeOpen) return;
+		if (query.length < 2) {
+			setComposeSuggestions([]);
+			return;
+		}
+
+		const handle = setTimeout(async () => {
+			setComposeSuggestionsLoading(true);
+			try {
+				const res = await api.users({ q: query, page: 1, perPage: 10 });
+				if (cancelled) return;
+				setComposeSuggestions(res.data);
+			} catch {
+				if (!cancelled) setComposeSuggestions([]);
+			} finally {
+				if (!cancelled) setComposeSuggestionsLoading(false);
+			}
+		}, 250);
+
+		return () => {
+			cancelled = true;
+			clearTimeout(handle);
+		};
+	}, [composeTo, messageComposeOpen]);
+
+	const applyUserRoleFilter = (role: 'all' | ApiUserRole) => {
+		setUserRoleFilter(role);
+		setDashboardSearchParam('role', role === 'all' ? null : role);
+	};
+
+	const persistSystemSettings = (next: AdminSystemSettings) => {
+		setSystemSettings(next);
+		saveSystemSettings(next);
+		setSettingsNotice({ type: 'success', message: 'Settings saved.' });
+	};
+
+	const generateReport = async () => {
+		setSettingsNotice(null);
+		setReportGenerating(true);
+		try {
+			const dateTag = new Date().toISOString().slice(0, 10);
+			if (reportType === 'analytics') {
+				const payload = analytics;
+				if (reportFormat === 'json') {
+					downloadTextFile(`analytics-report-${dateTag}.json`, JSON.stringify(payload, null, 2), 'application/json');
+				} else {
+					const rows = [
+						['totalUsers', payload.totalUsers],
+						['totalAdmins', payload.totalAdmins],
+						['totalTeachers', payload.totalTeachers],
+						['totalStudents', payload.totalStudents],
+						['totalCourses', payload.totalCourses],
+						['totalAssignments', payload.totalAssignments],
+						['totalEnrollments', payload.totalEnrollments],
+						['upcomingSessions', payload.upcomingSessions],
+						['activeSessions', payload.activeSessions],
+					];
+					const csv = ['metric,value', ...rows.map((r) => `${csvCell(r[0])},${csvCell(r[1])}`)].join('\n');
+					downloadTextFile(`analytics-report-${dateTag}.csv`, csv, 'text/csv');
+				}
+				setSettingsNotice({ type: 'success', message: 'Report generated.' });
+				return;
+			}
+
+			if (reportType === 'courses') {
+				const activeRes = await api.courses({ archived: false });
+				const archivedRes = reportIncludeArchived ? await api.courses({ archived: true }) : null;
+				const coursesAll = [
+					...activeRes.data,
+					...(archivedRes?.data || []),
+				].filter((course, idx, arr) => arr.findIndex((c) => c.id === course.id) === idx);
+
+				if (reportFormat === 'json') {
+					downloadTextFile(
+						`courses-report-${dateTag}.json`,
+						JSON.stringify({ data: coursesAll }, null, 2),
+						'application/json',
+					);
+				} else {
+					const header = [
+						'id',
+						'code',
+						'title',
+						'teacher',
+						'term',
+						'section',
+						'schedule',
+						'status',
+						'students',
+					].join(',');
+					const lines = coursesAll.map((c) =>
+						[
+							csvCell(c.id),
+							csvCell(c.code),
+							csvCell(c.title),
+							csvCell(c.teacher),
+							csvCell(c.term),
+							csvCell(c.section),
+							csvCell(c.schedule),
+							csvCell(c.status),
+							csvCell(c.students),
+						].join(','),
+					);
+					const csv = [header, ...lines].join('\n');
+					downloadTextFile(`courses-report-${dateTag}.csv`, csv, 'text/csv');
+				}
+				setSettingsNotice({ type: 'success', message: 'Report generated.' });
+				return;
+			}
+
+			// users
+			const fetchUsersAll = async (archived: boolean) => {
+				let page = 1;
+				const perPage = 200;
+				const all: ApiUser[] = [];
+				while (true) {
+					const res = await api.users({ page, perPage, archived });
+					all.push(...res.data);
+					const pages = res.meta?.pages || 1;
+					if (page >= pages) break;
+					page += 1;
+				}
+				return all;
+			};
+
+			const activeUsers = await fetchUsersAll(false);
+			const archivedUsers = reportIncludeArchived ? await fetchUsersAll(true) : [];
+			const usersAll = [...activeUsers, ...archivedUsers].filter(
+				(user, idx, arr) => arr.findIndex((u) => u.id === user.id) === idx,
+			);
+
+			if (reportFormat === 'json') {
+				downloadTextFile(
+					`users-report-${dateTag}.json`,
+					JSON.stringify({ data: usersAll }, null, 2),
+					'application/json',
+				);
+			} else {
+				const header = ['id', 'name', 'email', 'role', 'archivedAt'].join(',');
+				const lines = usersAll.map((u) =>
+					[csvCell(u.id), csvCell(u.name), csvCell(u.email), csvCell(u.role), csvCell(u.archivedAt)].join(
+						',',
+					),
+				);
+				const csv = [header, ...lines].join('\n');
+				downloadTextFile(`users-report-${dateTag}.csv`, csv, 'text/csv');
+			}
+
+			setSettingsNotice({ type: 'success', message: 'Report generated.' });
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : 'Failed to generate report.';
+			setSettingsNotice({ type: 'error', message: msg });
+		} finally {
+			setReportGenerating(false);
+		}
 	};
 
 	const resetCourseForm = () => {
@@ -228,9 +941,10 @@ export default function AdminDashboard() {
 		let cancelled = false;
 		async function load() {
 			try {
-				const [analyticsRes, coursesRes] = await Promise.all([
+				const [analyticsRes, coursesRes, programsRes] = await Promise.all([
 					api.analyticsAdmin({ archived: false }),
 					api.courses({ archived: false }),
+					api.programs({ archived: false }),
 				]);
 
 				if (cancelled) return;
@@ -244,6 +958,7 @@ export default function AdminDashboard() {
 				});
 				setCourses(coursesRes.data);
 				setManageCourses(coursesRes.data);
+				setPrograms(programsRes.data);
 			} catch {
 				// Keep UI stable if API is unavailable
 			}
@@ -253,6 +968,28 @@ export default function AdminDashboard() {
 			cancelled = true;
 		};
 	}, []);
+
+	const resetProgramForm = () => {
+		setProgramError('');
+		setProgramFormMode('create');
+		setEditingProgramId(null);
+		setProgramCode('');
+		setProgramTitle('');
+	};
+
+	const refreshPrograms = async (archived: boolean) => {
+		try {
+			const res = await api.programs({ archived });
+			setPrograms(res.data);
+		} catch {
+			// Keep UI stable if API is unavailable
+		}
+	};
+
+	useEffect(() => {
+		refreshPrograms(programArchiveFilter === 'archived');
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [programArchiveFilter]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -331,6 +1068,10 @@ export default function AdminDashboard() {
 	}, [userArchiveFilter, usersRefreshKey]);
 
 	useEffect(() => {
+		setUsersPage(1);
+	}, [userRoleFilter, userArchiveFilter]);
+
+	useEffect(() => {
 		let cancelled = false;
 		async function loadUsers() {
 			setUsersLoading(true);
@@ -338,15 +1079,26 @@ export default function AdminDashboard() {
 			try {
 				const res = await api.users({
 					role: userRoleFilter === 'all' ? undefined : userRoleFilter,
-					limit: 10,
+					q: usersSearch.trim() ? usersSearch.trim() : undefined,
+					page: usersPage,
+					perPage: usersPerPage,
 					archived: userArchiveFilter === 'archived',
 				});
-				if (!cancelled) setRecentUsers(res.data);
+				if (!cancelled) {
+					setPagedUsers(res.data);
+					const total = res.meta?.total ?? res.data.length;
+					const pages = res.meta?.pages ?? Math.max(1, Math.ceil(total / usersPerPage));
+					setUsersTotal(total);
+					setUsersPageCount(pages);
+					if (usersPage > pages) setUsersPage(pages);
+				}
 			} catch (e) {
 				if (!cancelled) {
 					const msg = e instanceof Error ? e.message : 'Failed to load users.';
 					setUsersError(msg);
-					setRecentUsers([]);
+					setPagedUsers([]);
+					setUsersTotal(0);
+					setUsersPageCount(1);
 				}
 			} finally {
 				if (!cancelled) setUsersLoading(false);
@@ -356,12 +1108,12 @@ export default function AdminDashboard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [userRoleFilter, userArchiveFilter, usersRefreshKey]);
+	}, [userRoleFilter, userArchiveFilter, usersSearch, usersPage, usersRefreshKey]);
 
 	useEffect(() => {
 		let cancelled = false;
 		async function loadStudentCourses() {
-			const students = recentUsers.filter((u) => u.role === 'student');
+			const students = pagedUsers.filter((u) => u.role === 'student');
 			if (!students.length) {
 				setStudentCourseByUserId({});
 				setStudentCountsByUserId({});
@@ -406,7 +1158,71 @@ export default function AdminDashboard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [recentUsers]);
+	}, [pagedUsers]);
+
+	useEffect(() => {
+		setManageCoursesPage(1);
+	}, [courseArchiveFilter]);
+
+	useEffect(() => {
+		setProgramsPage(1);
+	}, [programArchiveFilter]);
+
+	const userPageButtons = useMemo(() => {
+		return Array.from({ length: usersPageCount }, (_, idx) => idx + 1);
+	}, [usersPageCount]);
+
+	const filteredManageCourses = useMemo(() => {
+		const q = manageCoursesSearch.trim().toLowerCase();
+		if (!q) return manageCourses;
+		return manageCourses.filter((course) => {
+			const haystack = `${course.code ?? ''} ${course.title ?? ''}`.toLowerCase();
+			return haystack.includes(q);
+		});
+	}, [manageCourses, manageCoursesSearch]);
+
+	const filteredPrograms = useMemo(() => {
+		const q = programsSearch.trim().toLowerCase();
+		if (!q) return programs;
+		return programs.filter((p) => {
+			const haystack = `${p.code ?? ''} ${p.title ?? ''}`.toLowerCase();
+			return haystack.includes(q);
+		});
+	}, [programs, programsSearch]);
+
+	const manageCoursesPageCount = useMemo(() => {
+		return Math.max(1, Math.ceil(filteredManageCourses.length / manageCoursesPerPage));
+	}, [filteredManageCourses.length]);
+
+	useEffect(() => {
+		setManageCoursesPage((prev) => Math.min(manageCoursesPageCount, Math.max(1, prev)));
+	}, [manageCoursesPageCount]);
+
+	const manageCoursesPageButtons = useMemo(() => {
+		return Array.from({ length: manageCoursesPageCount }, (_, idx) => idx + 1);
+	}, [manageCoursesPageCount]);
+
+	const pagedManageCourses = useMemo(() => {
+		const start = (manageCoursesPage - 1) * manageCoursesPerPage;
+		return filteredManageCourses.slice(start, start + manageCoursesPerPage);
+	}, [filteredManageCourses, manageCoursesPage]);
+
+	const programsPageCount = useMemo(() => {
+		return Math.max(1, Math.ceil(filteredPrograms.length / programsPerPage));
+	}, [filteredPrograms.length]);
+
+	useEffect(() => {
+		setProgramsPage((prev) => Math.min(programsPageCount, Math.max(1, prev)));
+	}, [programsPageCount]);
+
+	const programsPageButtons = useMemo(() => {
+		return Array.from({ length: programsPageCount }, (_, idx) => idx + 1);
+	}, [programsPageCount]);
+
+	const pagedPrograms = useMemo(() => {
+		const start = (programsPage - 1) * programsPerPage;
+		return filteredPrograms.slice(start, start + programsPerPage);
+	}, [filteredPrograms, programsPage]);
 
 	const courseManagementContent = (
 		headerTitle: string,
@@ -428,6 +1244,15 @@ export default function AdminDashboard() {
 						<p className="text-sm text-gray-600">{headerDescription}</p>
 					</div>
 					<div className="flex items-center gap-3">
+						<Input
+							value={manageCoursesSearch}
+							onChange={(e) => {
+								setManageCoursesSearch(e.target.value);
+								setManageCoursesPage(1);
+							}}
+							placeholder={itemLabel === 'Class' ? 'Search subject…' : 'Search course…'}
+							className="w-full md:w-[260px]"
+						/>
 						<Select
 							value={courseArchiveFilter}
 							onValueChange={(v) => {
@@ -742,7 +1567,7 @@ export default function AdminDashboard() {
 				<Card className="glass-card">
 					<CardContent className="p-6">
 						<div className="space-y-4">
-							{manageCourses.map((course) => (
+							{pagedManageCourses.map((course) => (
 								<div key={course.id} className="flex items-center justify-between p-4 glass-item">
 									<div className="flex-1">
 										<div className="flex items-center gap-2 mb-1">
@@ -864,6 +1689,335 @@ export default function AdminDashboard() {
 									</div>
 								</div>
 							))}
+
+							{filteredManageCourses.length ? (
+								<>
+									<div className="mt-5 flex flex-wrap justify-center gap-2">
+										{manageCoursesPageButtons.map((page) => {
+											const isActive = page === manageCoursesPage;
+											return (
+												<Button
+													key={page}
+													size="sm"
+													variant={isActive ? 'default' : 'outline'}
+													onClick={() => setManageCoursesPage(page)}
+													disabled={manageCoursesPageCount === 1}
+												>
+													{page}
+												</Button>
+											);
+										})}
+									</div>
+
+									<div className="mt-3 flex justify-center">
+										<Button
+											variant="outline"
+											disabled={manageCoursesPage >= manageCoursesPageCount}
+											onClick={() =>
+												setManageCoursesPage((prev) => Math.min(manageCoursesPageCount, prev + 1))
+											}
+										>
+											Next
+										</Button>
+									</div>
+								</>
+							) : null}
+						</div>
+					</CardContent>
+				</Card>
+			</>
+		);
+	};
+
+	const programManagementContent = () => {
+		return (
+			<>
+				<div className="flex justify-between items-center mb-4">
+					<div>
+						<h3 className="text-lg font-semibold">Course Management</h3>
+						<p className="text-sm text-gray-600">Manage available courses for student enrollment</p>
+					</div>
+					<div className="flex items-center gap-3">
+						<Input
+							value={programsSearch}
+							onChange={(e) => {
+								setProgramsSearch(e.target.value);
+								setProgramsPage(1);
+							}}
+							placeholder="Search course…"
+							className="w-full md:w-[260px]"
+						/>
+						<Select
+							value={programArchiveFilter}
+							onValueChange={(v) => {
+								if (v === 'active' || v === 'archived') setProgramArchiveFilter(v);
+							}}
+						>
+							<SelectTrigger className="w-[160px]">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="active">Active</SelectItem>
+								<SelectItem value="archived">Archived</SelectItem>
+							</SelectContent>
+						</Select>
+
+						<Button
+							className="bg-blue-600 hover:bg-blue-700"
+							onClick={() => {
+								if (showProgramForm) {
+									resetProgramForm();
+									setShowProgramForm(false);
+									return;
+								}
+
+								setShowProgramForm(true);
+								setProgramFormMode('create');
+								setProgramError('');
+								setEditingProgramId(null);
+								setProgramCode('');
+								setProgramTitle('');
+							}}
+						>
+							<Plus className="w-4 h-4 mr-2" />
+							{showProgramForm ? 'Close' : 'Add Course'}
+						</Button>
+					</div>
+				</div>
+
+				{programError ? (
+					<Alert variant="destructive">
+						<AlertDescription>{programError}</AlertDescription>
+					</Alert>
+				) : null}
+
+				{showProgramForm ? (
+					<Card className="glass-card">
+						<CardHeader>
+							<div className="flex items-start justify-between gap-4">
+								<div>
+									<CardTitle>{programFormMode === 'edit' ? 'Edit Course' : 'Add Course'}</CardTitle>
+									<CardDescription>Define the course code and its full name (e.g., BSIT)</CardDescription>
+								</div>
+								{programFormMode === 'edit' ? (
+									<Button
+										variant="outline"
+										onClick={() => {
+											resetProgramForm();
+											setShowProgramForm(false);
+										}}
+										disabled={programSaving}
+									>
+										Cancel
+									</Button>
+								) : null}
+							</div>
+						</CardHeader>
+						<CardContent>
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="program-code">Code</Label>
+									<Input
+										id="program-code"
+										value={programCode}
+										onChange={(e) => setProgramCode(e.target.value)}
+										placeholder="e.g. BSIT"
+										required
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="program-title">Full Name</Label>
+									<Input
+										id="program-title"
+										value={programTitle}
+										onChange={(e) => setProgramTitle(e.target.value)}
+										placeholder="e.g. Bachelor of Science in Information Technology"
+										required
+									/>
+								</div>
+
+								<div className="flex items-end">
+									<Button
+										className="bg-blue-600 hover:bg-blue-700"
+										disabled={programSaving}
+										onClick={async () => {
+											setProgramError('');
+
+											if (!programCode.trim() || !programTitle.trim()) {
+												setProgramError('Course code and full name are required');
+												return;
+											}
+
+											setProgramSaving(true);
+											try {
+												if (programFormMode === 'edit' && editingProgramId) {
+													await api.updateProgram(editingProgramId, {
+														code: programCode.trim(),
+														title: programTitle.trim(),
+													});
+												} else {
+													await api.createProgram({
+														code: programCode.trim(),
+														title: programTitle.trim(),
+													});
+												}
+
+											await refreshPrograms(programArchiveFilter === 'archived');
+											resetProgramForm();
+											setShowProgramForm(false);
+										} catch (e) {
+											setProgramError(e instanceof Error ? e.message : 'Failed to save course');
+										} finally {
+											setProgramSaving(false);
+										}
+									}}
+									>
+										{programSaving ? 'Saving…' : programFormMode === 'edit' ? 'Save Changes' : 'Add Course'}
+									</Button>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				) : null}
+
+				<Card className="glass-card">
+					<CardContent className="p-6">
+						<div className="space-y-4">
+							{filteredPrograms.length === 0 ? (
+								<div className="text-sm text-muted-foreground">No courses found.</div>
+							) : (
+								pagedPrograms.map((p) => (
+									<div key={p.id} className="flex items-center justify-between p-4 glass-item">
+										<div className="flex-1">
+											<div className="font-semibold">
+												<span className="text-blue-600">{p.code}</span> - {p.title}
+											</div>
+										</div>
+										<div className="flex items-center gap-2">
+											<span
+												className={`px-3 py-1 rounded-full text-xs font-medium ${
+													p.status === 'active'
+														? 'bg-green-100 text-green-700'
+														: 'bg-gray-100 text-gray-700'
+												}`}
+											>
+												{p.status}
+											</span>
+
+											<Button
+												size="sm"
+												onClick={() => {
+													setProgramError('');
+													setShowProgramForm(true);
+													setProgramFormMode('edit');
+													setEditingProgramId(p.id);
+													setProgramCode(p.code || '');
+													setProgramTitle(p.title || '');
+												}}
+											>
+												Edit
+											</Button>
+
+											{programArchiveFilter === 'active' && p.status !== 'archived' ? (
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={async () => {
+														const ok = window.confirm(`Archive ${p.code} - ${p.title}?`);
+														if (!ok) return;
+
+														setProgramError('');
+														try {
+															await api.updateProgram(p.id, { status: 'archived' });
+															await refreshPrograms(false);
+														} catch (e) {
+															setProgramError(e instanceof Error ? e.message : 'Failed to archive course');
+														}
+													}}
+												>
+													Archive
+												</Button>
+											) : null}
+
+											{programArchiveFilter === 'archived' ? (
+												<>
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={async () => {
+															const ok = window.confirm(`Unarchive ${p.code} - ${p.title}?`);
+															if (!ok) return;
+
+															setProgramError('');
+															try {
+																await api.updateProgram(p.id, { status: 'active' });
+																await refreshPrograms(true);
+															} catch (e) {
+																setProgramError(e instanceof Error ? e.message : 'Failed to unarchive course');
+															}
+														}}
+													>
+														Unarchive
+													</Button>
+
+													<Button
+														variant="destructive"
+														size="sm"
+														onClick={async () => {
+															const ok = window.confirm(
+																`Delete ${p.code} - ${p.title}? This will permanently remove the course.`,
+															);
+															if (!ok) return;
+
+															setProgramError('');
+															try {
+																await api.deleteProgram(p.id);
+																await refreshPrograms(true);
+															} catch (e) {
+																setProgramError(e instanceof Error ? e.message : 'Failed to delete course');
+															}
+														}}
+													>
+														Delete
+													</Button>
+												</>
+											) : null}
+										</div>
+									</div>
+								))
+							)}
+
+							{filteredPrograms.length ? (
+								<>
+									<div className="mt-5 flex flex-wrap justify-center gap-2">
+										{programsPageButtons.map((page) => {
+											const isActive = page === programsPage;
+											return (
+												<Button
+													key={page}
+													size="sm"
+													variant={isActive ? 'default' : 'outline'}
+													onClick={() => setProgramsPage(page)}
+													disabled={programsPageCount === 1}
+												>
+													{page}
+												</Button>
+											);
+										})}
+									</div>
+
+									<div className="mt-3 flex justify-center">
+										<Button
+											variant="outline"
+											disabled={programsPage >= programsPageCount}
+											onClick={() => setProgramsPage((prev) => Math.min(programsPageCount, prev + 1))}
+										>
+											Next
+										</Button>
+									</div>
+								</>
+							) : null}
 						</div>
 					</CardContent>
 				</Card>
@@ -873,7 +2027,7 @@ export default function AdminDashboard() {
 
 	return (
 		<DashboardLayout title="Administrator Dashboard">
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
 				<Card className="glass-card">
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
@@ -933,6 +2087,21 @@ export default function AdminDashboard() {
 						</div>
 					</CardContent>
 				</Card>
+
+				<Card className="glass-card">
+					<CardContent className="p-6">
+						<div className="flex items-center justify-between">
+							<div>
+								<p className="text-sm text-gray-600 mb-1">Total Teachers</p>
+								<p className="text-3xl font-bold">{analytics.totalTeachers}</p>
+								<p className="text-xs text-gray-600 mt-1">Teacher accounts</p>
+							</div>
+							<div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+								<Users className="w-6 h-6 text-blue-600" />
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
 			<Tabs
@@ -950,6 +2119,7 @@ export default function AdminDashboard() {
 					<TabsTrigger value="announcements">Announcements</TabsTrigger>
 					<TabsTrigger value="users">User Management</TabsTrigger>
 					<TabsTrigger value="courses">Class Management</TabsTrigger>
+					<TabsTrigger value="courseManagement">Course Management</TabsTrigger>
 					<TabsTrigger value="settings">System Settings</TabsTrigger>
 				</TabsList>
 
@@ -957,19 +2127,80 @@ export default function AdminDashboard() {
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 						<Card className="glass-card">
 							<CardHeader>
-								<CardTitle>Weekly Engagement Hours</CardTitle>
-								<CardDescription>Total platform usage by day</CardDescription>
+								<CardTitle>Total Students</CardTitle>
+								<CardDescription>Last 10 days</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold mb-3">{analytics.totalStudents}</div>
+								<ResponsiveContainer width="100%" height={240}>
+									<AreaChart data={analytics.studentsTrend || []}>
+										<defs>
+											<linearGradient id="studentsTrendFill" x1="0" y1="0" x2="0" y2="1">
+												<stop offset="5%" stopColor="#a855f7" stopOpacity={0.55} />
+												<stop offset="95%" stopColor="#a855f7" stopOpacity={0.05} />
+											</linearGradient>
+										</defs>
+										<CartesianGrid strokeDasharray="3 3" />
+										<XAxis dataKey="day" />
+										<YAxis allowDecimals={false} />
+										<Tooltip />
+										<Area
+											type="monotone"
+											dataKey="count"
+											stroke="#a855f7"
+											strokeWidth={3}
+											fill="url(#studentsTrendFill)"
+											dot={false}
+											activeDot={{ r: 5 }}
+										/>
+									</AreaChart>
+								</ResponsiveContainer>
+							</CardContent>
+						</Card>
+
+						<Card className="glass-card">
+							<CardHeader>
+								<CardTitle>Total Teachers</CardTitle>
+								<CardDescription>Last 10 days</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold mb-3">{analytics.totalTeachers}</div>
+								<ResponsiveContainer width="100%" height={240}>
+									<LineChart data={analytics.teachersTrend || []}>
+										<CartesianGrid strokeDasharray="3 3" />
+										<XAxis dataKey="day" />
+										<YAxis allowDecimals={false} />
+										<Tooltip />
+										<Line
+											type="monotone"
+											dataKey="count"
+											stroke="#a855f7"
+											strokeWidth={3}
+											dot={{ r: 4 }}
+											activeDot={{ r: 5 }}
+										/>
+									</LineChart>
+								</ResponsiveContainer>
+							</CardContent>
+						</Card>
+					</div>
+
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						<Card className="glass-card">
+							<CardHeader>
+								<CardTitle>Subject Enrollment</CardTitle>
+								<CardDescription>Total assigned teachers per subject</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<ResponsiveContainer width="100%" height={300}>
-									<LineChart data={analytics.weeklyEngagement}>
+									<LineChart data={analytics.subjectTeachers || []}>
 										<CartesianGrid strokeDasharray="3 3" />
-										<XAxis dataKey="day" />
+										<XAxis dataKey="subject" />
 										<YAxis />
 										<Tooltip />
 										<Line
 											type="monotone"
-											dataKey="hours"
+											dataKey="teachers"
 											stroke="#3b82f6"
 											strokeWidth={3}
 											dot={false}
@@ -1017,14 +2248,18 @@ export default function AdminDashboard() {
 							<CardDescription>Key metrics overview</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 								<div className="p-4 glass-item">
-									<div className="text-sm text-gray-600 mb-1">Total Enrollments</div>
-									<div className="text-2xl font-bold">{analytics.totalEnrollments}</div>
+									<div className="text-sm text-gray-600 mb-1">Total Students</div>
+									<div className="text-2xl font-bold">{analytics.totalStudents}</div>
 								</div>
 								<div className="p-4 glass-item">
 									<div className="text-sm text-gray-600 mb-1">Total Teachers</div>
 									<div className="text-2xl font-bold">{analytics.totalTeachers}</div>
+								</div>
+								<div className="p-4 glass-item">
+									<div className="text-sm text-gray-600 mb-1">Total Enrollments</div>
+									<div className="text-2xl font-bold">{analytics.totalEnrollments}</div>
 								</div>
 								<div className="p-4 glass-item">
 									<div className="text-sm text-gray-600 mb-1">Total Assignments</div>
@@ -1043,6 +2278,342 @@ export default function AdminDashboard() {
 					<CourseAnnouncements courses={courses} canPost={true} />
 				</TabsContent>
 
+				<TabsContent value="messages" className="space-y-6">
+					<div className="flex items-start justify-between gap-4 flex-wrap">
+						<div>
+							<h3 className="text-lg font-semibold">Messages</h3>
+							<p className="text-sm text-gray-600">Inbox, sent, drafts, and deleted messages</p>
+						</div>
+						<div className="flex items-center gap-2 flex-wrap">
+							<Button
+								variant="outline"
+								onClick={() => {
+									setDashboardSearchParam('tab', 'analytics');
+									setActiveTab('analytics');
+								}}
+								aria-label="Back to dashboard"
+							>
+								<ArrowLeft className="w-4 h-4" />
+							</Button>
+							{messageFolder !== 'deleted' ? (
+								<Button
+									variant="destructive"
+									disabled={selectedMessageIds.size === 0}
+									onClick={handleBulkDeleteSelected}
+								>
+									Delete Selected
+								</Button>
+							) : null}
+							<Button className="bg-blue-600 hover:bg-blue-700" onClick={() => openCompose()}>
+								<Plus className="w-4 h-4 mr-2" />
+								Compose
+							</Button>
+						</div>
+					</div>
+
+					<div className="flex items-center gap-2 flex-wrap">
+						<Button
+							variant={messageFolder === 'inbox' ? 'default' : 'outline'}
+							onClick={() => {
+								setMessageFolder('inbox');
+								setDashboardSearchParam('folder', 'inbox');
+								setSelectedMessageId(null);
+								closeCompose();
+							}}
+						>
+							Inbox
+						</Button>
+						<Button
+							variant={messageFolder === 'sent' ? 'default' : 'outline'}
+							onClick={() => {
+								setMessageFolder('sent');
+								setDashboardSearchParam('folder', 'sent');
+								setSelectedMessageId(null);
+								closeCompose();
+							}}
+						>
+							Sent
+						</Button>
+						<Button
+							variant={messageFolder === 'drafts' ? 'default' : 'outline'}
+							onClick={() => {
+								setMessageFolder('drafts');
+								setDashboardSearchParam('folder', 'drafts');
+								setSelectedMessageId(null);
+								closeCompose();
+							}}
+						>
+							Drafts
+						</Button>
+						<Button
+							variant={messageFolder === 'deleted' ? 'default' : 'outline'}
+							onClick={() => {
+								setMessageFolder('deleted');
+								setDashboardSearchParam('folder', 'deleted');
+								setSelectedMessageId(null);
+								closeCompose();
+							}}
+						>
+							Deleted
+						</Button>
+					</div>
+
+					{messagesError ? (
+						<Alert variant="destructive">
+							<AlertDescription>{messagesError}</AlertDescription>
+						</Alert>
+					) : null}
+
+					{messageComposeOpen ? (
+						<Card className="glass-card">
+							<CardHeader>
+								<CardTitle>Compose Message</CardTitle>
+								<CardDescription>Send a message to an individual user</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor="compose-to">To</Label>
+									<Input
+										id="compose-to"
+										value={composeTo}
+										list="compose-to-suggestions"
+										placeholder="Start typing a name or email…"
+										onChange={(e) => {
+											setComposeTo(e.target.value);
+											syncComposeRecipientFromInput(e.target.value);
+										}}
+										onBlur={(e) => syncComposeRecipientFromInput(e.target.value)}
+									/>
+									<datalist id="compose-to-suggestions">
+										{composeSuggestions.map((u) => (
+											<option key={u.id} value={`${u.name} <${u.email}>`}>
+												{u.role}
+											</option>
+										))}
+									</datalist>
+									{composeSuggestionsLoading ? (
+										<div className="text-xs text-muted-foreground">Searching users…</div>
+									) : null}
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="compose-subject">Subject (optional)</Label>
+									<Input
+										id="compose-subject"
+										value={composeSubject}
+										onChange={(e) => setComposeSubject(e.target.value)}
+										placeholder="Subject"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="compose-body">Message</Label>
+									<Textarea
+										id="compose-body"
+										value={composeBody}
+										onChange={(e) => setComposeBody(e.target.value)}
+										placeholder="Write your message…"
+										rows={8}
+									/>
+								</div>
+
+								{composeError ? (
+									<Alert variant="destructive">
+										<AlertDescription>{composeError}</AlertDescription>
+									</Alert>
+								) : null}
+								{composeSuccess ? (
+									<Alert>
+										<AlertDescription>{composeSuccess}</AlertDescription>
+									</Alert>
+								) : null}
+
+								<div className="flex items-center justify-end gap-2">
+									<Button
+										variant="outline"
+										disabled={composeSaving}
+										onClick={() => {
+											closeCompose();
+											resetCompose();
+										}}
+									>
+										Cancel
+									</Button>
+									<Button variant="secondary" disabled={composeSaving} onClick={handleSaveDraft}>
+										Save Draft
+									</Button>
+									<Button disabled={composeSaving} onClick={handleSendMessage}>
+										Send
+									</Button>
+								</div>
+							</CardContent>
+						</Card>
+					) : (
+						<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							<Card className="glass-card">
+								<CardHeader>
+									<CardTitle>
+										{messageFolder === 'inbox'
+											? 'Inbox'
+											: messageFolder === 'sent'
+												? 'Sent'
+												: messageFolder === 'drafts'
+													? 'Drafts'
+													: 'Deleted'}
+									</CardTitle>
+									<CardDescription>
+										{messagesLoading
+											? 'Loading…'
+											: messages.length
+												? `${messages.length} message(s)`
+												: 'No messages.'}
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{messages.length === 0 ? (
+										<div className="text-sm text-muted-foreground">No messages found.</div>
+									) : (
+										<div className="space-y-2 max-h-[520px] overflow-auto">
+											{messages.map((m) => {
+												const iso = m.sentAt || m.createdAt;
+												const when = iso ? new Date(iso).toLocaleString() : '—';
+												const title = m.subject?.trim() ? m.subject.trim() : '(No subject)';
+												const isUnread = messageFolder === 'inbox' && m.status === 'sent' && !m.readAt;
+												const selected = selectedMessageId === m.id;
+												const checked = selectedMessageIds.has(m.id);
+												const partyLine =
+													messageFolder === 'sent'
+														? `To: ${m.recipient?.name || '—'}`
+														: messageFolder === 'inbox'
+															? `From: ${m.sender?.name || '—'}`
+															: `From: ${m.sender?.name || '—'} • To: ${m.recipient?.name || '—'}`;
+
+												return (
+													<button
+														type="button"
+														key={m.id}
+														onClick={() => handleSelectMessage(m)}
+														className={`w-full text-left flex items-start justify-between gap-3 p-3 glass-item ${
+															selected ? 'ring-2 ring-blue-600' : ''
+														}`}
+													>
+														<div className="flex items-start gap-3 min-w-0">
+															<Checkbox
+																checked={checked}
+																onCheckedChange={(v) => toggleSelectedMessage(m.id, v === true)}
+																onClick={(e) => e.stopPropagation()}
+															/>
+															<div className="min-w-0">
+																<div className="flex items-center gap-2">
+																	<div className="font-medium truncate">{title}</div>
+																	{m.status === 'draft' ? <Badge variant="secondary">Draft</Badge> : null}
+																	{isUnread ? <Badge>Unread</Badge> : null}
+																</div>
+																<div className="text-xs text-gray-600 truncate">{partyLine}</div>
+															</div>
+														</div>
+														<div className="text-xs text-gray-500 whitespace-nowrap">{when}</div>
+													</button>
+												);
+											})}
+										</div>
+									)}
+								</CardContent>
+							</Card>
+
+							<Card className="glass-card">
+								<CardHeader>
+									<div className="flex items-center justify-between gap-3">
+										<CardTitle>{chatUser ? `Chat: ${chatUser.name}` : 'Chat'}</CardTitle>
+										{chatUser ? (
+											<Button
+												variant="outline"
+												onClick={() => {
+													setSelectedMessageId(null);
+													setChatUser(null);
+													setChatThreadMessages([]);
+													chatLastIsoRef.current = null;
+												}}
+											>
+												<ArrowLeft className="w-4 h-4" />
+											</Button>
+										) : null}
+									</div>
+									<CardDescription>
+										{chatUser ? chatUser.email : 'Select a message to start chatting.'}
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{!selectedMessage ? (
+										<div className="text-sm text-muted-foreground">No message selected.</div>
+									) : selectedMessage.status === 'draft' ? (
+										<div className="space-y-4">
+											<div className="text-sm text-muted-foreground">This is a draft. Edit it to send.</div>
+											<Button variant="secondary" onClick={() => openCompose({ draft: selectedMessage })}>
+												Edit Draft
+											</Button>
+										</div>
+									) : (
+										<div className="space-y-4">
+											{chatThreadError ? (
+												<Alert variant="destructive">
+													<AlertDescription>{chatThreadError}</AlertDescription>
+												</Alert>
+											) : null}
+
+											<div ref={chatThreadScrollRef} className="max-h-[420px] overflow-auto space-y-2 p-1">
+												{chatThreadLoading && chatThreadMessages.length === 0 ? (
+													<div className="text-sm text-muted-foreground">Loading chat…</div>
+												) : null}
+												{chatThreadMessages.map((m) => {
+													const mine = currentUserId && String(m.sender?.id || '') === String(currentUserId);
+													const iso = m.sentAt || m.createdAt;
+													const when = iso ? new Date(iso).toLocaleTimeString() : '';
+													return (
+														<div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+															<div className={`max-w-[80%] p-3 glass-item ${mine ? 'text-right' : ''}`}>
+																<div className="text-sm whitespace-pre-wrap">{m.body}</div>
+																<div className="text-[11px] text-gray-500 mt-1">{when}</div>
+															</div>
+														</div>
+													);
+												})}
+											</div>
+
+											<div className="space-y-2">
+												<Textarea
+													value={chatReplyBody}
+													onChange={(e) => setChatReplyBody(e.target.value)}
+													placeholder="Type a reply…"
+													rows={3}
+												/>
+												<div className="flex items-center justify-end gap-2 flex-wrap">
+													<Button
+														className="bg-blue-600 hover:bg-blue-700"
+														disabled={chatReplySending || !chatReplyBody.trim()}
+														onClick={handleSendChatReply}
+													>
+														{chatReplySending ? 'Sending…' : 'Send'}
+													</Button>
+													{messageFolder === 'deleted' ? (
+														<Button variant="secondary" onClick={handleRestoreSelectedMessage}>
+															Restore
+														</Button>
+													) : (
+														<Button variant="destructive" onClick={handleTrashSelectedMessage}>
+															Delete
+														</Button>
+													)}
+												</div>
+											</div>
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						</div>
+					)}
+				</TabsContent>
+
 				<TabsContent value="users" className="space-y-6">
 					<div className="flex items-start justify-between gap-4 flex-wrap">
 						<div>
@@ -1050,26 +2621,6 @@ export default function AdminDashboard() {
 							<p className="text-sm text-gray-600">Add, archive, and manage user accounts</p>
 						</div>
 						<div className="flex items-center gap-3">
-							<Select
-								value={userRoleFilter}
-								onValueChange={(v) => {
-									if (v === 'all' || v === 'student' || v === 'teacher' || v === 'admin') {
-										setUserRoleFilter(v);
-										setDashboardSearchParam('role', v === 'all' ? null : v);
-									}
-								}}
-							>
-								<SelectTrigger className="w-[180px]">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Roles</SelectItem>
-									<SelectItem value="student">Students</SelectItem>
-									<SelectItem value="teacher">Teachers</SelectItem>
-									<SelectItem value="admin">Admins</SelectItem>
-								</SelectContent>
-							</Select>
-
 							<Select
 								value={userArchiveFilter}
 								onValueChange={(v) => {
@@ -1103,28 +2654,76 @@ export default function AdminDashboard() {
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-						<Card className="glass-card">
+						<Card
+							className={`glass-card cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background hover:bg-primary/10 hover:border-primary/40 ${userRoleFilter === 'all' ? 'ring-2 ring-ring bg-primary/10 border-primary/50' : 'hover:ring-1 hover:ring-ring/40'}`}
+							role="button"
+							tabIndex={0}
+							aria-pressed={userRoleFilter === 'all'}
+							onClick={() => applyUserRoleFilter('all')}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									applyUserRoleFilter('all');
+								}
+							}}
+						>
 							<CardContent className="p-5">
 								<div className="text-sm text-gray-600">Total Users</div>
 								<div className="text-2xl font-bold">{userCounts.totalUsers}</div>
 							</CardContent>
 						</Card>
-						<Card className="glass-card">
+						<Card
+							className={`glass-card cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background hover:bg-primary/10 hover:border-primary/40 ${userRoleFilter === 'student' ? 'ring-2 ring-ring bg-primary/10 border-primary/50' : 'hover:ring-1 hover:ring-ring/40'}`}
+							role="button"
+							tabIndex={0}
+							aria-pressed={userRoleFilter === 'student'}
+							onClick={() => applyUserRoleFilter('student')}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									applyUserRoleFilter('student');
+								}
+							}}
+						>
 							<CardContent className="p-5">
-								<div className="text-sm text-gray-600">Admins</div>
-								<div className="text-2xl font-bold">{userCounts.totalAdmins}</div>
+								<div className="text-sm text-gray-600">Students</div>
+								<div className="text-2xl font-bold">{userCounts.totalStudents}</div>
 							</CardContent>
 						</Card>
-						<Card className="glass-card">
+						<Card
+							className={`glass-card cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background hover:bg-primary/10 hover:border-primary/40 ${userRoleFilter === 'teacher' ? 'ring-2 ring-ring bg-primary/10 border-primary/50' : 'hover:ring-1 hover:ring-ring/40'}`}
+							role="button"
+							tabIndex={0}
+							aria-pressed={userRoleFilter === 'teacher'}
+							onClick={() => applyUserRoleFilter('teacher')}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									applyUserRoleFilter('teacher');
+								}
+							}}
+						>
 							<CardContent className="p-5">
 								<div className="text-sm text-gray-600">Teachers</div>
 								<div className="text-2xl font-bold">{userCounts.totalTeachers}</div>
 							</CardContent>
 						</Card>
-						<Card className="glass-card">
+						<Card
+							className={`glass-card cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background hover:bg-primary/10 hover:border-primary/40 ${userRoleFilter === 'admin' ? 'ring-2 ring-ring bg-primary/10 border-primary/50' : 'hover:ring-1 hover:ring-ring/40'}`}
+							role="button"
+							tabIndex={0}
+							aria-pressed={userRoleFilter === 'admin'}
+							onClick={() => applyUserRoleFilter('admin')}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									applyUserRoleFilter('admin');
+								}
+							}}
+						>
 							<CardContent className="p-5">
-								<div className="text-sm text-gray-600">Students</div>
-								<div className="text-2xl font-bold">{userCounts.totalStudents}</div>
+								<div className="text-sm text-gray-600">Admins</div>
+								<div className="text-2xl font-bold">{userCounts.totalAdmins}</div>
 							</CardContent>
 						</Card>
 					</div>
@@ -1290,18 +2889,54 @@ export default function AdminDashboard() {
 
 					<Card className="glass-card">
 						<CardHeader>
-							<CardTitle>Users</CardTitle>
-							<CardDescription>
-								{usersLoading ? 'Loading…' : `Showing ${recentUsers.length} user(s)`}
-								{studentCourseLoading ? ' • Loading student courses…' : ''}
-							</CardDescription>
+							<div className="flex items-start justify-between gap-4 flex-wrap">
+								<div>
+									<CardTitle>Users</CardTitle>
+									<CardDescription>
+										{usersLoading
+											? 'Loading…'
+											: usersTotal
+												? `Showing ${pagedUsers.length} of ${usersTotal} user(s)`
+												: 'No users found.'}
+										{studentCourseLoading ? ' • Loading student courses…' : ''}
+									</CardDescription>
+								</div>
+								<div className="w-full md:w-[280px]">
+									<Input
+										value={usersSearch}
+										onChange={(e) => {
+											setUsersSearch(e.target.value);
+											setUsersPage(1);
+										}}
+										list="users-search-suggestions"
+										placeholder={
+											userRoleFilter === 'student'
+												? 'Search student name…'
+												: userRoleFilter === 'teacher'
+													? 'Search teacher name…'
+													: 'Search user name…'
+										}
+									/>
+									<datalist id="users-search-suggestions">
+										{Array.from(
+											new Map(pagedUsers.map((u) => [u.name.trim().toLowerCase(), u])).values(),
+										)
+											.slice(0, 10)
+											.map((u) => (
+												<option key={u.id} value={u.name}>
+													{u.email}
+												</option>
+											))}
+									</datalist>
+								</div>
+							</div>
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-4">
-								{recentUsers.length === 0 ? (
+								{pagedUsers.length === 0 ? (
 									<div className="text-sm text-muted-foreground">No users found.</div>
 								) : (
-									recentUsers.map((u) => {
+								pagedUsers.map((u) => {
 										const studentCourse = u.role === 'student' ? studentCourseByUserId[u.id] : null;
 										const studentCounts = u.role === 'student' ? studentCountsByUserId[u.id] : null;
 										return (
@@ -1404,6 +3039,37 @@ export default function AdminDashboard() {
 									})
 								)}
 							</div>
+
+							{usersTotal ? (
+								<>
+									<div className="mt-5 flex flex-wrap justify-center gap-2">
+										{userPageButtons.map((page) => {
+											const isActive = page === usersPage;
+											return (
+												<Button
+													key={page}
+													size="sm"
+													variant={isActive ? 'default' : 'outline'}
+													onClick={() => setUsersPage(page)}
+													disabled={usersLoading}
+												>
+													{page}
+												</Button>
+											);
+										})}
+									</div>
+
+									<div className="mt-3 flex justify-center">
+										<Button
+											variant="outline"
+											disabled={usersLoading || usersPage >= usersPageCount}
+											onClick={() => setUsersPage((prev) => Math.min(usersPageCount, prev + 1))}
+										>
+											Next
+										</Button>
+									</div>
+								</>
+							) : null}
 						</CardContent>
 					</Card>
 				</TabsContent>
@@ -1420,6 +3086,10 @@ export default function AdminDashboard() {
 					)}
 				</TabsContent>
 
+				<TabsContent value="courseManagement" className="space-y-6">
+					{programManagementContent()}
+				</TabsContent>
+
 				<TabsContent value="settings" className="space-y-6">
 					<Card className="glass-card">
 						<CardHeader>
@@ -1427,40 +3097,347 @@ export default function AdminDashboard() {
 							<CardDescription>Configure system-wide settings and permissions</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-6">
+							{settingsNotice ? (
+								<Alert variant={settingsNotice.type === 'error' ? 'destructive' : 'default'}>
+									<AlertDescription>{settingsNotice.message}</AlertDescription>
+								</Alert>
+							) : null}
 							<div className="space-y-4">
-								<div className="flex items-center justify-between p-4 glass-item">
+								<div className="p-4 glass-item space-y-4">
+									<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+										<div>
+											<div className="font-semibold">Generate Report</div>
+											<div className="text-sm text-gray-600">Export system data for records and auditing</div>
+										</div>
+										<Button variant="outline" onClick={generateReport} disabled={reportGenerating}>
+											{reportGenerating ? 'Generating…' : 'Generate'}
+										</Button>
+									</div>
+
+									<div className="grid gap-4 md:grid-cols-3">
+										<div className="space-y-2">
+											<Label>Report Type</Label>
+											<Select value={reportType} onValueChange={(v) => setReportType(v as any)}>
+												<SelectTrigger>
+													<SelectValue placeholder="Select" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="users">Users</SelectItem>
+													<SelectItem value="courses">Courses</SelectItem>
+													<SelectItem value="analytics">Analytics Summary</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="space-y-2">
+											<Label>Format</Label>
+											<Select value={reportFormat} onValueChange={(v) => setReportFormat(v as any)}>
+												<SelectTrigger>
+													<SelectValue placeholder="Select" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="csv">CSV</SelectItem>
+													<SelectItem value="json">JSON</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+											<div>
+												<div className="text-sm font-medium">Include archived</div>
+												<div className="text-xs text-gray-600">Optional</div>
+											</div>
+											<Switch
+												checked={reportIncludeArchived}
+												onCheckedChange={setReportIncludeArchived}
+											/>
+										</div>
+									</div>
+								</div>
+
+								<div className="p-4 glass-item space-y-4">
 									<div>
 										<div className="font-semibold">Academic Term</div>
-										<div className="text-sm text-gray-600">Not configured</div>
+										<div className="text-sm text-gray-600">Set the active academic term details</div>
 									</div>
-									<Button variant="outline">Change Term</Button>
+
+									<div className="grid gap-4 md:grid-cols-2">
+										<div className="space-y-2">
+											<Label>Term Name</Label>
+											<Input
+												placeholder="e.g., AY 2026-2027"
+												value={systemSettings.academicTerm.termName}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														academicTerm: { ...prev.academicTerm, termName: e.target.value },
+													}))
+												}
+											/>
+										</div>
+
+										<div className="space-y-2">
+											<Label>School Year</Label>
+											<Input
+												placeholder="e.g., 2026-2027"
+												value={systemSettings.academicTerm.schoolYear}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														academicTerm: { ...prev.academicTerm, schoolYear: e.target.value },
+													}))
+												}
+											/>
+										</div>
+									</div>
+
+									<div className="grid gap-4 md:grid-cols-3">
+										<div className="space-y-2">
+											<Label>Semester</Label>
+											<Select
+												value={systemSettings.academicTerm.semester}
+												onValueChange={(v) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														academicTerm: { ...prev.academicTerm, semester: v as any },
+													}))
+												}
+											>
+												<SelectTrigger>
+													<SelectValue placeholder="Select" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="1st Semester">1st Semester</SelectItem>
+													<SelectItem value="2nd Semester">2nd Semester</SelectItem>
+													<SelectItem value="Summer">Summer</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+										<div className="space-y-2">
+											<Label>Starts On</Label>
+											<Input
+												type="date"
+												value={systemSettings.academicTerm.startsOn}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														academicTerm: { ...prev.academicTerm, startsOn: e.target.value },
+													}))
+												}
+											/>
+										</div>
+										<div className="space-y-2">
+											<Label>Ends On</Label>
+											<Input
+												type="date"
+												value={systemSettings.academicTerm.endsOn}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														academicTerm: { ...prev.academicTerm, endsOn: e.target.value },
+													}))
+												}
+											/>
+										</div>
+									</div>
+
+									<div className="flex items-center justify-between gap-3">
+										<div className="text-sm text-gray-600">
+											{systemSettings.academicTerm.termName || systemSettings.academicTerm.schoolYear
+												? 'Configured'
+												: 'Not configured'}
+										</div>
+										<Button
+											variant="outline"
+											onClick={() => persistSystemSettings(systemSettings)}
+										>
+											Save Academic Term
+										</Button>
+									</div>
 								</div>
 
-								<div className="flex items-center justify-between p-4 glass-item">
-									<div>
-										<div className="font-semibold">Storage Limit</div>
-										<div className="text-sm text-gray-600">Not configured</div>
+								<div className="p-4 glass-item space-y-4">
+									<div className="flex items-start justify-between gap-3">
+										<div>
+											<div className="font-semibold">Security Settings</div>
+											<div className="text-sm text-gray-600">Password policy and session controls</div>
+										</div>
+										<div className="pt-1">
+											<Settings className="h-4 w-4 text-gray-600" />
+										</div>
 									</div>
-									<Button variant="outline">Manage Storage</Button>
+
+									<div className="grid gap-4 md:grid-cols-2">
+										<div className="space-y-2">
+											<Label>Minimum Password Length</Label>
+											<Input
+												type="number"
+												min={6}
+												value={systemSettings.security.minPasswordLength}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														security: {
+															...prev.security,
+															minPasswordLength: Number(e.target.value || 0),
+														},
+													}))
+												}
+											/>
+										</div>
+
+										<div className="space-y-2">
+											<Label>Session Timeout (minutes)</Label>
+											<Input
+												type="number"
+												min={5}
+												value={systemSettings.security.sessionTimeoutMinutes}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														security: {
+															...prev.security,
+															sessionTimeoutMinutes: Number(e.target.value || 0),
+														},
+													}))
+												}
+											/>
+										</div>
+									</div>
+
+									<div className="grid gap-4 md:grid-cols-2">
+										<div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+											<div>
+												<div className="text-sm font-medium">Require complex password</div>
+												<div className="text-xs text-gray-600">Upper/lowercase + number</div>
+											</div>
+											<Switch
+												checked={systemSettings.security.requireComplexPassword}
+												onCheckedChange={(checked) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														security: { ...prev.security, requireComplexPassword: checked },
+													}))
+												}
+											/>
+										</div>
+
+										<div className="space-y-2">
+											<Label>Lockout After Failed Logins</Label>
+											<Input
+												type="number"
+												min={1}
+												value={systemSettings.security.lockoutAfterFailedLogins}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														security: {
+															...prev.security,
+															lockoutAfterFailedLogins: Number(e.target.value || 0),
+														},
+													}))
+												}
+											/>
+										</div>
+									</div>
+
+									<div className="flex justify-end">
+										<Button variant="outline" onClick={() => persistSystemSettings(systemSettings)}>
+											Save Security Settings
+										</Button>
+									</div>
 								</div>
 
-								<div className="flex items-center justify-between p-4 glass-item">
+								<div className="p-4 glass-item space-y-4">
 									<div>
-										<div className="font-semibold">Security Settings</div>
-										<div className="text-sm text-gray-600">Not configured</div>
+										<div className="font-semibold">Backup &amp; Recovery</div>
+										<div className="text-sm text-gray-600">Configure backups and retention</div>
 									</div>
-									<Button variant="outline">
-										<Settings className="w-4 h-4 mr-2" />
-										Configure
-									</Button>
-								</div>
 
-								<div className="flex items-center justify-between p-4 glass-item">
-									<div>
-										<div className="font-semibold">Backup & Recovery</div>
-										<div className="text-sm text-gray-600">Not configured</div>
+									<div className="grid gap-4 md:grid-cols-2">
+										<div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+											<div>
+												<div className="text-sm font-medium">Automatic backups</div>
+												<div className="text-xs text-gray-600">Enable scheduled backups</div>
+											</div>
+											<Switch
+												checked={systemSettings.backup.autoBackupEnabled}
+												onCheckedChange={(checked) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														backup: { ...prev.backup, autoBackupEnabled: checked },
+													}))
+												}
+											/>
+										</div>
+
+										<div className="space-y-2">
+											<Label>Retention (days)</Label>
+											<Input
+												type="number"
+												min={1}
+												value={systemSettings.backup.retentionDays}
+												onChange={(e) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														backup: { ...prev.backup, retentionDays: Number(e.target.value || 0) },
+													}))
+												}
+											/>
+										</div>
 									</div>
-									<Button variant="outline">Backup Now</Button>
+
+									<div className="grid gap-4 md:grid-cols-2">
+										<div className="space-y-2">
+											<Label>Frequency</Label>
+											<Select
+												value={systemSettings.backup.frequency}
+												onValueChange={(v) =>
+													setSystemSettings((prev) => ({
+														...prev,
+														backup: { ...prev.backup, frequency: v as any },
+													}))
+												}
+											>
+												<SelectTrigger>
+													<SelectValue placeholder="Select" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="daily">Daily</SelectItem>
+													<SelectItem value="weekly">Weekly</SelectItem>
+													<SelectItem value="monthly">Monthly</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="rounded-md border bg-background px-3 py-2">
+											<div className="text-sm font-medium">Last backup</div>
+											<div className="text-xs text-gray-600">
+												{systemSettings.backup.lastBackupAt
+													? new Date(systemSettings.backup.lastBackupAt).toLocaleString()
+													: 'Never'}
+											</div>
+										</div>
+									</div>
+
+									<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+										<Button
+											variant="outline"
+											onClick={() => {
+												const next: AdminSystemSettings = {
+													...systemSettings,
+													backup: { ...systemSettings.backup, lastBackupAt: new Date().toISOString() },
+												};
+												persistSystemSettings(next);
+												setSettingsNotice({ type: 'success', message: 'Backup started.' });
+											}}
+										>
+											Backup Now
+										</Button>
+										<Button variant="outline" onClick={() => persistSystemSettings(systemSettings)}>
+											Save Backup Settings
+										</Button>
+									</div>
 								</div>
 							</div>
 						</CardContent>

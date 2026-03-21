@@ -7,6 +7,7 @@ use App\Models\ClassSession;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ClassSessionController extends Controller
@@ -48,11 +49,22 @@ class ClassSessionController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'starts_at' => ['required', 'date'],
-            'ends_at' => ['nullable', 'date'],
+            'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'meeting_url' => ['nullable', 'string', 'max:2048'],
             'status' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        $start = Carbon::parse((string) $validated['starts_at']);
+        $end = array_key_exists('ends_at', $validated) && $validated['ends_at']
+            ? Carbon::parse((string) $validated['ends_at'])
+            : (clone $start)->addMinutes(60);
+
+        if ($this->teacherHasSessionConflict($course, $start, $end, null)) {
+            return response()->json([
+                'message' => 'Schedule conflict: teacher already has a class at that time.',
+            ], 422);
+        }
 
         $session = ClassSession::query()->create([
             'course_id' => $course->id,
@@ -91,6 +103,29 @@ class ClassSessionController extends Controller
             'status' => ['sometimes', 'string', 'max:50'],
             'notes' => ['sometimes', 'nullable', 'string'],
         ]);
+
+        $nextStartsAt = array_key_exists('starts_at', $validated) ? $validated['starts_at'] : $session->starts_at;
+        $nextEndsAt = array_key_exists('ends_at', $validated) ? $validated['ends_at'] : $session->ends_at;
+
+        if ($nextStartsAt) {
+            $start = $nextStartsAt instanceof \DateTimeInterface
+                ? Carbon::instance($nextStartsAt)
+                : Carbon::parse((string) $nextStartsAt);
+
+            $end = $nextEndsAt
+                ? ($nextEndsAt instanceof \DateTimeInterface ? Carbon::instance($nextEndsAt) : Carbon::parse((string) $nextEndsAt))
+                : (clone $start)->addMinutes(60);
+
+            if ($end->lessThanOrEqualTo($start)) {
+                return response()->json(['message' => 'ends_at must be after starts_at'], 422);
+            }
+
+            if ($this->teacherHasSessionConflict($course, $start, $end, (int) $session->id)) {
+                return response()->json([
+                    'message' => 'Schedule conflict: teacher already has a class at that time.',
+                ], 422);
+            }
+        }
 
         $session->fill($validated);
         $session->save();
@@ -173,5 +208,44 @@ class ClassSessionController extends Controller
             'meetingUrl' => $session->meeting_url,
             'notes' => $session->notes,
         ];
+    }
+
+    private function teacherHasSessionConflict(Course $course, Carbon $start, Carbon $end, ?int $ignoreSessionId): bool
+    {
+        $teacherId = (int) $course->teacher_id;
+        if ($teacherId <= 0) {
+            return false;
+        }
+
+        $dayStart = (clone $start)->startOfDay();
+        $dayEnd = (clone $start)->endOfDay();
+
+        $query = ClassSession::query()
+            ->whereIn('status', ['scheduled', 'live'])
+            ->whereBetween('starts_at', [$dayStart, $dayEnd])
+            ->whereHas('course', function ($q) use ($teacherId) {
+                $q->where('teacher_id', $teacherId);
+            });
+
+        if ($ignoreSessionId) {
+            $query->where('id', '!=', $ignoreSessionId);
+        }
+
+        $sessions = $query->get();
+        foreach ($sessions as $s) {
+            $sStart = $s->starts_at ? Carbon::instance($s->starts_at) : null;
+            if (! $sStart) continue;
+            $sEnd = $s->ends_at ? Carbon::instance($s->ends_at) : (clone $sStart)->addMinutes(60);
+            if ($this->rangesOverlap($start, $end, $sStart, $sEnd)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function rangesOverlap(Carbon $aStart, Carbon $aEnd, Carbon $bStart, Carbon $bEnd): bool
+    {
+        return $aStart->lt($bEnd) && $bStart->lt($aEnd);
     }
 }

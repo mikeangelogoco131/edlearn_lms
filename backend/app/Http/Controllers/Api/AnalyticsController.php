@@ -90,6 +90,58 @@ class AnalyticsController extends Controller
             ->map(fn (Course $c) => ['course' => $c->code, 'students' => (int) $c->students])
             ->values();
 
+        $subjectTeachers = Course::query()
+            ->select('code')
+            ->selectRaw('COUNT(DISTINCT teacher_id) as teachers')
+            ->groupBy('code')
+            ->orderBy('code')
+            ->limit(20)
+            ->get()
+            ->map(fn ($row) => [
+                'subject' => (string) ($row->code ?? ''),
+                'teachers' => (int) ($row->teachers ?? 0),
+            ])
+            ->values();
+
+        $trendStart = now()->startOfDay()->subDays(9);
+        $userTrendRows = (clone $usersQuery)
+            ->selectRaw("DATE(created_at) as day, role, COUNT(*) as total")
+            ->where('created_at', '>=', $trendStart)
+            ->whereIn('role', [User::ROLE_STUDENT, User::ROLE_TEACHER])
+            ->groupByRaw('DATE(created_at), role')
+            ->get();
+
+        $trendByRoleDay = [];
+        foreach ($userTrendRows as $r) {
+            $dayKey = (string) ($r->day ?? '');
+            $roleKey = (string) ($r->role ?? '');
+            $trendByRoleDay[$roleKey][$dayKey] = (int) ($r->total ?? 0);
+        }
+
+        $studentsTrend = collect(range(0, 9))
+            ->map(function (int $offset) use ($trendStart, $trendByRoleDay) {
+                $date = Carbon::parse($trendStart)->addDays($offset);
+                $key = $date->toDateString();
+
+                return [
+                    'day' => $date->format('m/d'),
+                    'count' => (int) (($trendByRoleDay[User::ROLE_STUDENT][$key] ?? 0)),
+                ];
+            })
+            ->values();
+
+        $teachersTrend = collect(range(0, 9))
+            ->map(function (int $offset) use ($trendStart, $trendByRoleDay) {
+                $date = Carbon::parse($trendStart)->addDays($offset);
+                $key = $date->toDateString();
+
+                return [
+                    'day' => $date->format('m/d'),
+                    'count' => (int) (($trendByRoleDay[User::ROLE_TEACHER][$key] ?? 0)),
+                ];
+            })
+            ->values();
+
         return response()->json([
             'data' => [
                 'totalUsers' => $totalUsers,
@@ -103,6 +155,9 @@ class AnalyticsController extends Controller
                 'activeSessions' => $activeSessions,
                 'weeklyEngagement' => $weeklyEngagement,
                 'courseEnrollment' => $courseEnrollment,
+                'subjectTeachers' => $subjectTeachers,
+                'studentsTrend' => $studentsTrend,
+                'teachersTrend' => $teachersTrend,
             ],
         ]);
     }

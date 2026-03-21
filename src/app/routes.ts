@@ -9,6 +9,8 @@ import AdminProfile from "./pages/AdminProfile";
 import AdminUserDetails from "./pages/AdminUserDetails";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import MessagesPage from "./pages/Messages";
+import Profile from "./pages/Profile";
 import VirtualClassroom from "./pages/VirtualClassroom";
 import CourseDetails from "./pages/CourseDetails";
 import NotFound from "./pages/NotFound";
@@ -53,6 +55,14 @@ export const router = createBrowserRouter([
   {
     path: "/student",
     Component: StudentDashboard,
+  },
+  {
+    path: "/messages",
+    Component: MessagesPage,
+  },
+  {
+    path: "/profile",
+    Component: Profile,
   },
   {
     path: "/classroom/:classId",

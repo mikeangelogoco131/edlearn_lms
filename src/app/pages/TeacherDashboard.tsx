@@ -1,21 +1,33 @@
-import { Link, useNavigate } from 'react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Video, BookOpen, Calendar, FileText, Users, Plus, Clock, CheckCircle, ArrowLeft } from 'lucide-react';
-import { api, ApiAssignment, ApiClassSession, ApiCourse } from '../lib/api';
+import {
+  Video,
+  BookOpen,
+  Calendar,
+  FileText,
+  Users,
+  Plus,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+} from 'lucide-react';
+import { Progress } from '../components/ui/progress';
+import { api, ApiClassSession, ApiCourse } from '../lib/api';
 import { EventsCalendar } from '../components/EventsCalendar';
 import { CourseAnnouncements } from '../components/CourseAnnouncements';
-import { Progress } from '../components/ui/progress';
 import { format } from 'date-fns';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 export default function TeacherDashboard() {
-  const navigate = useNavigate();
   const [teacherCourses, setTeacherCourses] = useState<ApiCourse[]>([]);
   const [sessions, setSessions] = useState<ApiClassSession[]>([]);
-  const [assignments, setAssignments] = useState<ApiAssignment[]>([]);
+  const [coursesView, setCoursesView] = useState<'enrolled' | 'completed'>('enrolled');
+  const coursesScrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,11 +42,6 @@ export default function TeacherDashboard() {
           coursesRes.data.map((c) => api.courseSessions(c.id).then((r) => r.data))
         );
         if (!cancelled) setSessions(sessionsRes.flat());
-
-        const assignmentsRes = await Promise.all(
-          coursesRes.data.map((c) => api.courseAssignments(c.id).then((r) => r.data))
-        );
-        if (!cancelled) setAssignments(assignmentsRes.flat());
       } catch {
         // Keep UI stable if API is unavailable
       }
@@ -51,17 +58,35 @@ export default function TeacherDashboard() {
     [sessions]
   );
 
-  const teacherAssignments = assignments;
+  const enrolledCourses = useMemo(
+    () => teacherCourses.filter((c) => (c.status || '').toLowerCase() !== 'completed'),
+    [teacherCourses]
+  );
+  const completedCoursesList = useMemo(
+    () => teacherCourses.filter((c) => (c.status || '').toLowerCase() === 'completed'),
+    [teacherCourses]
+  );
+
+  const visibleCourses = coursesView === 'completed' ? completedCoursesList : enrolledCourses;
+
+  const courseImages = [
+    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80',
+  ] as const;
+
+  function scrollCourses(direction: 'left' | 'right') {
+    const el = coursesScrollerRef.current;
+    if (!el) return;
+    const delta = Math.max(280, Math.floor(el.clientWidth * 0.8));
+    el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' });
+  }
+
+  const teacherAssignments: unknown[] = [];
 
   return (
     <DashboardLayout title="Teacher Dashboard">
-      <div className="mb-6">
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Button>
-      </div>
-
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Button className="h-auto py-6 bg-blue-600 hover:bg-blue-700 flex flex-col gap-2">
@@ -154,51 +179,118 @@ export default function TeacherDashboard() {
         </TabsList>
 
         <TabsContent value="courses" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {teacherCourses.map((course) => (
-              <Card key={course.id} className="glass-card">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{course.title}</CardTitle>
-                      <CardDescription>{course.code} • {course.section}</CardDescription>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant={coursesView === 'enrolled' ? 'default' : 'outline'}
+                onClick={() => setCoursesView('enrolled')}
+                className={coursesView === 'enrolled' ? 'bg-blue-600 hover:bg-blue-700' : undefined}
+              >
+                Enrolled
+                <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-semibold">
+                  {enrolledCourses.length}
+                </span>
+              </Button>
+              <Button
+                type="button"
+                variant={coursesView === 'completed' ? 'default' : 'outline'}
+                onClick={() => setCoursesView('completed')}
+                className={coursesView === 'completed' ? 'bg-blue-600 hover:bg-blue-700' : undefined}
+              >
+                Completed
+                <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-semibold">
+                  {completedCoursesList.length}
+                </span>
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="icon" onClick={() => scrollCourses('left')} aria-label="Scroll courses left">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button type="button" variant="outline" size="icon" onClick={() => scrollCourses('right')} aria-label="Scroll courses right">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div
+            ref={coursesScrollerRef}
+            className="flex gap-6 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory"
+          >
+            {visibleCourses.map((course, index) => {
+              const courseSessions = sessions.filter((s) => s.courseId === course.id);
+              const completed = courseSessions.filter((s) => (s.status || '').toLowerCase() === 'completed').length;
+              const total = courseSessions.length;
+              const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+              const actionLabel = 'Manage';
+
+              return (
+                <Card
+                  key={course.id}
+                  className="glass-card w-[280px] sm:w-[320px] flex-shrink-0 overflow-hidden snap-start"
+                >
+                  <Link to={`/course/${course.id}`} className="block" aria-label={`Manage ${course.code} ${course.title}`}>
+                    <div className="w-full aspect-[16/10] overflow-hidden">
+                      <ImageWithFallback
+                        src={courseImages[index % courseImages.length]}
+                        alt=""
+                        aria-hidden="true"
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                      Active
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Users className="w-4 h-4" />
-                      <span>{course.students} students enrolled</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>{course.schedule}</span>
-                    </div>
-                    {course.nextClass && (
-                      <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
-                        <Clock className="w-4 h-4" />
-                        <span>Next class: {format(new Date(course.nextClass), 'MMM d, h:mm a')}</span>
+                  </Link>
+
+                  <CardContent className="p-5 space-y-4">
+                    <Link to={`/course/${course.id}`} className="block space-y-1" aria-label={`Manage ${course.code} ${course.title}`}>
+                      <div className="text-sm text-muted-foreground">{course.code}</div>
+                      <div className="text-lg font-semibold leading-snug line-clamp-2">{course.title}</div>
+                    </Link>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="text-sm font-semibold whitespace-nowrap">{pct}%</div>
+                        <Progress value={pct} className="h-2 flex-1" />
                       </div>
-                    )}
-                    <div className="pt-3 flex gap-2">
-                      <Link to={`/course/${course.id}`} className="flex-1">
-                        <Button variant="outline" className="w-full">View Course</Button>
-                      </Link>
-                      <Link to={`/classroom/${course.id}`} className="flex-1">
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                          <Video className="w-4 h-4 mr-2" />
-                          Start Class
+                      <Link to={`/course/${course.id}`}>
+                        <Button variant="outline" className="rounded-full">
+                          {actionLabel}
+                          <Play className="w-4 h-4 ml-2" />
                         </Button>
                       </Link>
                     </div>
-                  </div>
+
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          <span>{course.students}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <BookOpen className="w-4 h-4" />
+                          <span>{course.materials}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FileText className="w-4 h-4" />
+                          <span>{course.assignments}</span>
+                        </div>
+                      </div>
+                      <div className="whitespace-nowrap">{total} lessons</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {visibleCourses.length === 0 && (
+              <Card className="glass-card w-full">
+                <CardContent className="p-6 text-sm text-muted-foreground">
+                  No {coursesView === 'completed' ? 'completed' : 'enrolled'} subjects.
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
         </TabsContent>
 
@@ -273,43 +365,9 @@ export default function TeacherDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {teacherAssignments.map((assignment) => {
-                  const course = teacherCourses.find(c => c.id === assignment.courseId);
-                  const submissionRate = assignment.submitted && assignment.total 
-                    ? Math.round((assignment.submitted / assignment.total) * 100)
-                    : 0;
-                  
-                  return (
-                    <div key={assignment.id} className="p-4 glass-item">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="font-semibold">{assignment.title}</div>
-                          <div className="text-sm text-gray-600 mt-1">{course?.code} - {course?.title}</div>
-                          <div className="text-sm text-gray-500 mt-1">{assignment.description}</div>
-                        </div>
-                        <span className="text-sm font-medium text-blue-600">{assignment.points} pts</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="text-gray-600">
-                            Due: {assignment.dueDate ? format(new Date(assignment.dueDate), 'MMM d, h:mm a') : '—'}
-                          </div>
-                          {assignment.submitted && assignment.total && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-24">
-                                <Progress value={submissionRate} />
-                              </div>
-                              <span className="text-gray-600">
-                                {assignment.submitted}/{assignment.total} submitted
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <Button variant="outline" size="sm">Grade Submissions</Button>
-                      </div>
-                    </div>
-                  );
-                })}
+				{teacherAssignments.length === 0 ? (
+					<div className="text-sm text-muted-foreground">No assignments.</div>
+				) : null}
               </div>
             </CardContent>
           </Card>

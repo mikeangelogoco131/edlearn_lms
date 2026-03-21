@@ -66,11 +66,80 @@ export interface ApiAssignment {
   courseId: string;
   title: string;
   description: string;
+  period?: string;
+  weekInPeriod?: number;
   dueDate: string | null;
   points: number;
   submitted?: number | null;
   total?: number | null;
   status: 'pending' | 'graded' | 'overdue' | string;
+}
+
+export interface ApiLesson {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  content: string;
+  period?: string;
+  weekInPeriod?: number;
+  order: number;
+  duration: string | null;
+  status: string;
+  publishedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface ApiMaterial {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  period?: string;
+  weekInPeriod?: number;
+  originalName: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  downloadPath: string;
+  createdAt: string | null;
+}
+
+export interface ApiSubmissionStudent {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface ApiSubmission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  student: ApiSubmissionStudent | null;
+  status: string;
+  submittedAt: string | null;
+  grade: number | null;
+  feedback: string | null;
+  gradedAt: string | null;
+  content: string | null;
+}
+
+export interface ApiCourseGradeRow {
+  student: { id: string; name: string; email: string };
+  computedPercent: number | null;
+  gradedCount: number;
+  possiblePoints: number;
+  earnedPoints: number;
+  finalGrade: number | null;
+  remarks: string | null;
+}
+
+export interface ApiMyCourseGrade {
+  computedPercent: number | null;
+  gradedCount: number;
+  possiblePoints: number;
+  earnedPoints: number;
+  finalGrade: number | null;
+  remarks: string | null;
 }
 
 export interface ApiEvent {
@@ -123,6 +192,9 @@ export interface ApiAnalyticsAdmin {
   activeSessions: number;
   weeklyEngagement: Array<{ day: string; hours: number }>;
   courseEnrollment: Array<{ course: string; students: number }>;
+	subjectTeachers?: Array<{ subject: string; teachers: number }>;
+	studentsTrend?: Array<{ day: string; count: number }>;
+	teachersTrend?: Array<{ day: string; count: number }>;
 }
 
 export interface ApiAnnouncementAuthor {
@@ -142,8 +214,97 @@ export interface ApiAnnouncement {
   author: ApiAnnouncementAuthor | null;
 }
 
+export interface ApiNotificationCourse {
+  id: string;
+  code: string;
+  title: string;
+}
+
+export interface ApiNotificationAuthor {
+  id: string;
+  name: string;
+  role: ApiUserRole;
+}
+
+export interface ApiNotificationUser {
+  id: string;
+  name: string;
+  email: string;
+  role: ApiUserRole;
+}
+
+export interface ApiNotificationEvent {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string | null;
+}
+
+export type ApiNotificationType =
+  | 'announcement'
+  | 'teacher_message'
+  | 'announcement_expiring'
+  | 'user_added'
+  | 'course_added'
+  | 'class_session_added'
+  | 'event_added'
+  | 'event_ending';
+
+export interface ApiNotification {
+  id: string;
+  type: ApiNotificationType;
+  title: string;
+  publishedAt: string | null;
+  isPinned: boolean;
+  course: ApiNotificationCourse | null;
+  author: ApiNotificationAuthor | null;
+  user?: ApiNotificationUser | null;
+  event?: ApiNotificationEvent | null;
+  expiresAt?: string | null;
+}
+
+export interface ApiMessageParty {
+  id: string;
+  name: string;
+  email: string;
+  role: ApiUserRole;
+}
+
+export interface ApiMessage {
+  id: string;
+  subject: string | null;
+  body: string;
+  status: 'draft' | 'sent';
+  sentAt: string | null;
+  readAt: string | null;
+  createdAt: string | null;
+  sender: ApiMessageParty | null;
+  recipient: ApiMessageParty | null;
+}
+
+export interface ApiProgram {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  status: string;
+}
+
+export interface ApiProgramUpsert {
+  code: string;
+  title: string;
+  description?: string | null;
+  status?: string;
+}
+
 export interface ApiListResponse<T> {
   data: T[];
+  meta?: {
+    total: number;
+    page: number;
+    perPage: number;
+    pages: number;
+  };
 }
 
 export interface ApiItemResponse<T> {
@@ -202,7 +363,8 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
 
-  if (init.body && !headers.has('Content-Type')) {
+  const isFormDataBody = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  if (init.body && !isFormDataBody && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -210,8 +372,11 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const method = (init.method || 'GET').toUpperCase();
   const res = await fetch(`${baseUrl}${path}`, {
     ...init,
+    // Avoid stale cached GET responses (important for enrollment-driven UIs).
+    cache: method === 'GET' ? 'no-store' : init.cache,
     headers,
   });
 
@@ -289,6 +454,34 @@ export const api = {
     return apiFetch<ApiListResponse<ApiCourse>>(`/api/courses${suffix}`);
   },
 
+  async programs(params?: { archived?: boolean }) {
+    const qs = new URLSearchParams();
+    if (params?.archived === true) qs.set('archived', '1');
+    if (params?.archived === false) qs.set('archived', '0');
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<ApiListResponse<ApiProgram>>(`/api/programs${suffix}`);
+  },
+
+  async createProgram(payload: ApiProgramUpsert) {
+    return apiFetch<ApiItemResponse<ApiProgram>>('/api/programs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateProgram(programId: string, payload: Partial<ApiProgramUpsert>) {
+    return apiFetch<ApiItemResponse<ApiProgram>>(`/api/programs/${encodeURIComponent(programId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteProgram(programId: string) {
+    return apiFetch<ApiMessageResponse>(`/api/programs/${encodeURIComponent(programId)}`, {
+      method: 'DELETE',
+    });
+  },
+
   async createCourse(payload: ApiCourseUpsert) {
     return apiFetch<ApiItemResponse<ApiCourse>>('/api/courses', {
       method: 'POST',
@@ -316,6 +509,180 @@ export const api = {
   async courseAssignments(courseId: string) {
     return apiFetch<ApiListResponse<ApiAssignment>>(
       `/api/courses/${encodeURIComponent(courseId)}/assignments`
+    );
+  },
+
+  async createCourseAssignment(courseId: string, payload: {
+    title: string;
+    description?: string | null;
+    due_at?: string | null;
+    points?: number;
+    status?: string;
+    period?: string | null;
+    week_in_period?: number | null;
+  }) {
+    return apiFetch<ApiItemResponse<ApiAssignment>>(
+      `/api/courses/${encodeURIComponent(courseId)}/assignments`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async updateCourseAssignment(courseId: string, assignmentId: string, payload: Partial<{
+    title: string;
+    description: string | null;
+    due_at: string | null;
+    points: number;
+    status: string;
+  }>) {
+    return apiFetch<ApiItemResponse<ApiAssignment>>(
+      `/api/courses/${encodeURIComponent(courseId)}/assignments/${encodeURIComponent(assignmentId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async deleteCourseAssignment(courseId: string, assignmentId: string) {
+    return apiFetch<ApiMessageResponse>(
+      `/api/courses/${encodeURIComponent(courseId)}/assignments/${encodeURIComponent(assignmentId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  },
+
+  async assignmentSubmissions(assignmentId: string) {
+    return apiFetch<ApiListResponse<ApiSubmission>>(
+      `/api/assignments/${encodeURIComponent(assignmentId)}/submissions`,
+    );
+  },
+
+  async createSubmission(assignmentId: string, payload: { content?: string | null }) {
+    return apiFetch<ApiItemResponse<ApiSubmission>>(
+      `/api/assignments/${encodeURIComponent(assignmentId)}/submissions`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async gradeSubmission(submissionId: string, payload: { grade: number; feedback?: string | null }) {
+    return apiFetch<ApiItemResponse<ApiSubmission>>(
+      `/api/submissions/${encodeURIComponent(submissionId)}/grade`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async courseLessons(courseId: string) {
+    return apiFetch<ApiListResponse<ApiLesson>>(
+      `/api/courses/${encodeURIComponent(courseId)}/lessons`,
+    );
+  },
+
+  async createCourseLesson(courseId: string, payload: {
+    title: string;
+    description?: string | null;
+    content?: string | null;
+    lesson_order?: number;
+    duration?: string | null;
+    status?: string;
+    period?: string | null;
+    week_in_period?: number | null;
+  }) {
+    return apiFetch<ApiItemResponse<ApiLesson>>(
+      `/api/courses/${encodeURIComponent(courseId)}/lessons`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async updateCourseLesson(courseId: string, lessonId: string, payload: Partial<{
+    title: string;
+    description: string | null;
+    content: string | null;
+    lesson_order: number;
+    duration: string | null;
+    status: string;
+  }>) {
+    return apiFetch<ApiItemResponse<ApiLesson>>(
+      `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async deleteCourseLesson(courseId: string, lessonId: string) {
+    return apiFetch<ApiMessageResponse>(
+      `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  },
+
+  async courseMaterials(courseId: string) {
+    return apiFetch<ApiListResponse<ApiMaterial>>(
+      `/api/courses/${encodeURIComponent(courseId)}/materials`,
+    );
+  },
+
+  async uploadCourseMaterial(courseId: string, payload: { title?: string; description?: string; file: File; period?: string; week_in_period?: number }) {
+    const form = new FormData();
+    if (payload.title) form.set('title', payload.title);
+    if (payload.description) form.set('description', payload.description);
+    if (payload.period) form.set('period', payload.period);
+    if (typeof payload.week_in_period === 'number') form.set('week_in_period', String(payload.week_in_period));
+    form.set('file', payload.file);
+
+    return apiFetch<ApiItemResponse<ApiMaterial>>(
+      `/api/courses/${encodeURIComponent(courseId)}/materials`,
+      {
+        method: 'POST',
+        body: form,
+      },
+    );
+  },
+
+  async deleteCourseMaterial(courseId: string, materialId: string) {
+    return apiFetch<ApiMessageResponse>(
+      `/api/courses/${encodeURIComponent(courseId)}/materials/${encodeURIComponent(materialId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  },
+
+  async courseGrades(courseId: string) {
+    return apiFetch<ApiListResponse<ApiCourseGradeRow>>(
+      `/api/courses/${encodeURIComponent(courseId)}/grades`,
+    );
+  },
+
+  async setCourseGrade(courseId: string, studentId: string, payload: { final_grade?: number | null; remarks?: string | null }) {
+    return apiFetch<ApiItemResponse<{ studentId: string; finalGrade: number | null; remarks: string | null }>>(
+      `/api/courses/${encodeURIComponent(courseId)}/grades/${encodeURIComponent(studentId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async myCourseGrade(courseId: string) {
+    return apiFetch<ApiItemResponse<ApiMyCourseGrade>>(
+      `/api/courses/${encodeURIComponent(courseId)}/my-grade`,
     );
   },
 
@@ -364,6 +731,69 @@ export const api = {
         body: JSON.stringify(payload),
       },
     );
+  },
+
+  async notifications() {
+    return apiFetch<ApiListResponse<ApiNotification>>('/api/notifications');
+  },
+
+  async messages(params?: { folder?: 'inbox' | 'sent' | 'drafts' | 'deleted'; q?: string; limit?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.folder) qs.set('folder', params.folder);
+    if (params?.q) qs.set('q', params.q);
+    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<ApiListResponse<ApiMessage>>(`/api/messages${suffix}`);
+  },
+
+  async messageThread(otherUserId: string, params?: { after?: string; limit?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.after) qs.set('after', params.after);
+    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<ApiListResponse<ApiMessage>>(
+      `/api/messages/thread/${encodeURIComponent(otherUserId)}${suffix}`,
+    );
+  },
+
+  async chatUsers(params?: { q?: string; limit?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set('q', params.q);
+    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<ApiListResponse<ApiUser>>(`/api/chat/users${suffix}`);
+  },
+
+  async messageCreate(payload: { toUserId?: string | null; subject?: string | null; body: string; status?: 'draft' | 'sent' }) {
+    return apiFetch<ApiItemResponse<ApiMessage>>('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async messageUpdate(id: string, payload: { toUserId?: string | null; subject?: string | null; body?: string; send?: boolean }) {
+    return apiFetch<ApiItemResponse<ApiMessage>>(`/api/messages/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async messageTrash(id: string) {
+    return apiFetch<ApiMessageResponse>(`/api/messages/${encodeURIComponent(id)}/trash`, {
+      method: 'POST',
+    });
+  },
+
+  async messageRestore(id: string) {
+    return apiFetch<ApiMessageResponse>(`/api/messages/${encodeURIComponent(id)}/restore`, {
+      method: 'POST',
+    });
+  },
+
+  async messageRead(id: string) {
+    return apiFetch<ApiItemResponse<ApiMessage>>(`/api/messages/${encodeURIComponent(id)}/read`, {
+      method: 'POST',
+    });
   },
 
   async analyticsAdmin(params?: { archived?: boolean }) {
@@ -415,10 +845,20 @@ export const api = {
     });
   },
 
-  async users(params?: { role?: string; limit?: number; archived?: boolean }) {
+  async users(params?: {
+    role?: string;
+    q?: string;
+    limit?: number;
+    archived?: boolean;
+    page?: number;
+    perPage?: number;
+  }) {
     const qs = new URLSearchParams();
     if (params?.role) qs.set('role', params.role);
+    if (params?.q) qs.set('q', params.q);
     if (params?.limit) qs.set('limit', String(params.limit));
+    if (typeof params?.page === 'number') qs.set('page', String(params.page));
+    if (typeof params?.perPage === 'number') qs.set('per_page', String(params.perPage));
     if (params?.archived === true) qs.set('archived', '1');
     if (params?.archived === false) qs.set('archived', '0');
     const suffix = qs.toString() ? `?${qs.toString()}` : '';

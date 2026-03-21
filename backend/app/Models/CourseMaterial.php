@@ -4,9 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Assignment extends Model
+class CourseMaterial extends Model
 {
     protected $fillable = [
         'course_id',
@@ -14,15 +13,11 @@ class Assignment extends Model
         'description',
         'period',
         'week_in_period',
-        'due_at',
-        'points',
-        'status',
-        'published_at',
-    ];
-
-    protected $casts = [
-        'due_at' => 'datetime',
-        'published_at' => 'datetime',
+        'file_path',
+        'original_name',
+        'mime_type',
+        'size_bytes',
+        'uploaded_by',
     ];
 
     public function course(): BelongsTo
@@ -30,8 +25,8 @@ class Assignment extends Model
         return $this->belongsTo(Course::class);
     }
 
-    public function submissions(): HasMany
+    public function uploader(): BelongsTo
     {
-        return $this->hasMany(Submission::class);
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 }

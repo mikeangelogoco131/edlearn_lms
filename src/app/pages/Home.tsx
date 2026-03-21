@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router';
 import { Video, BookOpen, BarChart3, Shield, Zap, Globe, ClipboardCheck, Bell, Moon, Sun } from 'lucide-react';
+import useEmblaCarousel from 'embla-carousel-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
@@ -7,6 +9,31 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export default function Home() {
   const { theme, toggleTheme } = useTheme();
+
+  const heroSlides = [
+    {
+      src: 'https://images.unsplash.com/photo-1758612214882-03f8a1d7211f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMG9ubGluZSUyMGxlYXJuaW5nJTIwbGFwdG9wfGVufDF8fHx8MTc3MTU4NDcyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+      alt: 'Students learning online',
+    },
+    {
+      src: 'https://images.unsplash.com/photo-1762330917056-e69b34329ddf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aXJ0dWFsJTIwY2xhc3Nyb29tJTIwZWR1Y2F0aW9uJTIwdGVjaG5vbG9neXxlbnwxfHx8fDE3NzE1ODYwNDJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+      alt: 'Virtual classroom session',
+    },
+    {
+      src: 'https://images.unsplash.com/photo-1758270705518-b61b40527e76?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaXZlcnNlJTIwc3R1ZGVudHMlMjBzdHVkeWluZyUyMHRvZ2V0aGVyfGVufDF8fHx8MTc3MTUxMDQ1NXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+      alt: 'Students studying together',
+    },
+  ] as const;
+
+  const [heroEmblaRef, heroEmblaApi] = useEmblaCarousel({ loop: true, align: 'start' });
+
+  useEffect(() => {
+    if (!heroEmblaApi) return;
+    const id = window.setInterval(() => {
+      heroEmblaApi.scrollNext();
+    }, 4500);
+    return () => window.clearInterval(id);
+  }, [heroEmblaApi]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -19,7 +46,7 @@ export default function Home() {
             </div>
             <span className="text-xl font-semibold">EdLearn</span>
           </div>
-          
+
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground">Features</a>
             <a href="#solutions" className="text-muted-foreground hover:text-foreground">Use Cases</a>
@@ -48,34 +75,60 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <h1 className="text-5xl font-bold mb-6 leading-tight">
-              A practical LMS for courses, live sessions, and assessments
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              Create courses, enroll learners, run live class sessions, publish assignments, collect submissions,
-              post announcements, and track performance with role-based dashboards.
-            </p>
-            <div className="flex gap-4">
-              <Link to="/login">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-                  Sign In
+      <section className="relative isolate py-20">
+        <ImageWithFallback
+          src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=2000&q=80"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-90"
+        />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-background/50 via-background/20 to-background/50 dark:from-background/40 dark:via-background/16 dark:to-background/40" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-primary/5" />
+
+        <div className="container relative z-10 mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h1 className="text-5xl font-bold mb-6 leading-tight text-foreground drop-shadow-md">
+                A practical LMS for courses, live sessions, and assessments
+              </h1>
+              <p className="text-xl text-foreground mb-8 drop-shadow-md">
+                Create courses, enroll learners, run live class sessions, publish assignments, collect submissions,
+                post announcements, and track performance with role-based dashboards.
+              </p>
+              <div className="flex gap-4">
+                <Link to="/login">
+                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 shadow-md">
+                    Sign In
+                  </Button>
+                </Link>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="bg-background/70 hover:bg-background/80 border-foreground/30 text-foreground shadow-sm"
+                >
+                  <a href="#features">Explore Features</a>
                 </Button>
-              </Link>
-              <Button asChild size="lg" variant="outline">
-                <a href="#features">Explore Features</a>
-              </Button>
+              </div>
             </div>
-          </div>
-          <div className="relative">
-            <div className="rounded-2xl overflow-hidden shadow-2xl">
-              <ImageWithFallback
-                src="https://images.unsplash.com/photo-1758612214882-03f8a1d7211f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMG9ubGluZSUyMGxlYXJuaW5nJTIwbGFwdG9wfGVufDF8fHx8MTc3MTU4NDcyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                alt="Students learning online"
-                className="w-full h-auto"
-              />
+            <div className="relative">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-card">
+                <div className="overflow-hidden" ref={heroEmblaRef}>
+                  <div className="flex">
+                    {heroSlides.map((slide, idx) => (
+                      <div key={slide.src} className="flex-[0_0_100%] min-w-0">
+                        <ImageWithFallback
+                          src={slide.src}
+                          alt={slide.alt}
+                          loading={idx === 0 ? 'eager' : 'lazy'}
+                          className="w-full aspect-[16/10] object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

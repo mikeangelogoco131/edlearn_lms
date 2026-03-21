@@ -27,7 +27,13 @@ interface AuthContextType {
   isHydrating: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_CONTEXT_KEY = '__edlearn_auth_context__';
+
+const AuthContext: React.Context<AuthContextType | undefined> =
+  ((globalThis as any)[AUTH_CONTEXT_KEY] as React.Context<AuthContextType | undefined> | undefined) ??
+  createContext<AuthContextType | undefined>(undefined);
+
+(globalThis as any)[AUTH_CONTEXT_KEY] = AuthContext;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

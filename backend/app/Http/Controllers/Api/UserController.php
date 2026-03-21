@@ -113,7 +113,10 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'role' => ['nullable', 'string', 'max:50'],
+            'q' => ['nullable', 'string', 'max:100'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'archived' => ['nullable', 'boolean'],
         ]);
 
@@ -132,19 +135,49 @@ class UserController extends Controller
             $query->where('role', $validated['role']);
         }
 
+        if (! empty($validated['q'])) {
+            $q = trim((string) $validated['q']);
+            if ($q !== '') {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', '%' . $q . '%')
+                        ->orWhere('email', 'like', '%' . $q . '%');
+                });
+            }
+        }
+
+        $mapUser = fn (User $u) => [
+            'id' => (string) $u->id,
+            'name' => $u->name,
+            'email' => $u->email,
+            'role' => $u->role,
+            'archivedAt' => $u->archived_at ? $u->archived_at->toIso8601String() : null,
+            'attendance' => $u->role === User::ROLE_STUDENT ? $this->demoAttendance($u) : null,
+            'gpa' => $u->role === User::ROLE_STUDENT ? $this->demoGpa($u) : null,
+        ];
+
+        if (array_key_exists('page', $validated) || array_key_exists('per_page', $validated)) {
+            $page = (int) ($validated['page'] ?? 1);
+            $perPage = (int) ($validated['per_page'] ?? 10);
+
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+            $users = $paginator->getCollection();
+
+            return response()->json([
+                'data' => $users->map($mapUser)->values(),
+                'meta' => [
+                    'total' => $paginator->total(),
+                    'page' => $paginator->currentPage(),
+                    'perPage' => $paginator->perPage(),
+                    'pages' => $paginator->lastPage(),
+                ],
+            ]);
+        }
+
         $limit = $validated['limit'] ?? 20;
         $users = $query->limit($limit)->get();
 
         return response()->json([
-            'data' => $users->map(fn (User $u) => [
-                'id' => (string) $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'role' => $u->role,
-                'archivedAt' => $u->archived_at ? $u->archived_at->toIso8601String() : null,
-                'attendance' => $u->role === User::ROLE_STUDENT ? $this->demoAttendance($u) : null,
-                'gpa' => $u->role === User::ROLE_STUDENT ? $this->demoGpa($u) : null,
-            ])->values(),
+            'data' => $users->map($mapUser)->values(),
         ]);
     }
 

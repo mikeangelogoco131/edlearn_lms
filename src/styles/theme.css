@@ -192,6 +192,13 @@
 }
 
 @layer utilities {
+  .theme-transition,
+  .theme-transition * {
+    transition-property: background-color, color, border-color, fill, stroke;
+    transition-duration: 250ms;
+    transition-timing-function: ease;
+  }
+
   .glass-card {
     @apply relative overflow-hidden rounded-xl border bg-card/40 backdrop-blur-xl;
     box-shadow:

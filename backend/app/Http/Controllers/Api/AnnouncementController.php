@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class AnnouncementController extends Controller
 {
@@ -52,7 +53,13 @@ class AnnouncementController extends Controller
             'body' => ['required', 'string'],
             'is_pinned' => ['nullable', 'boolean'],
             'published_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date'],
         ]);
+
+        $effectivePublishedAt = $validated['published_at'] ?? now();
+        if (! empty($validated['expires_at']) && Carbon::parse((string) $validated['expires_at'])->lt(Carbon::parse((string) $effectivePublishedAt))) {
+            return response()->json(['message' => 'Expiration must be after or equal to publish time'], 422);
+        }
 
         $announcement = Announcement::query()->create([
             'course_id' => $course->id,
@@ -60,7 +67,8 @@ class AnnouncementController extends Controller
             'title' => $validated['title'],
             'body' => $validated['body'],
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
-            'published_at' => $validated['published_at'] ?? now(),
+            'published_at' => $effectivePublishedAt,
+            'expires_at' => $validated['expires_at'] ?? null,
         ]);
 
         $announcement->load('author');
@@ -89,7 +97,17 @@ class AnnouncementController extends Controller
             'body' => ['sometimes', 'string'],
             'is_pinned' => ['sometimes', 'boolean'],
             'published_at' => ['sometimes', 'nullable', 'date'],
+            'expires_at' => ['sometimes', 'nullable', 'date'],
         ]);
+
+        if (array_key_exists('expires_at', $validated) && $validated['expires_at'] !== null) {
+            $publishedAt = array_key_exists('published_at', $validated)
+                ? $validated['published_at']
+                : $announcement->published_at;
+            if ($publishedAt && Carbon::parse((string) $validated['expires_at'])->lt(Carbon::parse((string) $publishedAt))) {
+                return response()->json(['message' => 'Expiration must be after or equal to publish time'], 422);
+            }
+        }
 
         $announcement->fill($validated);
         $announcement->save();
