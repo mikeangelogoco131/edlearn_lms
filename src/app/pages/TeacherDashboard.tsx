@@ -86,121 +86,48 @@ export default function TeacherDashboard() {
   }
 
   const teacherAssignments: unknown[] = [];
-  const [sidebarMode, setSidebarMode] = useState<'expanded' | 'collapsed' | 'hidden'>('expanded');
-  const sidebarCollapsed = sidebarMode === 'collapsed';
-  const sidebarHidden = sidebarMode === 'hidden';
 
   return (
     <DashboardLayout title="Teacher Dashboard" layout="full" showTitle={false}>
-      <Tabs defaultValue="courses" className="space-y-6">
-        <div className="flex w-full">
-          {!sidebarHidden ? (
-            <aside
-              className={
-                (sidebarCollapsed ? 'w-16' : 'w-72') +
-                ' shrink-0 border-r border-border bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/50'
-              }
-            >
-              <div className="sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
-                <div className="flex items-center justify-between gap-2 p-3 border-b border-border">
-                  {!sidebarCollapsed ? (
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold leading-none">Workspace</div>
-                      <div className="text-xs text-muted-foreground mt-1">Teacher tools & sections</div>
-                    </div>
-                  ) : (
-                    <span className="sr-only">Workspace</span>
-                  )}
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                      onClick={() => setSidebarMode(sidebarCollapsed ? 'expanded' : 'collapsed')}
-                    >
-                      {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Hide sidebar"
-                      onClick={() => setSidebarMode('hidden')}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-2">
-                  <TabsList className="flex flex-col items-stretch h-auto w-full bg-transparent p-0 gap-1">
-                    <TabsTrigger
-                      value="courses"
-                      className={sidebarCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-2'}
-                      aria-label={sidebarCollapsed ? 'My Courses' : undefined}
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      {!sidebarCollapsed ? 'My Courses' : null}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="schedule"
-                      className={sidebarCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-2'}
-                      aria-label={sidebarCollapsed ? 'Class Schedule' : undefined}
-                    >
-                      <Clock className="w-4 h-4" />
-                      {!sidebarCollapsed ? 'Class Schedule' : null}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="calendar"
-                      className={sidebarCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-2'}
-                      aria-label={sidebarCollapsed ? 'Calendar' : undefined}
-                    >
-                      <Calendar className="w-4 h-4" />
-                      {!sidebarCollapsed ? 'Calendar' : null}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="announcements"
-                      className={sidebarCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-2'}
-                      aria-label={sidebarCollapsed ? 'Announcements' : undefined}
-                    >
-                      <FileText className="w-4 h-4" />
-                      {!sidebarCollapsed ? 'Announcements' : null}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="assignments"
-                      className={sidebarCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-2'}
-                      aria-label={sidebarCollapsed ? 'Assignments' : undefined}
-                    >
-                      <FileText className="w-4 h-4" />
-                      {!sidebarCollapsed ? 'Assignments' : null}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="students"
-                      className={sidebarCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-2'}
-                      aria-label={sidebarCollapsed ? 'Students' : undefined}
-                    >
-                      <Users className="w-4 h-4" />
-                      {!sidebarCollapsed ? 'Students' : null}
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
+      <Tabs defaultValue="courses" className="space-y-0">
+        <div className="flex flex-col w-full min-h-screen">
+          
+          {/* Top Hero & Nav Area */}
+          <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white pb-6 pt-12 px-6 shadow-lg relative border-b border-white/10">
+            <div className="max-w-7xl mx-auto flex flex-col gap-8">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight mb-2">Teacher Command Center</h1>
+                <p className="text-blue-100 max-w-xl text-sm leading-relaxed">
+                  Manage your courses, track student progress, and organize your schedules all in one centralized dashboard.
+                </p>
               </div>
-            </aside>
-          ) : null}
 
-          <div className="flex-1 min-w-0">
-            <div className="px-6 py-6 space-y-6">
-              {sidebarHidden ? (
-                <div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setSidebarMode('expanded')}>
-                    <Menu className="w-4 h-4 mr-2" />
-                    Show Sidebar
-                  </Button>
-                </div>
-              ) : null}
+              {/* Top Navigation replacing Sidebar */}
+              <TabsList className="bg-white/10 border border-white/20 p-1.5 inline-flex w-full md:w-fit backdrop-blur-md rounded-xl text-white shadow-sm overflow-x-auto justify-start hide-scrollbar">
+                <TabsTrigger value="courses" className="data-[state=active]:bg-white data-[state=active]:text-blue-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                  <BookOpen className="w-4 h-4 mr-2" /> My Courses
+                </TabsTrigger>
+                <TabsTrigger value="schedule" className="data-[state=active]:bg-white data-[state=active]:text-blue-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                  <Clock className="w-4 h-4 mr-2" /> Schedule
+                </TabsTrigger>
+                <TabsTrigger value="calendar" className="data-[state=active]:bg-white data-[state=active]:text-blue-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                  <Calendar className="w-4 h-4 mr-2" /> Calendar
+                </TabsTrigger>
+                <TabsTrigger value="announcements" className="data-[state=active]:bg-white data-[state=active]:text-blue-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                  <FileText className="w-4 h-4 mr-2" /> Announcements
+                </TabsTrigger>
+                <TabsTrigger value="assignments" className="data-[state=active]:bg-white data-[state=active]:text-blue-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                  <FileText className="w-4 h-4 mr-2" /> Assignments
+                </TabsTrigger>
+                <TabsTrigger value="students" className="data-[state=active]:bg-white data-[state=active]:text-blue-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                  <Users className="w-4 h-4 mr-2" /> Students
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0 max-w-7xl mx-auto w-full">
+            <div className="px-6 py-8 space-y-8">
 
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
