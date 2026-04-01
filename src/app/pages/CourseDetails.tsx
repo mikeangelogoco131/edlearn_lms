@@ -22,6 +22,7 @@ import {
 import {
   api,
   ApiAssignment,
+  ApiAttendanceStatus,
   ApiClassSession,
   ApiCourse,
   ApiCourseGradeRow,
@@ -117,6 +118,7 @@ function QuizBuilder({
                     <input 
                       type="radio" 
                       name={`correct-${qIdx}`} 
+                      aria-label="Mark as correct answer"
                       checked={q.correctAnswer === opt && opt !== ''} 
                       onChange={() => updateQuestion(qIdx, { correctAnswer: opt })}
                       disabled={disabled || !opt.trim()}
@@ -179,7 +181,7 @@ export default function CourseDetails() {
   const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, any[]>>({});
   const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [attendanceDraft, setAttendanceDraft] = useState<Record<string, { status: string; remarks: string }>>({});
+  const [attendanceDraft, setAttendanceDraft] = useState<Record<string, { status: ApiAttendanceStatus; remarks: string }>>({});
 
   // Fetch attendance for a session (teacher)
   async function loadAttendance(sessionId: string) {
@@ -188,7 +190,7 @@ export default function CourseDetails() {
       const records = await attendanceApi.getSessionAttendance(sessionId);
       setAttendanceRecords((prev) => ({ ...prev, [sessionId]: records }));
       // Prepare draft for editing
-      const draft: Record<string, { status: string; remarks: string }> = {};
+      const draft: Record<string, { status: ApiAttendanceStatus; remarks: string }> = {};
       for (const rec of records) {
         draft[rec.student_id] = { status: rec.status, remarks: rec.remarks || '' };
       }
@@ -1107,7 +1109,7 @@ export default function CourseDetails() {
                     ].sort((a, b) => {
                       const w = normalizeWeek(a.obj.weekInPeriod) - normalizeWeek(b.obj.weekInPeriod);
                       if (w !== 0) return w;
-                      return (a.obj.createdAt || '').localeCompare(b.obj.createdAt || '');
+                      return (a.id || '').localeCompare(b.id || '');
                     });
 
                     return (
@@ -2116,6 +2118,7 @@ export default function CourseDetails() {
                                 <div key={rec.student_id} className="flex items-center gap-3">
                                   <span className="w-40 truncate">{rec.student?.name || rec.student_id}</span>
                                   <select
+                                    aria-label="Attendance status"
                                     className="border rounded px-2 py-1"
                                     value={attendanceDraft[rec.student_id]?.status || 'absent'}
                                     onChange={(e) =>
@@ -2123,7 +2126,7 @@ export default function CourseDetails() {
                                         ...prev,
                                         [rec.student_id]: {
                                           ...prev[rec.student_id],
-                                          status: e.target.value,
+                                          status: e.target.value as import('../lib/api').ApiAttendanceStatus,
                                         },
                                       }))
                                     }

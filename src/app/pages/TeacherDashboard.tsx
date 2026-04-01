@@ -366,8 +366,8 @@ export default function TeacherDashboard() {
                           <div key={session.id} className="flex items-center justify-between p-4 glass-item">
                             <div className="flex items-center gap-4">
                               <div className="w-16 h-16 bg-blue-600 rounded-lg flex flex-col items-center justify-center text-white">
-                                <div className="text-xs font-medium">{format(new Date(session.date), 'MMM')}</div>
-                                <div className="text-2xl font-bold">{format(new Date(session.date), 'd')}</div>
+                                <div className="text-xs font-medium">{format(new Date(session.date || ''), 'MMM')}</div>
+                                <div className="text-2xl font-bold">{format(new Date(session.date || ''), 'd')}</div>
                               </div>
                               <div>
                                 <div className="font-semibold">{session.title}</div>
