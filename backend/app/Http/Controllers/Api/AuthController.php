@@ -13,6 +13,16 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    private function avatarUrl(User $user): ?string
+    {
+        $path = $user->avatar_path;
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        return '/storage/' . ltrim($path, '/');
+    }
+
     private function roleFromEmail(string $email): string
     {
         $email = strtolower(trim($email));
@@ -70,6 +80,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $role,
+                'avatarUrl' => $this->avatarUrl($user),
             ],
         ]);
     }

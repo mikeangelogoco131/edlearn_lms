@@ -26,4 +26,9 @@ class ClassSession extends Model
     {
         return $this->belongsTo(Course::class);
     }
+    
+    public function attendance()
+    {
+        return $this->hasMany(\App\Models\Attendance::class, 'session_id');
+    }
 }

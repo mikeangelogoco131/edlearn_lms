@@ -19,4 +19,21 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Dev-only proxy so the frontend can call `/api/*` without CORS issues.
+  // Run Laravel at http://127.0.0.1:8010 (see README).
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8010',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/storage': {
+        target: 'http://127.0.0.1:8010',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

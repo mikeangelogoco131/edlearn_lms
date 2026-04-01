@@ -1,3 +1,37 @@
+// Attendance types
+export interface ApiAttendanceRecord {
+  id: string;
+  session_id: string;
+  student_id: string;
+  status: 'present' | 'late' | 'absent';
+  remarks?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  student?: ApiUser;
+}
+
+export type ApiAttendanceStatus = 'present' | 'late' | 'absent';
+
+export const attendanceApi = {
+  // Teacher: Get attendance for a session
+  async getSessionAttendance(sessionId: string) {
+    return apiFetch<ApiAttendanceRecord[]>(`/api/sessions/${encodeURIComponent(sessionId)}/attendance`);
+  },
+  // Teacher: Update attendance for a student in a session
+  async setAttendance(sessionId: string, studentId: string, status: ApiAttendanceStatus, remarks?: string) {
+    return apiFetch<ApiAttendanceRecord>(
+      `/api/sessions/${encodeURIComponent(sessionId)}/attendance/${encodeURIComponent(studentId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, remarks }),
+      }
+    );
+  },
+  // Student: Get own attendance records
+  async getMyAttendance() {
+    return apiFetch<ApiAttendanceRecord[]>(`/api/me/attendance`);
+  },
+};
 export type ApiUserRole = 'admin' | 'teacher' | 'student';
 
 export interface ApiUser {
@@ -6,6 +40,7 @@ export interface ApiUser {
   email: string;
   role: ApiUserRole;
   archivedAt?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface ApiLoginResponse {
@@ -72,7 +107,17 @@ export interface ApiAssignment {
   points: number;
   submitted?: number | null;
   total?: number | null;
-  status: 'pending' | 'graded' | 'overdue' | string;
+  status: 'draft' | 'published' | 'closed' | string;
+  submissionType?: 'online_text' | 'file_upload' | 'text_and_file' | 'quiz' | string;
+  rubric?: Array<{ name: string; weight: number }> | null;
+  quizData?: {
+    questions: Array<{
+      question: string;
+      options: string[];
+      correctAnswer: string;
+      points: number;
+    }>;
+  } | null;
 }
 
 export interface ApiLesson {
@@ -121,6 +166,11 @@ export interface ApiSubmission {
   feedback: string | null;
   gradedAt: string | null;
   content: string | null;
+  quizAnswers?: Array<{ questionIndex: number; answer: string }> | null;
+  fileUrl?: string | null;
+  originalFileName?: string | null;
+  fileMimeType?: string | null;
+  fileSizeBytes?: number | null;
 }
 
 export interface ApiCourseGradeRow {
@@ -313,8 +363,14 @@ export interface ApiItemResponse<T> {
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8010';
 
-function getBaseUrl() {
-  return (import.meta as any).env?.VITE_API_BASE_URL || DEFAULT_BASE_URL;
+export function getApiBaseUrl() {
+  const envBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
+  if (envBaseUrl) return envBaseUrl;
+
+  // In dev, prefer same-origin so Vite can proxy `/api/*` to Laravel.
+  if ((import.meta as any).env?.DEV) return '';
+
+  return DEFAULT_BASE_URL;
 }
 
 export function getToken(): string | null {
@@ -357,7 +413,7 @@ export function setToken(token: string | null) {
 }
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = getApiBaseUrl();
   const token = getToken();
 
   const headers = new Headers(init.headers);
@@ -373,18 +429,50 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   const method = (init.method || 'GET').toUpperCase();
-  const res = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    // Avoid stale cached GET responses (important for enrollment-driven UIs).
-    cache: method === 'GET' ? 'no-store' : init.cache,
-    headers,
-  });
+  let res: Response;
+  const url = `${baseUrl}${path}`;
+  try {
+    res = await fetch(url, {
+      ...init,
+      // Avoid stale cached GET responses (important for enrollment-driven UIs).
+      cache: method === 'GET' ? 'no-store' : init.cache,
+      headers,
+    });
+  } catch (err) {
+    const originalMessage = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Failed to reach the API server (${url}). ` +
+        `Make sure the Laravel backend is running (README suggests http://127.0.0.1:8010) ` +
+        `or set VITE_API_BASE_URL in .env.local. Original error: ${originalMessage}`,
+    );
+  }
 
   const contentType = res.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json');
   const payload = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
+    // In dev, the frontend hits the Vite dev server and relies on the proxy
+    // in `vite.config.ts` to forward `/api/*` to Laravel. If Laravel isn't
+    // running, Vite typically responds with a generic 500 (and a plain-text
+    // body mentioning ECONNREFUSED / proxy errors). Convert that into a
+    // clearer actionable message.
+    if (baseUrl === '' && res.status >= 500 && !isJson && typeof payload === 'string') {
+      const text = payload.toLowerCase();
+      const looksLikeProxyFailure =
+        text.includes('econnrefused') ||
+        text.includes('socket hang up') ||
+        (text.includes('proxy') && text.includes('error'));
+
+      if (looksLikeProxyFailure) {
+        throw new Error(
+          `Failed to reach the API server (${DEFAULT_BASE_URL}). ` +
+            `Make sure the Laravel backend is running on port 8010 (php artisan serve --host=127.0.0.1 --port=8010) ` +
+            `or set VITE_API_BASE_URL in .env.local.`,
+        );
+      }
+    }
+
     const message =
       (payload && typeof payload === 'object' && 'message' in payload && (payload as any).message) ||
       res.statusText ||
@@ -424,6 +512,21 @@ export const api = {
     return apiFetch<ApiUser>('/api/me', {
       method: 'PATCH',
       body: JSON.stringify(payload),
+    });
+  },
+
+  async uploadMyAvatar(file: File) {
+    const form = new FormData();
+    form.append('avatar', file);
+    return apiFetch<ApiUser>('/api/me/avatar', {
+      method: 'POST',
+      body: form,
+    });
+  },
+
+  async deleteMyAvatar() {
+    return apiFetch<ApiUser>('/api/me/avatar', {
+      method: 'DELETE',
     });
   },
 
@@ -520,6 +623,16 @@ export const api = {
     status?: string;
     period?: string | null;
     week_in_period?: number | null;
+    submission_type?: string | null;
+    rubric?: Array<{ name: string; weight: number }> | null;
+    quiz_data?: {
+      questions: Array<{
+        question: string;
+        options: string[];
+        correctAnswer: string;
+        points: number;
+      }>;
+    } | null;
   }) {
     return apiFetch<ApiItemResponse<ApiAssignment>>(
       `/api/courses/${encodeURIComponent(courseId)}/assignments`,
@@ -536,6 +649,18 @@ export const api = {
     due_at: string | null;
     points: number;
     status: string;
+    period: string | null;
+    week_in_period: number | null;
+    submission_type: string | null;
+    rubric: Array<{ name: string; weight: number }> | null;
+    quiz_data: {
+      questions: Array<{
+        question: string;
+        options: string[];
+        correctAnswer: string;
+        points: number;
+      }>;
+    } | null;
   }>) {
     return apiFetch<ApiItemResponse<ApiAssignment>>(
       `/api/courses/${encodeURIComponent(courseId)}/assignments/${encodeURIComponent(assignmentId)}`,
@@ -561,12 +686,21 @@ export const api = {
     );
   },
 
-  async createSubmission(assignmentId: string, payload: { content?: string | null }) {
+  async createSubmission(assignmentId: string, payload: { content?: string | null; file?: File | null; quiz_answers?: Array<{ questionIndex: number; answer: string }> | null; }) {
+    const form = new FormData();
+    if (payload.content !== undefined) form.append('content', payload.content ?? '');
+    if (payload.file) form.append('file', payload.file);
+    if (payload.quiz_answers !== undefined && payload.quiz_answers !== null) {
+      payload.quiz_answers.forEach((q, i) => {
+        form.append(`quiz_answers[${i}][questionIndex]`, String(q.questionIndex));
+        form.append(`quiz_answers[${i}][answer]`, q.answer);
+      });
+    }
     return apiFetch<ApiItemResponse<ApiSubmission>>(
       `/api/assignments/${encodeURIComponent(assignmentId)}/submissions`,
       {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: form,
       },
     );
   },

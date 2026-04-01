@@ -83,19 +83,19 @@ export default function VirtualClassroom() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900">
+    <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Top Bar */}
-      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+      <div className="border-b border-border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/teacher">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-gray-700">
+            <Button variant="ghost" size="sm" className="hover:bg-accent">
               <X className="w-4 h-4 mr-2" />
               Leave
             </Button>
           </Link>
-          <div className="text-white">
+          <div>
             <div className="font-semibold">{course?.code} - {course?.title}</div>
-            <div className="text-sm text-gray-400">Live Session</div>
+            <div className="text-sm text-muted-foreground">Live Session</div>
           </div>
         </div>
 
@@ -104,7 +104,7 @@ export default function VirtualClassroom() {
             <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
             <span className="text-white text-sm font-medium">Recording</span>
           </div>
-          <div className="text-white text-sm px-3 py-1.5 bg-gray-700 rounded-lg">
+          <div className="text-sm px-3 py-1.5 bg-muted rounded-lg">
             {participants.length} Participants
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function VirtualClassroom() {
         <div className="flex-1 p-4 overflow-auto">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 h-full">
             {participants.map((participant) => (
-              <Card key={participant.id} className="relative bg-gray-800 border-gray-700 overflow-hidden">
+              <Card key={participant.id} className="relative bg-card border-border overflow-hidden">
                 <CardContent className="p-0 h-full min-h-[200px] flex items-center justify-center">
                   {participant.isVideoOn ? (
                     <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
@@ -182,7 +182,7 @@ export default function VirtualClassroom() {
 
         {/* Sidebar */}
         {showSidebar && (
-          <div className="w-80 bg-white border-l flex flex-col">
+          <div className="w-80 bg-card border-l border-border flex flex-col">
             <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex-1 flex flex-col">
               <TabsList className="grid grid-cols-2 m-4">
                 <TabsTrigger value="chat">

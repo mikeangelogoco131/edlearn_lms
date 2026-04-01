@@ -59,7 +59,15 @@ class AssignmentController extends Controller
             'status' => ['nullable', 'string', 'max:50'],
             'period' => ['nullable', 'string', 'max:50'],
             'week_in_period' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'submission_type' => ['nullable', 'string', 'max:50'],
+            'rubric' => ['nullable', 'array'],
+            'rubric.*.name' => ['required', 'string', 'max:100'],
+            'rubric.*.weight' => ['required', 'numeric', 'min:0'],
+            'quiz_data' => ['nullable', 'array'],
         ]);
+
+        $status = $validated['status'] ?? 'published';
+        $publishedAt = $status === 'published' ? now() : null;
 
         $assignment = Assignment::query()->create([
             'course_id' => $course->id,
@@ -67,10 +75,13 @@ class AssignmentController extends Controller
             'description' => $validated['description'] ?? null,
             'due_at' => $validated['due_at'] ?? null,
             'points' => $validated['points'] ?? 100,
-            'status' => $validated['status'] ?? 'published',
+            'status' => $status,
             'period' => $validated['period'] ?? 'prelim',
             'week_in_period' => (int) ($validated['week_in_period'] ?? 1),
-            'published_at' => now(),
+            'submission_type' => $validated['submission_type'] ?? 'online_text',
+            'rubric' => $validated['rubric'] ?? null,
+            'quiz_data' => $validated['quiz_data'] ?? null,
+            'published_at' => $publishedAt,
         ]);
 
         return response()->json(['data' => $this->assignmentToArray($assignment, 0, 0)], 201);
@@ -122,9 +133,27 @@ class AssignmentController extends Controller
             'status' => ['sometimes', 'string', 'max:50'],
             'period' => ['sometimes', 'nullable', 'string', 'max:50'],
             'week_in_period' => ['sometimes', 'integer', 'min:1', 'max:4'],
+            'submission_type' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'rubric' => ['sometimes', 'nullable', 'array'],
+            'rubric.*.name' => ['required', 'string', 'max:100'],
+            'rubric.*.weight' => ['required', 'numeric', 'min:0'],
+            'quiz_data' => ['sometimes', 'nullable', 'array'],
         ]);
 
+        $statusWas = $assignment->status;
         $assignment->fill($validated);
+
+        if (array_key_exists('status', $validated)) {
+            $status = $validated['status'];
+            if ($status === 'published' && ! $assignment->published_at) {
+                $assignment->published_at = now();
+            }
+            if ($status === 'draft') {
+                $assignment->published_at = null;
+            }
+        } else {
+            $assignment->status = $statusWas;
+        }
         $assignment->save();
 
         return response()->json(['data' => $this->assignmentToArray($assignment, 0, 0)]);
@@ -193,7 +222,10 @@ class AssignmentController extends Controller
             'period' => $assignment->period ?? 'prelim',
             'weekInPeriod' => (int) ($assignment->week_in_period ?? 1),
             'total' => $studentsCount ?: null,
-            'status' => 'pending',
+            'status' => $assignment->status ?? 'published',
+            'submissionType' => $assignment->submission_type ?? 'online_text',
+            'rubric' => $assignment->rubric ?? null,
+            'quizData' => $assignment->quiz_data ?? null,
         ];
     }
 }

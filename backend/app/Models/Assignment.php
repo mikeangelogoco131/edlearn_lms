@@ -17,12 +17,17 @@ class Assignment extends Model
         'due_at',
         'points',
         'status',
+        'submission_type',
+        'rubric',
+        'quiz_data',
         'published_at',
     ];
 
     protected $casts = [
         'due_at' => 'datetime',
         'published_at' => 'datetime',
+        'rubric' => 'array',
+        'quiz_data' => 'array',
     ];
 
     public function course(): BelongsTo

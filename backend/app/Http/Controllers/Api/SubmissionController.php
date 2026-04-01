@@ -66,9 +66,13 @@ class SubmissionController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+
         $validated = $request->validate([
             'content' => ['nullable', 'string'],
+            'file' => ['nullable', 'file', 'max:20480'], // 20MB max
+            'quiz_answers' => ['nullable', 'array'],
         ]);
+
 
         $submission = Submission::query()->firstOrNew([
             'assignment_id' => $assignment->id,
@@ -76,8 +80,46 @@ class SubmissionController extends Controller
         ]);
 
         $submission->content = $validated['content'] ?? $submission->content;
+        $submission->quiz_answers = $validated['quiz_answers'] ?? $submission->quiz_answers;
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $path = $file->store('submissions', 'public');
+            $submission->file_path = $path;
+            $submission->original_file_name = $file->getClientOriginalName();
+            $submission->file_mime_type = $file->getClientMimeType();
+            $submission->file_size_bytes = $file->getSize();
+        }
+
         $submission->status = 'submitted';
         $submission->submitted_at = now();
+
+        // Auto-grading logic for quizzes
+        if ($assignment->submission_type === 'quiz' && $submission->quiz_answers && $assignment->quiz_data) {
+            $score = 0;
+            $totalPoints = $assignment->points ?? 0;
+            $questions = $assignment->quiz_data['questions'] ?? [];
+            $questionCount = count($questions);
+
+            if ($questionCount > 0) {
+                // Determine point per question
+                $pointsPerQ = reset($questions)['points'] ?? ($totalPoints / $questionCount);
+                
+                foreach ($questions as $index => $q) {
+                    $correct = $q['correctAnswer'] ?? '';
+                    $qnPoints = $q['points'] ?? $pointsPerQ;
+                    $studentAns = current(array_filter($submission->quiz_answers, fn($a) => $a['questionIndex'] == $index));
+                    if ($studentAns && isset($studentAns['answer']) && $studentAns['answer'] === $correct) {
+                        $score += $qnPoints;
+                    }
+                }
+            }
+            
+            $submission->grade = min($score, $totalPoints);
+            $submission->status = 'graded';
+            $submission->graded_at = now();
+        }
+
         $submission->save();
 
         return response()->json(['data' => $this->submissionToArray($submission)], 201);
@@ -150,6 +192,11 @@ class SubmissionController extends Controller
             'feedback' => $submission->feedback,
             'gradedAt' => optional($submission->graded_at)->toIso8601String(),
             'content' => $submission->content,
+            'quizAnswers' => $submission->quiz_answers,
+            'fileUrl' => $submission->file_path ? asset('storage/' . $submission->file_path) : null,
+            'originalFileName' => $submission->original_file_name,
+            'fileMimeType' => $submission->file_mime_type,
+            'fileSizeBytes' => $submission->file_size_bytes,
         ];
     }
 }

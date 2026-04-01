@@ -8,7 +8,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  avatar?: string;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextType {
@@ -22,6 +22,8 @@ interface AuthContextType {
     new_password?: string;
     new_password_confirmation?: string;
   }) => Promise<User>;
+  uploadMyAvatar: (file: File) => Promise<User>;
+  deleteMyAvatar: () => Promise<User>;
   logout: () => void;
   isAuthenticated: boolean;
   isHydrating: boolean;
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: res.user.name,
       email: res.user.email,
       role: res.user.role,
+      avatarUrl: res.user.avatarUrl ?? null,
     };
 
     setUser(nextUser);
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: res.user.name,
       email: res.user.email,
       role: res.user.role,
+      avatarUrl: res.user.avatarUrl ?? null,
     };
 
     setUser(nextUser);
@@ -95,6 +99,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: me.name,
       email: me.email,
       role: me.role,
+      avatarUrl: me.avatarUrl ?? null,
+    };
+
+    setUser(nextUser);
+    sessionStorage.setItem('edlearn_user', JSON.stringify(nextUser));
+
+    return nextUser;
+  };
+
+  const uploadMyAvatar = async (file: File) => {
+    const me = await api.uploadMyAvatar(file);
+
+    const nextUser: User = {
+      id: me.id,
+      name: me.name,
+      email: me.email,
+      role: me.role,
+      avatarUrl: me.avatarUrl ?? null,
+    };
+
+    setUser(nextUser);
+    sessionStorage.setItem('edlearn_user', JSON.stringify(nextUser));
+
+    return nextUser;
+  };
+
+  const deleteMyAvatar = async () => {
+    const me = await api.deleteMyAvatar();
+
+    const nextUser: User = {
+      id: me.id,
+      name: me.name,
+      email: me.email,
+      role: me.role,
+      avatarUrl: me.avatarUrl ?? null,
     };
 
     setUser(nextUser);
@@ -151,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: me.name,
           email: me.email,
           role: me.role,
+          avatarUrl: me.avatarUrl ?? null,
         };
         setUser(nextUser);
         sessionStorage.setItem('edlearn_user', JSON.stringify(nextUser));
@@ -175,6 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         loginWithGoogle,
         updateMe,
+        uploadMyAvatar,
+        deleteMyAvatar,
         logout,
         isAuthenticated: !!user,
         isHydrating,

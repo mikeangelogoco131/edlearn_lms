@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MeController extends Controller
@@ -43,6 +44,7 @@ class MeController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'avatarUrl' => $this->avatarUrl($user),
         ]);
     }
 
@@ -109,6 +111,83 @@ class MeController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'avatarUrl' => $this->avatarUrl($user),
         ]);
+    }
+
+    public function uploadAvatar(Request $request)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $validated = $request->validate([
+            'avatar' => ['required', 'image', 'max:2048'],
+        ]);
+
+        $file = $request->file('avatar');
+        if (! $file) {
+            return response()->json(['message' => 'Avatar file is required'], 422);
+        }
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $ext = $file->getClientOriginalExtension();
+        $ext = $ext !== '' ? strtolower($ext) : 'jpg';
+        $path = $file->storePubliclyAs(
+            "avatars/{$user->id}",
+            (string) Str::uuid() . ".{$ext}",
+            'public'
+        );
+
+        $user->forceFill(['avatar_path' => $path])->save();
+
+        return response()->json([
+            'id' => (string) $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'avatarUrl' => $this->avatarUrl($user),
+        ]);
+    }
+
+    public function deleteAvatar(Request $request)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $user->forceFill(['avatar_path' => null])->save();
+
+        return response()->json([
+            'id' => (string) $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'avatarUrl' => $this->avatarUrl($user),
+        ]);
+    }
+
+    private function avatarUrl(User $user): ?string
+    {
+        $path = $user->avatar_path;
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        // Relative URL so it works behind the Vite dev proxy.
+        return '/storage/' . ltrim($path, '/');
     }
 }

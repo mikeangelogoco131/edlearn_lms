@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { api, ApiMessage, ApiNotification } from '../lib/api';
@@ -19,9 +19,11 @@ import { api, ApiMessage, ApiNotification } from '../lib/api';
 interface DashboardLayoutProps {
   children: ReactNode;
   title: string;
+  layout?: 'container' | 'full';
+  showTitle?: boolean;
 }
 
-export function DashboardLayout({ children, title }: DashboardLayoutProps) {
+export function DashboardLayout({ children, title, layout = 'container', showTitle = true }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -512,6 +514,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2">
                     <Avatar className="w-8 h-8">
+                      {user?.avatarUrl ? (
+                        <AvatarImage src={user.avatarUrl} alt={user.name || 'Profile photo'} />
+                      ) : null}
                       <AvatarFallback className="bg-blue-600 text-white text-sm">
                         {user ? getInitials(user.name) : 'U'}
                       </AvatarFallback>
@@ -559,12 +564,14 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">{title}</h1>
-        </div>
+      <main className={layout === 'full' ? 'w-full' : 'container mx-auto px-4 py-8'}>
+        {showTitle ? (
+          <div className={layout === 'full' ? 'px-6 py-6' : 'mb-6'}>
+            <h1 className="text-3xl font-bold">{title}</h1>
+          </div>
+        ) : null}
 
-        {children}
+        <div className={layout === 'full' ? 'w-full' : undefined}>{children}</div>
       </main>
     </div>
   );

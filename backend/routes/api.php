@@ -28,6 +28,13 @@ Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('jwt')->group(function () {
     Route::get('/me', [MeController::class, 'show']);
     Route::patch('/me', [MeController::class, 'update']);
+    Route::post('/me/avatar', [MeController::class, 'uploadAvatar']);
+    Route::delete('/me/avatar', [MeController::class, 'deleteAvatar']);
+    
+        // Attendance
+        Route::get('/sessions/{session}/attendance', [\App\Http\Controllers\Api\AttendanceController::class, 'index'])->middleware('role:teacher');
+        Route::patch('/sessions/{session}/attendance/{student}', [\App\Http\Controllers\Api\AttendanceController::class, 'update'])->middleware('role:teacher');
+        Route::get('/me/attendance', [\App\Http\Controllers\Api\AttendanceController::class, 'studentAttendance'])->middleware('role:student');
 
     // Programs (Course list, e.g., BSIT/BSN/BSA) - admin only
     Route::get('/programs', [ProgramController::class, 'index'])->middleware('role:admin');
@@ -114,10 +121,10 @@ Route::middleware('jwt')->group(function () {
     Route::patch('/events/{event}', [EventController::class, 'update'])->middleware('role:admin');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->middleware('role:admin');
 
-    // Users (admin)
-    Route::get('/users', [UserController::class, 'index'])->middleware('role:admin');
+    // Users (admin & teacher)
+    Route::get('/users', [UserController::class, 'index'])->middleware('role:admin,teacher');
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin');
-    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('role:admin');
+    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('role:admin,teacher');
     Route::get('/users/{user}/enrollments', [UserController::class, 'enrollments'])->middleware('role:admin');
     Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('role:admin');
     Route::patch('/users/{user}/archive', [UserController::class, 'archive'])->middleware('role:admin');

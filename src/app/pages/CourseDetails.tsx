@@ -17,7 +17,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Video, FileText, BookOpen, Users, Calendar, Clock, Download, 
-  Play, CheckCircle, Upload, Plus, Edit, ArrowLeft, ChevronDown, ChevronUp
+  Play, CheckCircle, Upload, Plus, Edit, ArrowLeft, ChevronDown, ChevronUp, Trash2
 } from 'lucide-react';
 import {
   api,
@@ -30,15 +30,199 @@ import {
   ApiMaterial,
   ApiMyCourseGrade,
   ApiSubmission,
+  ApiUser,
+  attendanceApi,
+  getApiBaseUrl,
   getToken,
 } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 
+function QuizBuilder({
+  quizData,
+  onChange,
+  disabled
+}: {
+  quizData: { questions: Array<{ question: string; options: string[]; correctAnswer: string; points: number }> } | null;
+  onChange: (data: { questions: Array<{ question: string; options: string[]; correctAnswer: string; points: number }> } | null) => void;
+  disabled?: boolean;
+}) {
+  const data = quizData || { questions: [] };
+
+  const addQuestion = () => {
+    onChange({
+      questions: [
+        ...data.questions,
+        { question: '', options: ['', ''], correctAnswer: '', points: 1 }
+      ]
+    });
+  };
+
+  const updateQuestion = (idx: number, updates: any) => {
+    const q = [...data.questions];
+    q[idx] = { ...q[idx], ...updates };
+    onChange({ questions: q });
+  };
+
+  const removeQuestion = (idx: number) => {
+    const q = data.questions.filter((_, i) => i !== idx);
+    onChange({ questions: q });
+  };
+
+  return (
+    <div className="space-y-4 border rounded-md p-4 bg-white mt-4 mt-6">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-bold">Quiz Builder</div>
+        <Button size="sm" variant="outline" onClick={addQuestion} disabled={disabled}>
+          <Plus className="w-4 h-4 mr-2" /> Add Question
+        </Button>
+      </div>
+
+      {data.questions.length === 0 ? (
+        <div className="text-xs text-gray-500">No questions added yet. Click 'Add Question' to start building your quiz.</div>
+      ) : (
+        <div className="space-y-6">
+          {data.questions.map((q, qIdx) => (
+            <div key={qIdx} className="p-3 border rounded-md space-y-3 bg-gray-50 relative">
+              <div className="absolute top-3 right-3 text-red-500">
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => removeQuestion(qIdx)} disabled={disabled}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex flex-col md:flex-row gap-3 pr-10">
+                <div className="flex-1 space-y-1">
+                  <div className="text-xs font-medium">Question {qIdx + 1}</div>
+                  <Input 
+                    value={q.question} 
+                    onChange={e => updateQuestion(qIdx, { question: e.target.value })} 
+                    placeholder="Enter question text"
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="w-full md:w-24 space-y-1">
+                  <div className="text-xs font-medium">Points</div>
+                  <Input 
+                    type="number" 
+                    value={String(q.points)} 
+                    onChange={e => updateQuestion(qIdx, { points: Number(e.target.value) })}
+                    disabled={disabled}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="text-xs font-medium">Options (Select the correct answer)</div>
+                {q.options.map((opt, oIdx) => (
+                  <div key={oIdx} className="flex items-center gap-2">
+                    <input 
+                      type="radio" 
+                      name={`correct-${qIdx}`} 
+                      checked={q.correctAnswer === opt && opt !== ''} 
+                      onChange={() => updateQuestion(qIdx, { correctAnswer: opt })}
+                      disabled={disabled || !opt.trim()}
+                      className="mt-0.5"
+                    />
+                    <Input 
+                      className="h-8 flex-1"
+                      value={opt} 
+                      placeholder={`Option ${oIdx + 1}`}
+                      onChange={e => {
+                        const newOpts = [...q.options];
+                        newOpts[oIdx] = e.target.value;
+                        let cAns = q.correctAnswer;
+                        if (cAns === opt) { cAns = e.target.value; }
+                        updateQuestion(qIdx, { options: newOpts, correctAnswer: cAns });
+                      }}
+                      disabled={disabled}
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-8 w-8 p-0" 
+                      onClick={() => {
+                        const newOpts = q.options.filter((_, i) => i !== oIdx);
+                        let cAns = q.correctAnswer;
+                        if (cAns === opt) cAns = '';
+                        updateQuestion(qIdx, { options: newOpts, correctAnswer: cAns });
+                      }}
+                      disabled={disabled || q.options.length <= 2}
+                    >
+                      <Trash2 className="w-3 h-3 text-gray-500 hover:text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+                <Button 
+                  size="sm" 
+                  variant="link" 
+                  className="text-xs h-6 px-0 mt-1 text-blue-600" 
+                  onClick={() => updateQuestion(qIdx, { options: [...q.options, ''] })}
+                  disabled={disabled}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Option
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CourseDetails() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+
+  const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, any[]>>({});
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceDraft, setAttendanceDraft] = useState<Record<string, { status: string; remarks: string }>>({});
+
+  // Fetch attendance for a session (teacher)
+  async function loadAttendance(sessionId: string) {
+    setAttendanceLoading(true);
+    try {
+      const records = await attendanceApi.getSessionAttendance(sessionId);
+      setAttendanceRecords((prev) => ({ ...prev, [sessionId]: records }));
+      // Prepare draft for editing
+      const draft: Record<string, { status: string; remarks: string }> = {};
+      for (const rec of records) {
+        draft[rec.student_id] = { status: rec.status, remarks: rec.remarks || '' };
+      }
+      setAttendanceDraft(draft);
+    } catch (e) {
+      toast.error('Failed to load attendance');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  }
+
+  // Save attendance for a student (teacher)
+  async function saveAttendance(sessionId: string, studentId: string) {
+    const draft = attendanceDraft[studentId];
+    if (!draft) return;
+    setAttendanceLoading(true);
+    try {
+      await attendanceApi.setAttendance(sessionId, studentId, draft.status, draft.remarks);
+      await loadAttendance(sessionId);
+      toast.success('Attendance saved');
+    } catch (e) {
+      toast.error('Failed to save attendance');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  }
+
+  // Student: fetch own attendance
+  const [myAttendance, setMyAttendance] = useState<any[]>([]);
+  useEffect(() => {
+    if (isStudent) {
+      attendanceApi.getMyAttendance().then(setMyAttendance).catch(() => setMyAttendance([]));
+    }
+  }, [isStudent]);
   const [course, setCourse] = useState<ApiCourse | null>(null);
   const [courseAssignments, setCourseAssignments] = useState<ApiAssignment[]>([]);
   const [courseSessions, setCourseSessions] = useState<ApiClassSession[]>([]);
@@ -46,6 +230,13 @@ export default function CourseDetails() {
   const [courseMaterials, setCourseMaterials] = useState<ApiMaterial[]>([]);
   const [courseEnrollments, setCourseEnrollments] = useState<ApiEnrollment[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+
+  const [availableStudents, setAvailableStudents] = useState<ApiUser[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+
   const [gradebook, setGradebook] = useState<ApiCourseGradeRow[]>([]);
   const [myGrade, setMyGrade] = useState<ApiMyCourseGrade | null>(null);
   const [gradeOverrideDrafts, setGradeOverrideDrafts] = useState<Record<string, { finalGrade: string; remarks: string }>>({});
@@ -64,9 +255,34 @@ export default function CourseDetails() {
     description: '',
     dueAt: '',
     points: 100,
+    status: 'published',
     period: 'prelim',
     weekInPeriod: 1,
+    submissionType: 'online_text',
+    rubric: [] as Array<{ name: string; weight: number }>,
+    quizData: null as { questions: Array<{ question: string; options: string[]; correctAnswer: string; points: number }> } | null,
   });
+
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [assignmentDrafts, setAssignmentDrafts] = useState<
+    Record<
+      string,
+      {
+        title: string;
+        description: string;
+        dueAt: string;
+        points: number;
+        status: string;
+        period: string;
+        weekInPeriod: number;
+        submissionType: string;
+        rubric: Array<{ name: string; weight: number }>;
+        quizData: { questions: Array<{ question: string; options: string[]; correctAnswer: string; points: number }> } | null;
+      }
+    >
+  >({});
+
+  const [studentQuizDrafts, setStudentQuizDrafts] = useState<Record<string, Record<number, string>>>({});
   const [newMaterial, setNewMaterial] = useState<{ title: string; description: string; file: File | null }>({
     title: '',
     description: '',
@@ -77,6 +293,7 @@ export default function CourseDetails() {
   const [submissions, setSubmissions] = useState<ApiSubmission[]>([]);
   const [gradingDrafts, setGradingDrafts] = useState<Record<string, { grade: string; feedback: string }>>({});
   const [studentSubmissionDrafts, setStudentSubmissionDrafts] = useState<Record<string, string>>({});
+  const [studentSubmissionFiles, setStudentSubmissionFiles] = useState<Record<string, File | null>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -91,8 +308,6 @@ export default function CourseDetails() {
 
   const [activeTab, setActiveTab] = useState('lessons');
 
-  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
-  const isStudent = user?.role === 'student';
 
   const periods = [
     { key: 'prelim', label: 'Prelim Period' },
@@ -226,6 +441,35 @@ export default function CourseDetails() {
     }
   }
 
+  async function loadAvailableStudents() {
+    if (availableStudents.length > 0) return;
+    setLoadingStudents(true);
+    try {
+      const res = await api.users({ role: 'student', limit: 1000 });
+      setAvailableStudents(res.data);
+    } catch (e) {
+      toast.error('Failed to load students');
+    } finally {
+      setLoadingStudents(false);
+    }
+  }
+
+  async function handleEnrollStudent() {
+    if (!courseId || !selectedStudentId) return;
+    setIsEnrolling(true);
+    try {
+      await api.enrollStudent(courseId, selectedStudentId);
+      toast.success('Student enrolled successfully');
+      setShowAddStudent(false);
+      setSelectedStudentId('');
+      void loadEnrollments();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to enroll student');
+    } finally {
+      setIsEnrolling(false);
+    }
+  }
+
   async function loadEnrollments() {
     if (!courseId) return;
     setLoadingEnrollments(true);
@@ -303,15 +547,85 @@ export default function CourseDetails() {
     if (!newAssignment.title.trim()) return;
     setSaving(true);
     try {
+      const rubric = newAssignment.rubric
+        .filter((row) => row.name.trim())
+        .map((row) => ({ name: row.name.trim(), weight: Number(row.weight) || 0 }));
+
       await api.createCourseAssignment(courseId, {
         title: newAssignment.title.trim(),
         description: newAssignment.description || null,
         due_at: newAssignment.dueAt || null,
         points: Number(newAssignment.points) || 0,
+        status: newAssignment.status || 'published',
         period: newAssignment.period,
         week_in_period: newAssignment.weekInPeriod,
+        submission_type: newAssignment.submissionType || 'online_text',
+        rubric: rubric.length ? rubric : null,
+        quiz_data: newAssignment.submissionType === 'quiz' ? newAssignment.quizData : null,
       });
-      setNewAssignment({ title: '', description: '', dueAt: '', points: 100, period: 'prelim', weekInPeriod: 1 });
+      setNewAssignment({
+        title: '',
+        description: '',
+        dueAt: '',
+        points: 100,
+        status: 'published',
+        period: 'prelim',
+        weekInPeriod: 1,
+        submissionType: 'online_text',
+        rubric: [],
+        quizData: null,
+      });
+      await refreshAssignments();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function initAssignmentDraft(assignment: ApiAssignment) {
+    setAssignmentDrafts((prev) => {
+      if (prev[assignment.id]) return prev;
+      return {
+        ...prev,
+        [assignment.id]: {
+          title: assignment.title,
+          description: assignment.description || '',
+          dueAt: assignment.dueDate ? format(new Date(assignment.dueDate), "yyyy-MM-dd'T'HH:mm") : '',
+          points: assignment.points ?? 0,
+          status: assignment.status || 'published',
+          period: normalizePeriod(assignment.period),
+          weekInPeriod: normalizeWeek(assignment.weekInPeriod),
+          submissionType: assignment.submissionType || 'online_text',
+          rubric: Array.isArray(assignment.rubric) ? assignment.rubric : [],
+          quizData: assignment.quizData || null,
+        }
+      };
+    });
+  }
+
+  async function handleSaveAssignment(assignment: ApiAssignment) {
+    if (!courseId) return;
+    const draft = assignmentDrafts[assignment.id];
+    if (!draft) return;
+
+    const rubric = (draft.rubric || [])
+      .filter((row) => row.name.trim())
+      .map((row) => ({ name: row.name.trim(), weight: Number(row.weight) || 0 }));
+
+    setSaving(true);
+    try {
+      await api.updateCourseAssignment(courseId, assignment.id, {
+        title: draft.title.trim(),
+        description: draft.description || null,
+        due_at: draft.dueAt || null,
+        points: Number(draft.points) || 0,
+        status: draft.status,
+        period: draft.period,
+        week_in_period: Number(draft.weekInPeriod) || 1,
+        submission_type: draft.submissionType,
+        rubric: rubric.length ? rubric : null,
+        quiz_data: draft.submissionType === 'quiz' ? draft.quizData : null,
+      });
+      setEditingAssignmentId(null);
       await refreshAssignments();
     } finally {
       setSaving(false);
@@ -363,16 +677,32 @@ export default function CourseDetails() {
     }
   }
 
-  async function handleStudentSubmit(assignmentId: string) {
+  async function handleStudentSubmit(assignmentId: string, submissionType?: string) {
     const content = studentSubmissionDrafts[assignmentId] || '';
+    const file = studentSubmissionFiles[assignmentId] || null;
+    const quizDraft = studentQuizDrafts[assignmentId] || {};
+    
+    let quizAnswersArray: Array<{ questionIndex: number; answer: string }> | undefined = undefined;
+    if (submissionType === 'quiz') {
+      quizAnswersArray = Object.entries(quizDraft).map(([index, answer]) => ({
+        questionIndex: Number(index),
+        answer,
+      }));
+    }
+
     setSaving(true);
     try {
-      await api.createSubmission(assignmentId, { content });
+      await api.createSubmission(assignmentId, {
+        content: submissionType === 'file_upload' || submissionType === 'quiz' ? undefined : content,
+        file: submissionType === 'online_text' || submissionType === 'quiz' ? undefined : file,
+        quiz_answers: quizAnswersArray,
+      });
       if (openSubmissionsFor === assignmentId) {
         const res = await api.assignmentSubmissions(assignmentId);
         setSubmissions(res.data);
       }
       await refreshGrades();
+      setStudentSubmissionFiles((prev) => ({ ...prev, [assignmentId]: null }));
     } finally {
       setSaving(false);
     }
@@ -447,7 +777,7 @@ export default function CourseDetails() {
   async function downloadMaterial(material: ApiMaterial) {
     try {
       const token = getToken();
-      const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8010';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}${material.downloadPath}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -469,7 +799,7 @@ export default function CourseDetails() {
   async function openMaterial(material: ApiMaterial) {
     try {
       const token = getToken();
-      const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8010';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}${material.downloadPath}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -566,16 +896,48 @@ export default function CourseDetails() {
         }}
         className="space-y-6"
       >
-        <TabsList>
-          <TabsTrigger value="lessons">Lessons</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="materials">Materials</TabsTrigger>
-          <TabsTrigger value="sessions">Class Sessions</TabsTrigger>
-          <TabsTrigger value="grades">Grades</TabsTrigger>
-          {isTeacher && <TabsTrigger value="students">Students</TabsTrigger>}
-        </TabsList>
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start">
+          <aside className="lg:sticky lg:top-24">
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Course Menu</CardTitle>
+                <CardDescription>Navigate this course</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <TabsList className="flex flex-col items-stretch h-auto w-full bg-transparent p-0 gap-1">
+                  <TabsTrigger value="lessons" className="w-full justify-start gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    Lessons
+                  </TabsTrigger>
+                  <TabsTrigger value="assignments" className="w-full justify-start gap-2">
+                    <FileText className="w-4 h-4" />
+                    Assignments
+                  </TabsTrigger>
+                  <TabsTrigger value="materials" className="w-full justify-start gap-2">
+                    <Download className="w-4 h-4" />
+                    Materials
+                  </TabsTrigger>
+                  <TabsTrigger value="sessions" className="w-full justify-start gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Class Sessions
+                  </TabsTrigger>
+                  <TabsTrigger value="grades" className="w-full justify-start gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Grades
+                  </TabsTrigger>
+                  {isTeacher ? (
+                    <TabsTrigger value="students" className="w-full justify-start gap-2">
+                      <Users className="w-4 h-4" />
+                      Students
+                    </TabsTrigger>
+                  ) : null}
+                </TabsList>
+              </CardContent>
+            </Card>
+          </aside>
 
-        <TabsContent value="lessons" className="space-y-6">
+          <div className="space-y-6">
+            <TabsContent value="lessons" className="space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -738,6 +1100,16 @@ export default function CourseDetails() {
                     const firstWeekWithContent = [1, 2, 3, 4].find(weekHasAnything) || 1;
                     const isExpanded = !!expandedPeriods[period.key];
 
+                    const allPeriodItems = [
+                      ...periodLessons.map((l) => ({ type: 'lesson' as const, id: l.id, title: l.title, obj: l })),
+                      ...periodMaterials.map((m) => ({ type: 'material' as const, id: m.id, title: m.title || m.originalName, obj: m })),
+                      ...periodAssessments.map((a) => ({ type: 'assessment' as const, id: a.id, title: a.title, due: a.dueDate, points: a.points, obj: a }))
+                    ].sort((a, b) => {
+                      const w = normalizeWeek(a.obj.weekInPeriod) - normalizeWeek(b.obj.weekInPeriod);
+                      if (w !== 0) return w;
+                      return (a.obj.createdAt || '').localeCompare(b.obj.createdAt || '');
+                    });
+
                     return (
                       <Card key={period.key}>
                         <CardContent className="p-0">
@@ -797,126 +1169,51 @@ export default function CourseDetails() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-end mt-3 text-sm text-gray-600">
-                                4 sections
+                              <div className="flex items-center justify-end mt-3 text-sm font-semibold">
+                                {allPeriodItems.length} sections
                               </div>
                             </div>
                           </div>
 
                           {isExpanded ? (
-                            <div className="border-t p-4 space-y-3">
-                              {[1, 2, 3, 4].map((week) => {
-                                const weekLessons = courseLessons
-                                  .filter((l) => normalizePeriod(l.period) === period.key && normalizeWeek(l.weekInPeriod) === week)
-                                  .slice()
-                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
-                                const weekAssessments = courseAssignments
-                                  .filter((a) => normalizePeriod(a.period) === period.key && normalizeWeek(a.weekInPeriod) === week)
-                                  .slice()
-                                  .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
-                                const weekMaterials = courseMaterials
-                                  .filter((m) => normalizePeriod(m.period) === period.key && normalizeWeek(m.weekInPeriod) === week)
-                                  .slice()
-                                  .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-                                return (
-                                  <div
-                                    key={week}
-                                    id={`period-${period.key}-week-${week}`}
-                                    className="p-4 bg-gray-50 rounded-lg space-y-2"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="font-semibold">Week {week}</div>
-                                      <div className="text-sm text-gray-600">
-                                        {weekLessons.length} lessons • {weekAssessments.length} assessments • {weekMaterials.length} files
+                            <div className="border-t">
+                              <div className="hidden md:grid grid-cols-[1fr_100px_100px_100px_80px] gap-4 p-4 bg-gray-900 border-b border-gray-800 text-gray-200 text-sm font-bold">
+                                <div>Section</div>
+                                <div className="text-center">Submitted</div>
+                                <div className="text-center">Score</div>
+                                <div className="text-center">Due</div>
+                                <div className="text-center">Status</div>
+                              </div>
+                              <div className="divide-y divide-gray-800 bg-[#16161E] text-gray-200 overflow-hidden rounded-b-lg">
+                                {allPeriodItems.length === 0 ? (
+                                  <div className="p-6 text-center text-gray-400">No sections added yet.</div>
+                                ) : (
+                                  allPeriodItems.map((item) => (
+                                    <div key={`${item.type}-${item.id}`} className="grid grid-cols-1 md:grid-cols-[1fr_100px_100px_100px_80px] gap-4 p-4 items-center hover:bg-gray-800 transition-colors">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        {item.type === 'lesson' && <FileText className="w-5 h-5 text-gray-400 shrink-0" />}
+                                        {item.type === 'material' && <FileText className="w-5 h-5 text-gray-400 shrink-0" />}
+                                        {item.type === 'assessment' && <Edit className="w-5 h-5 text-gray-400 shrink-0" />}
+                                        <div className="font-medium truncate">{item.title}</div>
+                                      </div>
+                                      <div className="text-center text-sm md:block hidden text-gray-400">—</div>
+                                      <div className="text-center text-sm md:block hidden text-gray-400">
+                                        {item.type === 'assessment' && item.points ? `M` : ''}
+                                      </div>
+                                      <div className="text-center text-sm md:block hidden text-gray-400">
+                                        {item.type === 'assessment' && item.due ? format(new Date(item.due), 'MMM d') : ''}
+                                      </div>
+                                      <div className="flex justify-center shrink-0">
+                                        {item.type === 'assessment' ? (
+                                          <ChevronDown className="w-5 h-5 text-gray-400 -rotate-90" />
+                                        ) : (
+                                          <CheckCircle className="w-5 h-5 text-green-500" />
+                                        )}
                                       </div>
                                     </div>
-
-                                    <div className="space-y-2">
-                                      <div className="text-sm font-medium">Lessons</div>
-                                      {weekLessons.length === 0 ? (
-                                        <div className="text-sm text-gray-600">No lessons.</div>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          {weekLessons.map((lesson) => (
-                                            <div key={lesson.id} className="flex items-start justify-between gap-3 bg-white border rounded-md p-3">
-                                              <div className="min-w-0">
-                                                <div className="font-medium">{lesson.title}</div>
-                                                {lesson.description ? (
-                                                  <div className="text-sm text-gray-600 mt-1">{lesson.description}</div>
-                                                ) : null}
-                                                <div className="text-xs text-gray-500 mt-1">{lesson.duration || '—'}</div>
-                                              </div>
-                                              {isTeacher && (
-                                                <Button variant="outline" size="sm" onClick={() => handleDeleteLesson(lesson.id)} disabled={saving}>
-                                                  Delete
-                                                </Button>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="space-y-2 pt-2">
-                                      <div className="text-sm font-medium">Assessments</div>
-                                      {weekAssessments.length === 0 ? (
-                                        <div className="text-sm text-gray-600">No assessments.</div>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          {weekAssessments.map((a) => (
-                                            <div key={a.id} className="flex items-start justify-between gap-3 bg-white border rounded-md p-3">
-                                              <div className="min-w-0">
-                                                <div className="font-medium">{a.title}</div>
-                                                <div className="text-sm text-gray-600">
-                                                  {a.dueDate ? `Due: ${format(new Date(a.dueDate), 'MMM d, h:mm a')}` : 'No due date'} • {a.points} pts
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="space-y-2 pt-2">
-                                      <div className="text-sm font-medium">Lesson Files</div>
-                                      {weekMaterials.length === 0 ? (
-                                        <div className="text-sm text-gray-600">No files.</div>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          {weekMaterials.map((m) => (
-                                            <div key={m.id} className="flex items-center justify-between gap-3 bg-white border rounded-md p-3">
-                                              <button
-                                                type="button"
-                                                className="min-w-0 text-left group"
-                                                onClick={() => openMaterial(m)}
-                                                aria-label={`Open ${m.title || m.originalName}`}
-                                              >
-                                                <div className="font-medium truncate group-hover:underline">{m.title}</div>
-                                                <div className="text-sm text-gray-600 truncate group-hover:underline">{m.originalName}</div>
-                                              </button>
-                                              <div className="flex items-center gap-2">
-                                                <Button variant="outline" size="sm" onClick={() => openMaterial(m)}>
-                                                  Open
-                                                </Button>
-                                                <Button variant="outline" size="sm" onClick={() => downloadMaterial(m)}>
-                                                  <Download className="w-4 h-4 mr-2" />
-                                                  Download
-                                                </Button>
-                                                {isTeacher && (
-                                                  <Button variant="outline" size="sm" onClick={() => handleDeleteMaterial(m.id)} disabled={saving}>
-                                                    Delete
-                                                  </Button>
-                                                )}
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                                  ))
+                                )}
+                              </div>
                             </div>
                           ) : null}
                         </CardContent>
@@ -953,6 +1250,37 @@ export default function CourseDetails() {
                 {isTeacher && (
                   <Card className="bg-gray-50">
                     <CardContent className="p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">Status</div>
+                          <Select value={newAssignment.status} onValueChange={(v) => setNewAssignment((s) => ({ ...s, status: v }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="published">Published</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">Submission type</div>
+                          <Select value={newAssignment.submissionType} onValueChange={(v) => setNewAssignment((s) => ({ ...s, submissionType: v }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select submission type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="online_text">Text</SelectItem>
+                              <SelectItem value="file_upload">File</SelectItem>
+                              <SelectItem value="text_and_file">Text + File</SelectItem>
+                              <SelectItem value="quiz">Auto-Grading Quiz</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <div className="text-sm font-medium">Period</div>
@@ -1006,15 +1334,87 @@ export default function CourseDetails() {
                           <Input value={newAssignment.description} onChange={(e) => setNewAssignment((s) => ({ ...s, description: e.target.value }))} />
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
 
-                {activeAssignments.length === 0 ? (
-                  <div className="text-sm text-gray-600">No assessments.</div>
-                ) : (
-                  activeAssignments.map((assignment) => (
-                    <Card key={assignment.id} className="bg-gray-50">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-medium">Rubric categories (optional)</div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setNewAssignment((s) => ({
+                                ...s,
+                                rubric: [...s.rubric, { name: '', weight: 0 }],
+                              }))
+                            }
+                            disabled={saving}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add category
+                          </Button>
+                        </div>
+
+                        {newAssignment.rubric.length === 0 ? (
+                          <div className="text-xs text-gray-600">No rubric categories added.</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {newAssignment.rubric.map((row, idx) => (
+                              <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2 items-center">
+                                <Input
+                                  placeholder="Category name"
+                                  value={row.name}
+                                  onChange={(e) =>
+                                    setNewAssignment((s) => ({
+                                      ...s,
+                                      rubric: s.rubric.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
+                                    }))
+                                  }
+                                />
+                                <Input
+                                  type="number"
+                                  placeholder="Weight"
+                                  value={String(row.weight)}
+                                  onChange={(e) =>
+                                    setNewAssignment((s) => ({
+                                      ...s,
+                                      rubric: s.rubric.map((r, i) => (i === idx ? { ...r, weight: Number(e.target.value) } : r)),
+                                    }))
+                                  }
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setNewAssignment((s) => ({
+                                      ...s,
+                                      rubric: s.rubric.filter((_, i) => i !== idx),
+                                    }))
+                                  }
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                        {newAssignment.submissionType === 'quiz' && (
+                          <QuizBuilder
+                            quizData={newAssignment.quizData}
+                            onChange={(data) => setNewAssignment(s => ({ ...s, quizData: data }))}
+                            disabled={saving}
+                          />
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {activeAssignments.length === 0 ? (
+                    <div className="text-sm text-gray-600">No assessments.</div>
+                  ) : (
+                    activeAssignments.map((assignment) => (
+                      <Card key={assignment.id} className="bg-gray-50">
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
@@ -1023,8 +1423,15 @@ export default function CourseDetails() {
                               <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
                             ) : null}
                             <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
+                              <div>
+                                {normalizePeriod(assignment.period)} • Week {normalizeWeek(assignment.weekInPeriod)}
+                              </div>
                               <div>Due: {assignment.dueDate ? format(new Date(assignment.dueDate), 'MMM d, h:mm a') : '—'}</div>
                               <div>{assignment.points} points</div>
+                              <div>Status: {assignment.status}</div>
+                              {assignment.submissionType ? (
+                                <div>Type: {assignment.submissionType}</div>
+                              ) : null}
                               {typeof assignment.submitted === 'number' && typeof assignment.total === 'number' ? (
                                 <div>
                                   {assignment.submitted}/{assignment.total} submitted
@@ -1036,6 +1443,16 @@ export default function CourseDetails() {
                           <div className="flex items-center gap-2">
                             {isTeacher ? (
                               <>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    initAssignmentDraft(assignment);
+                                    setEditingAssignmentId((prev) => (prev === assignment.id ? null : assignment.id));
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  {editingAssignmentId === assignment.id ? 'Close' : 'Edit'}
+                                </Button>
                                 <Button variant="outline" onClick={() => toggleSubmissions(assignment.id)}>
                                   {openSubmissionsFor === assignment.id ? 'Hide' : 'Submissions'}
                                 </Button>
@@ -1051,16 +1468,350 @@ export default function CourseDetails() {
                           </div>
                         </div>
 
+                        {isTeacher && editingAssignmentId === assignment.id ? (
+                          <div className="pt-3 border-t space-y-3">
+                            {(() => {
+                              const draft = assignmentDrafts[assignment.id];
+                              if (!draft) return null;
+                              return (
+                                <>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Status</div>
+                                      <Select
+                                        value={draft.status}
+                                        onValueChange={(v) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, status: v },
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="draft">Draft</SelectItem>
+                                          <SelectItem value="published">Published</SelectItem>
+                                          <SelectItem value="closed">Closed</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Submission type</div>
+                                      <Select
+                                        value={draft.submissionType}
+                                        onValueChange={(v) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, submissionType: v },
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select submission type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="online_text">Text</SelectItem>
+                                          <SelectItem value="file_upload">File</SelectItem>
+                                          <SelectItem value="text_and_file">Text + File</SelectItem>
+                                          <SelectItem value="quiz">Auto-Grading Quiz</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Period</div>
+                                      <Select
+                                        value={draft.period}
+                                        onValueChange={(v) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, period: v },
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select period" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {periods.map((p) => (
+                                            <SelectItem key={p.key} value={p.key}>
+                                              {p.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Week</div>
+                                      <Select
+                                        value={String(draft.weekInPeriod)}
+                                        onValueChange={(v) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, weekInPeriod: Number(v) },
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select week" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {[1, 2, 3, 4].map((w) => (
+                                            <SelectItem key={w} value={String(w)}>
+                                              Week {w}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Title</div>
+                                      <Input
+                                        value={draft.title}
+                                        onChange={(e) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, title: e.target.value },
+                                          }))
+                                        }
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Points</div>
+                                      <Input
+                                        type="number"
+                                        value={String(draft.points)}
+                                        onChange={(e) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, points: Number(e.target.value) },
+                                          }))
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Due at (optional)</div>
+                                      <Input
+                                        type="datetime-local"
+                                        value={draft.dueAt}
+                                        onChange={(e) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, dueAt: e.target.value },
+                                          }))
+                                        }
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">Description (optional)</div>
+                                      <Input
+                                        value={draft.description}
+                                        onChange={(e) =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: { ...draft, description: e.target.value },
+                                          }))
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="text-sm font-medium">Rubric categories (optional)</div>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          setAssignmentDrafts((prev) => ({
+                                            ...prev,
+                                            [assignment.id]: {
+                                              ...draft,
+                                              rubric: [...(draft.rubric || []), { name: '', weight: 0 }],
+                                            },
+                                          }))
+                                        }
+                                        disabled={saving}
+                                      >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Add category
+                                      </Button>
+                                    </div>
+
+                                    {(draft.rubric || []).length === 0 ? (
+                                      <div className="text-xs text-gray-600">No rubric categories added.</div>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {(draft.rubric || []).map((row, idx) => (
+                                          <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2 items-center">
+                                            <Input
+                                              placeholder="Category name"
+                                              value={row.name}
+                                              onChange={(e) =>
+                                                setAssignmentDrafts((prev) => ({
+                                                  ...prev,
+                                                  [assignment.id]: {
+                                                    ...draft,
+                                                    rubric: (draft.rubric || []).map((r, i) =>
+                                                      i === idx ? { ...r, name: e.target.value } : r
+                                                    ),
+                                                  },
+                                                }))
+                                              }
+                                            />
+                                            <Input
+                                              type="number"
+                                              placeholder="Weight"
+                                              value={String(row.weight)}
+                                              onChange={(e) =>
+                                                setAssignmentDrafts((prev) => ({
+                                                  ...prev,
+                                                  [assignment.id]: {
+                                                    ...draft,
+                                                    rubric: (draft.rubric || []).map((r, i) =>
+                                                      i === idx ? { ...r, weight: Number(e.target.value) } : r
+                                                    ),
+                                                  },
+                                                }))
+                                              }
+                                            />
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() =>
+                                                setAssignmentDrafts((prev) => ({
+                                                  ...prev,
+                                                  [assignment.id]: {
+                                                    ...draft,
+                                                    rubric: (draft.rubric || []).filter((_, i) => i !== idx),
+                                                  },
+                                                }))
+                                              }
+                                            >
+                                              Remove
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {draft.submissionType === 'quiz' && (
+                                    <QuizBuilder
+                                      quizData={draft.quizData}
+                                      onChange={(data) =>
+                                        setAssignmentDrafts((prev) => ({
+                                          ...prev,
+                                          [assignment.id]: {
+                                            ...draft,
+                                            quizData: data,
+                                          },
+                                        }))
+                                      }
+                                      disabled={saving}
+                                    />
+                                  )}
+
+                                  <div className="flex justify-end gap-2 pt-2">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setEditingAssignmentId(null)}
+                                      disabled={saving}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      className="bg-blue-600 hover:bg-blue-700"
+                                      onClick={() => handleSaveAssignment(assignment)}
+                                      disabled={saving || !draft.title.trim()}
+                                    >
+                                      Save Changes
+                                    </Button>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ) : null}
+
                         {isStudent && (
                           <div className="space-y-2 pt-3 border-t">
-                            <div className="text-sm font-medium">Submit answer (text)</div>
-                            <Textarea
-                              value={studentSubmissionDrafts[assignment.id] || ''}
-                              onChange={(e) => setStudentSubmissionDrafts((s) => ({ ...s, [assignment.id]: e.target.value }))}
-                              rows={3}
-                            />
-                            <div className="flex justify-end">
-                              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => handleStudentSubmit(assignment.id)} disabled={saving}>
+                            {(assignment.submissionType === 'online_text' || assignment.submissionType === 'text_and_file' || !assignment.submissionType) && (
+                              <>
+                                <div className="text-sm font-medium">Submit answer (text)</div>
+                                <Textarea
+                                  value={studentSubmissionDrafts[assignment.id] || ''}
+                                  onChange={(e) => setStudentSubmissionDrafts((s) => ({ ...s, [assignment.id]: e.target.value }))}
+                                  rows={3}
+                                />
+                              </>
+                            )}
+                            {(assignment.submissionType === 'file_upload' || assignment.submissionType === 'text_and_file') && (
+                              <>
+                                <div className="text-sm font-medium">Upload file (doc, PDF, etc.)</div>
+                                <Input
+                                  type="file"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] || null;
+                                    setStudentSubmissionFiles((prev) => ({ ...prev, [assignment.id]: file }));
+                                  }}
+                                />
+                              </>
+                            )}
+
+                            {assignment.submissionType === 'quiz' && assignment.quizData?.questions && (
+                              <div className="space-y-4">
+                                <div className="text-sm font-medium">Take Quiz</div>
+                                {assignment.quizData.questions.map((q, qIdx) => (
+                                  <div key={qIdx} className="space-y-2 p-3 bg-gray-50 border rounded-md">
+                                    <div className="text-sm font-medium">{qIdx + 1}. {q.question} <span className="text-gray-500 font-normal">({q.points} pts)</span></div>
+                                    <div className="space-y-1 pl-4">
+                                      {q.options.map((opt, oIdx) => {
+                                        if (!opt.trim()) return null;
+                                        return (
+                                          <label key={oIdx} className="flex items-center gap-2 text-sm cursor-pointer">
+                                            <input
+                                              type="radio"
+                                              name={`quiz-${assignment.id}-q-${qIdx}`}
+                                              value={opt}
+                                              checked={studentQuizDrafts[assignment.id]?.[qIdx] === opt}
+                                              onChange={() => {
+                                                setStudentQuizDrafts(prev => ({
+                                                  ...prev,
+                                                  [assignment.id]: {
+                                                    ...(prev[assignment.id] || {}),
+                                                    [qIdx]: opt
+                                                  }
+                                                }));
+                                              }}
+                                              className="mt-0.5"
+                                            />
+                                            <span>{opt}</span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="flex justify-end pt-2">
+                              <Button
+                                className="bg-blue-600 hover:bg-blue-700"
+                                onClick={() => handleStudentSubmit(assignment.id, assignment.submissionType)}
+                                disabled={saving}
+                              >
                                 <Upload className="w-4 h-4 mr-2" />
                                 Submit
                               </Button>
@@ -1089,6 +1840,44 @@ export default function CourseDetails() {
                                         {s.content ? (
                                           <div className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{s.content}</div>
                                         ) : null}
+                                        {s.fileUrl ? (
+                                          <div className="text-sm text-blue-700 mt-2">
+                                            <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                                              {s.originalFileName || 'Download file'}
+                                            </a>
+                                            {s.fileMimeType ? (
+                                              <span className="ml-2 text-xs text-gray-500">({s.fileMimeType})</span>
+                                            ) : null}
+                                            {typeof s.fileSizeBytes === 'number' ? (
+                                              <span className="ml-2 text-xs text-gray-500">{(s.fileSizeBytes / 1024).toFixed(1)} KB</span>
+                                            ) : null}
+                                          </div>
+                                        ) : null}
+                                        
+                                        {Array.isArray(s.quizAnswers) && assignment.quizData?.questions && (
+                                          <div className="mt-3 space-y-2">
+                                            <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">Quiz Responses:</div>
+                                            <div className="grid grid-cols-1 gap-2">
+                                              {assignment.quizData.questions.map((q, idx) => {
+                                                const stuAnsObj = s.quizAnswers?.find((a: any) => a.questionIndex === idx);
+                                                const stuAns = stuAnsObj ? stuAnsObj.answer : null;
+                                                const isCorrect = stuAns === q.correctAnswer;
+                                                return (
+                                                  <div key={idx} className={`p-2 border-l-4 rounded bg-gray-50 flex flex-col gap-1 text-sm ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
+                                                    <div className="font-medium">{idx + 1}. {q.question}</div>
+                                                    <div className="flex items-center flex-wrap gap-2">
+                                                      <span className="text-gray-600 font-semibold">Answer:</span>
+                                                      <span className={isCorrect ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>{stuAns || '(Skipped)'}</span>
+                                                      {!isCorrect && (
+                                                        <span className="text-gray-500 text-xs ml-1">(Correct: {q.correctAnswer})</span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
 
                                       {canGrade && (
@@ -1232,56 +2021,150 @@ export default function CourseDetails() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {courseSessions.map((session) => (
-                  <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-blue-600 rounded-lg flex flex-col items-center justify-center text-white">
-                        {(() => {
-                          const dateString = session.startsAt || session.date;
-                          if (!dateString) {
-                            return (
-                              <>
-                                <div className="text-xs">—</div>
-                                <div className="text-2xl font-bold">—</div>
-                              </>
-                            );
-                          }
-                          const d = new Date(dateString);
-                          return (
-                            <>
-                              <div className="text-xs">{format(d, 'MMM')}</div>
-                              <div className="text-2xl font-bold">{format(d, 'd')}</div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <div>
-                        <div className="font-semibold">{session.title}</div>
-                        <div className="text-sm text-gray-600">
-                          {session.time} • {session.duration}
-                        </div>
-                        {session.status === 'completed' && (
-                          <div className="text-sm text-green-600 mt-1">
-                            Recording available • {session.attendees} attended
+                {courseSessions.map((session) => {
+                  // Student attendance status for this session
+                  let myStatus: string | null = null;
+                  if (isStudent && myAttendance.length > 0) {
+                    const rec = myAttendance.find((a) => a.session_id === session.id);
+                    myStatus = rec ? rec.status : null;
+                  }
+                  return (
+                    <div key={session.id} className="flex flex-col gap-2 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 bg-blue-600 rounded-lg flex flex-col items-center justify-center text-white">
+                            {(() => {
+                              const dateString = session.startsAt || session.date;
+                              if (!dateString) {
+                                return (
+                                  <>
+                                    <div className="text-xs">—</div>
+                                    <div className="text-2xl font-bold">—</div>
+                                  </>
+                                );
+                              }
+                              const d = new Date(dateString);
+                              return (
+                                <>
+                                  <div className="text-xs">{format(d, 'MMM')}</div>
+                                  <div className="text-2xl font-bold">{format(d, 'd')}</div>
+                                </>
+                              );
+                            })()}
                           </div>
+                          <div>
+                            <div className="font-semibold">{session.title}</div>
+                            <div className="text-sm text-gray-600">
+                              {session.time} • {session.duration}
+                            </div>
+                            {session.status === 'completed' && (
+                              <div className="text-sm text-green-600 mt-1">
+                                Recording available • {session.attendees} attended
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {isTeacher && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setAttendanceSessionId(session.id);
+                              loadAttendance(session.id);
+                            }}
+                            disabled={attendanceLoading && attendanceSessionId === session.id}
+                          >
+                            Mark Attendance
+                          </Button>
+                        )}
+                        {isStudent && myStatus && (
+                          <span
+                            className={
+                              'px-3 py-1 rounded-full text-xs font-semibold ' +
+                              (myStatus === 'present'
+                                ? 'bg-green-100 text-green-700'
+                                : myStatus === 'late'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-red-100 text-red-700')
+                            }
+                          >
+                            {myStatus.charAt(0).toUpperCase() + myStatus.slice(1)}
+                          </span>
+                        )}
+                        {session.status === 'scheduled' ? (
+                          <Link to={`/classroom/${courseId}`}>
+                            <Button className="bg-blue-600 hover:bg-blue-700">
+                              <Video className="w-4 h-4 mr-2" />
+                              Join Class
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button variant="outline">
+                            <Play className="w-4 h-4 mr-2" />
+                            Watch Recording
+                          </Button>
                         )}
                       </div>
+                      {/* Teacher attendance panel */}
+                      {isTeacher && attendanceSessionId === session.id && (
+                        <div className="mt-4 p-4 bg-white border rounded-lg">
+                          <div className="font-semibold mb-2">Mark Attendance</div>
+                          {attendanceLoading ? (
+                            <div className="text-gray-600">Loading...</div>
+                          ) : attendanceRecords[session.id] && attendanceRecords[session.id].length > 0 ? (
+                            <div className="space-y-2">
+                              {attendanceRecords[session.id].map((rec) => (
+                                <div key={rec.student_id} className="flex items-center gap-3">
+                                  <span className="w-40 truncate">{rec.student?.name || rec.student_id}</span>
+                                  <select
+                                    className="border rounded px-2 py-1"
+                                    value={attendanceDraft[rec.student_id]?.status || 'absent'}
+                                    onChange={(e) =>
+                                      setAttendanceDraft((prev) => ({
+                                        ...prev,
+                                        [rec.student_id]: {
+                                          ...prev[rec.student_id],
+                                          status: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                  >
+                                    <option value="present">Present</option>
+                                    <option value="late">Late</option>
+                                    <option value="absent">Absent</option>
+                                  </select>
+                                  <input
+                                    className="border rounded px-2 py-1 flex-1"
+                                    placeholder="Remarks (optional)"
+                                    value={attendanceDraft[rec.student_id]?.remarks || ''}
+                                    onChange={(e) =>
+                                      setAttendanceDraft((prev) => ({
+                                        ...prev,
+                                        [rec.student_id]: {
+                                          ...prev[rec.student_id],
+                                          remarks: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                  />
+                                  <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                    onClick={() => saveAttendance(session.id, rec.student_id)}
+                                    disabled={attendanceLoading}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-gray-600">No students found for this session.</div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {session.status === 'scheduled' ? (
-                      <Link to={`/classroom/${courseId}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
-                          <Video className="w-4 h-4 mr-2" />
-                          Join Class
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline">
-                        <Play className="w-4 h-4 mr-2" />
-                        Watch Recording
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -1402,12 +2285,40 @@ export default function CourseDetails() {
                     <CardTitle>Students</CardTitle>
                     <CardDescription>Students enrolled under this subject</CardDescription>
                   </div>
-                  <Button variant="outline" onClick={loadEnrollments} disabled={loadingEnrollments}>
-                    Refresh
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={loadEnrollments} disabled={loadingEnrollments}>
+                      Refresh
+                    </Button>
+                    <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setShowAddStudent(!showAddStudent); loadAvailableStudents(); }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      {showAddStudent ? 'Cancel' : 'Add Student'}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
+                {showAddStudent && (
+                  <div className="mb-6 p-4 border rounded-lg bg-gray-50 flex flex-col md:flex-row items-end gap-4">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-1 block">Select Student</label>
+                      <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={loadingStudents}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingStudents ? "Loading..." : "Choose a student"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableStudents.map(u => (
+                            <SelectItem key={String(u.id)} value={String(u.id)}>
+                              {u.name} ({u.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleEnrollStudent} disabled={!selectedStudentId || isEnrolling} className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">
+                      {isEnrolling ? 'Enrolling...' : 'Confirm Enrollment'}
+                    </Button>
+                  </div>
+                )}
                 {loadingEnrollments ? (
                   <div className="text-sm text-gray-600">Loading students...</div>
                 ) : courseEnrollments.length === 0 ? (
@@ -1435,6 +2346,8 @@ export default function CourseDetails() {
             </Card>
           </TabsContent>
         )}
+          </div>
+        </div>
       </Tabs>
     </DashboardLayout>
   );

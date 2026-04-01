@@ -95,7 +95,7 @@ class UserController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
-            'archivedAt' => $user->archived_at ? $user->archived_at->toIso8601String() : null,
+            'archivedAt' => $user->archived_at?->toIso8601String(),
         ], 201);
     }
 
@@ -107,7 +107,7 @@ class UserController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if ($user->role !== User::ROLE_ADMIN) {
+        if ($user->role !== User::ROLE_ADMIN && $user->role !== User::ROLE_TEACHER) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -150,7 +150,7 @@ class UserController extends Controller
             'name' => $u->name,
             'email' => $u->email,
             'role' => $u->role,
-            'archivedAt' => $u->archived_at ? $u->archived_at->toIso8601String() : null,
+            'archivedAt' => $u->archived_at?->toIso8601String(),
             'attendance' => $u->role === User::ROLE_STUDENT ? $this->demoAttendance($u) : null,
             'gpa' => $u->role === User::ROLE_STUDENT ? $this->demoGpa($u) : null,
         ];
@@ -189,7 +189,7 @@ class UserController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if ($actor->role !== User::ROLE_ADMIN) {
+        if ($actor->role !== User::ROLE_ADMIN && $actor->role !== User::ROLE_TEACHER) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

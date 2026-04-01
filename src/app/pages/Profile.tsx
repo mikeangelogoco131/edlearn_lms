@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useAuth } from '../contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 function roleDomain(role: string) {
 	switch (role) {
@@ -23,7 +24,7 @@ function roleDomain(role: string) {
 }
 
 export default function Profile() {
-	const { user, updateMe, isHydrating } = useAuth();
+	const { user, updateMe, uploadMyAvatar, deleteMyAvatar, isHydrating } = useAuth();
 	const navigate = useNavigate();
 
 	const [name, setName] = useState('');
@@ -33,6 +34,7 @@ export default function Profile() {
 	const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
 
 	const [loading, setLoading] = useState(false);
+	const [avatarLoading, setAvatarLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
 
@@ -94,6 +96,40 @@ export default function Profile() {
 		}
 	};
 
+	const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		setError('');
+		setSuccess('');
+		setAvatarLoading(true);
+		try {
+			await uploadMyAvatar(file);
+			setSuccess('Profile photo updated.');
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Upload failed.';
+			setError(message || 'Upload failed.');
+		} finally {
+			setAvatarLoading(false);
+			// allow re-uploading the same file
+			e.target.value = '';
+		}
+	};
+
+	const handleRemoveAvatar = async () => {
+		setError('');
+		setSuccess('');
+		setAvatarLoading(true);
+		try {
+			await deleteMyAvatar();
+			setSuccess('Profile photo removed.');
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Remove failed.';
+			setError(message || 'Remove failed.');
+		} finally {
+			setAvatarLoading(false);
+		}
+	};
+
 	const title = user?.role === 'teacher' ? 'Teacher Profile' : 'Student Profile';
 	const backTo = user?.role === 'teacher' ? '/teacher' : '/student';
 	const domain = roleDomain(user?.role || 'student');
@@ -124,6 +160,38 @@ export default function Profile() {
 						) : null}
 
 						<form onSubmit={handleSave} className="space-y-6">
+							<div className="space-y-3">
+								<Label>Profile Photo</Label>
+								<div className="flex items-center gap-4">
+									<Avatar className="w-16 h-16">
+										{user?.avatarUrl ? (
+											<AvatarImage src={user.avatarUrl} alt={user.name || 'Profile photo'} />
+										) : null}
+										<AvatarFallback>{user?.name ? user.name.trim().slice(0, 1).toUpperCase() : 'U'}</AvatarFallback>
+									</Avatar>
+
+									<div className="flex-1 space-y-2">
+										<Input
+											type="file"
+											accept="image/*"
+											onChange={handleAvatarChange}
+											disabled={isHydrating || avatarLoading}
+										/>
+										<div className="flex items-center gap-2">
+											<Button
+												type="button"
+												variant="outline"
+												onClick={handleRemoveAvatar}
+												disabled={isHydrating || avatarLoading || !user?.avatarUrl}
+											>
+												{avatarLoading ? 'Working…' : 'Remove Photo'}
+											</Button>
+											<p className="text-xs text-muted-foreground">PNG/JPG up to 2MB.</p>
+										</div>
+									</div>
+								</div>
+							</div>
+
 							<div className="space-y-4">
 								<div className="space-y-2">
 									<Label htmlFor="name">Full Name</Label>
