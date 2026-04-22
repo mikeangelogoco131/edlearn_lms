@@ -106,7 +106,7 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
     let cancelled = false;
 
     async function loadNotifications() {
-      if (!user || user.role !== 'admin') return;
+      if (!user) return;
       setNotificationsLoading(true);
       try {
         const res = await api.notifications();
@@ -119,12 +119,18 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
       }
     }
 
-    if (notificationsOpen) loadNotifications();
+    loadNotifications();
+
+    const onFocus = () => loadNotifications();
+    window.addEventListener('focus', onFocus);
+    const interval = window.setInterval(loadNotifications, 30000);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      window.clearInterval(interval);
     };
-  }, [notificationsOpen, user]);
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,13 +241,26 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300';
       case 'teacher':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300';
       case 'student':
-        return 'bg-green-100 text-green-700';
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+    }
+  };
+
+  const getRoleAvatarGradient = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)';
+      case 'teacher':
+        return 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
+      case 'student':
+        return 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+      default:
+        return 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
     }
   };
 
@@ -261,6 +280,10 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
       case 'event_added':
       case 'event_ending':
         return 'calendar';
+      case 'course_assigned':
+      case 'course_enrolled':
+      case 'course_dropped':
+        return 'courses';
       default:
         return null;
     }
@@ -284,23 +307,32 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
         return 'Calendar event added';
       case 'event_ending':
         return 'Calendar event ending soon';
+      case 'course_assigned':
+        return n.course ? `Assigned to ${n.course.code}${n.author ? ` • By ${n.author.name}` : ''}` : 'Assigned to course';
+      case 'course_enrolled':
+        return n.course ? `Enrolled in ${n.course.code}${n.author ? ` • By ${n.author.name}` : ''}` : 'Enrolled in course';
+      case 'course_dropped':
+        return n.course ? `Removed from ${n.course.code}${n.author ? ` • By ${n.author.name}` : ''}` : 'Removed from course';
       default:
         return 'Notification';
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" style={{ backgroundImage: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.07) 0%, transparent 60%)' }}>
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 border-b backdrop-blur-xl" style={{ background: 'rgba(var(--background), 0.85)', borderColor: 'var(--border)' }}>
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="flex items-center gap-5">
+              <Link to="/" className="flex items-center gap-2.5">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }}
+                >
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-semibold">EdLearn</span>
+                <span className="text-xl font-bold tracking-tight">EdLearn</span>
               </Link>
 
               <div className="hidden md:block relative">
@@ -308,7 +340,7 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
                 <Input
                   type="search"
                   placeholder="Search courses, students..."
-                  className="w-96 pl-10"
+                  className="w-80 pl-10 h-9 rounded-xl bg-muted/50 border-border/50 focus:bg-background text-sm"
                 />
               </div>
             </div>
@@ -484,9 +516,7 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
                   <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                   <DropdownMenuSeparator />
 
-                  {user?.role !== 'admin' ? (
-                    <DropdownMenuItem disabled>No notifications available.</DropdownMenuItem>
-                  ) : notificationsLoading ? (
+                  {notificationsLoading ? (
                     <DropdownMenuItem disabled>Loading…</DropdownMenuItem>
                   ) : notifications.length === 0 ? (
                     <DropdownMenuItem disabled>No notifications.</DropdownMenuItem>
@@ -498,12 +528,24 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
                         onSelect={(e) => {
                           e.preventDefault();
                           const tab = getNotificationTargetTab(n.type);
-                          if (tab === 'messages') navigate('/admin?tab=messages&folder=inbox');
-                          else if (tab) navigate(`/admin?tab=${tab}`);
+                          if (user?.role === 'admin') {
+                            if (tab === 'messages') navigate('/admin?tab=messages&folder=inbox');
+                            else if (tab) navigate(`/admin?tab=${tab}`);
+                          } else {
+                            if (n.course?.id) navigate(`/course/${n.course.id}`);
+                          }
                         }}
                       >
                         <div className="text-sm font-medium line-clamp-1">{n.title}</div>
                         <div className="text-xs text-muted-foreground line-clamp-1">{getNotificationSubtitle(n)}</div>
+                        {n.publishedAt && (
+                          <div className="text-[10px] text-muted-foreground/70 mt-1">
+                            {new Date(n.publishedAt).toLocaleString(undefined, { 
+                              month: 'short', day: 'numeric', year: 'numeric', 
+                              hour: 'numeric', minute: '2-digit' 
+                            })}
+                          </div>
+                        )}
                       </DropdownMenuItem>
                     ))
                   )}
@@ -512,17 +554,20 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2">
-                    <Avatar className="w-8 h-8">
+                  <Button variant="ghost" className="gap-2 rounded-xl px-2 hover:bg-accent">
+                    <Avatar className="w-9 h-9 ring-2 ring-border">
                       {user?.avatarUrl ? (
                         <AvatarImage src={user.avatarUrl} alt={user.name || 'Profile photo'} />
                       ) : null}
-                      <AvatarFallback className="bg-blue-600 text-white text-sm">
+                      <AvatarFallback
+                        className="text-white text-sm font-semibold"
+                        style={{ background: getRoleAvatarGradient(user?.role || '') }}
+                      >
                         {user ? getInitials(user.name) : 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="hidden md:block text-left">
-                      <div className="text-sm font-medium">{user?.name}</div>
+                      <div className="text-sm font-semibold leading-tight">{user?.name}</div>
                       <div className="text-xs text-muted-foreground capitalize">{user?.role}</div>
                     </div>
                   </Button>
@@ -567,7 +612,7 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
       <main className={layout === 'full' ? 'w-full' : 'container mx-auto px-4 py-8'}>
         {showTitle ? (
           <div className={layout === 'full' ? 'px-6 py-6' : 'mb-6'}>
-            <h1 className="text-3xl font-bold">{title}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
           </div>
         ) : null}
 

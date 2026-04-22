@@ -298,7 +298,10 @@ export type ApiNotificationType =
   | 'course_added'
   | 'class_session_added'
   | 'event_added'
-  | 'event_ending';
+  | 'event_ending'
+  | 'course_assigned'
+  | 'course_enrolled'
+  | 'course_dropped';
 
 export interface ApiNotification {
   id: string;
@@ -460,6 +463,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (baseUrl === '' && res.status >= 500 && !isJson && typeof payload === 'string') {
       const text = payload.toLowerCase();
       const looksLikeProxyFailure =
+        text === '' ||
         text.includes('econnrefused') ||
         text.includes('socket hang up') ||
         (text.includes('proxy') && text.includes('error'));

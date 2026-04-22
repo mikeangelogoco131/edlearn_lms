@@ -166,39 +166,56 @@ export default function StudentDashboard() {
         <div className="flex flex-col w-full min-h-screen">
           
           {/* Top Hero & Nav Area */}
-          <div className="bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-700 text-white pb-6 pt-12 px-6 shadow-md relative border-b border-white/10">
-            <div className="max-w-7xl mx-auto flex flex-col gap-8">
+          <div
+            className="text-white pb-6 pt-12 px-6 shadow-lg relative border-b border-white/10 overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #059669 0%, #0d9488 40%, #047857 100%)' }}
+          >
+            {/* Decorative orb */}
+            <div
+              className="pointer-events-none absolute -top-20 right-0 w-[400px] h-[400px] rounded-full opacity-20"
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%)' }}
+            />
+            <div
+              className="pointer-events-none absolute bottom-0 left-1/3 w-64 h-64 rounded-full opacity-10"
+              style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.8) 0%, transparent 70%)' }}
+            />
+
+            <div className="max-w-7xl mx-auto flex flex-col gap-8 relative z-10">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back, {user?.name || 'Student'}!</h1>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold mb-3">
+                    <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                    Student Portal
+                  </div>
+                  <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back, {user?.name?.split(' ')[0] || 'Student'}! 👋</h1>
                   <p className="text-emerald-100 max-w-xl text-sm leading-relaxed">
-                    You have {upcomingClasses.length} classes scheduled today. Let's make it a great day of learning!
+                    You have <span className="font-semibold text-white">{upcomingClasses.length}</span> classes scheduled. Let's make it a great day of learning!
                   </p>
                 </div>
-                <div className="hidden md:block bg-white/10 backdrop-blur border border-white/20 p-4 rounded-2xl text-right">
+                <div className="hidden md:block bg-white/15 backdrop-blur border border-white/25 p-4 rounded-2xl text-right">
                   <div className="text-2xl font-bold tracking-tight">{format(new Date(), 'EEEE')}</div>
                   <div className="text-emerald-100 text-sm">{format(new Date(), 'MMMM d, yyyy')}</div>
                 </div>
               </div>
 
               {/* Top Navigation replacing Sidebar */}
-              <TabsList className="bg-white/10 border border-white/20 p-1.5 inline-flex w-full md:w-fit backdrop-blur-md rounded-xl text-white shadow-sm overflow-x-auto justify-start hide-scrollbar">
-                <TabsTrigger value="courses" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+              <TabsList className="bg-white/15 border border-white/25 p-1.5 inline-flex w-full md:w-fit backdrop-blur-md rounded-xl text-white shadow-sm overflow-x-auto justify-start hide-scrollbar">
+                <TabsTrigger value="courses" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <BookOpen className="w-4 h-4 mr-2" /> My Courses
                 </TabsTrigger>
-                <TabsTrigger value="assignments" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                <TabsTrigger value="assignments" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <FileText className="w-4 h-4 mr-2" /> Assignments
                 </TabsTrigger>
-                <TabsTrigger value="grades" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                <TabsTrigger value="grades" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <Award className="w-4 h-4 mr-2" /> Grades
                 </TabsTrigger>
-                <TabsTrigger value="materials" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                <TabsTrigger value="materials" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <FileText className="w-4 h-4 mr-2" /> Materials
                 </TabsTrigger>
-                <TabsTrigger value="announcements" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                <TabsTrigger value="announcements" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <AlertCircle className="w-4 h-4 mr-2" /> Announcements
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 rounded-lg px-4 py-2 whitespace-nowrap transition-all">
+                <TabsTrigger value="calendar" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <Clock className="w-4 h-4 mr-2" /> Calendar
                 </TabsTrigger>
               </TabsList>
@@ -210,61 +227,26 @@ export default function StudentDashboard() {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Enrolled Courses</p>
-                      <p className="text-3xl font-bold">{studentCourses.length}</p>
+              {[
+                { label: 'Enrolled Courses', value: studentCourses.length, icon: <BookOpen className="w-6 h-6" />, iconClass: 'stat-icon-indigo' },
+                { label: 'Attendance Rate', value: '95%', icon: <CheckCircle className="w-6 h-6" />, iconClass: 'stat-icon-emerald' },
+                { label: 'Current GPA', value: '3.8', icon: <Award className="w-6 h-6" />, iconClass: 'stat-icon-violet' },
+                { label: 'Pending Tasks', value: assessmentsDueCount || 0, icon: <FileText className="w-6 h-6" />, iconClass: 'stat-icon-amber' },
+              ].map((stat) => (
+                <Card key={stat.label} className="glass-card">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">{stat.label}</p>
+                        <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
+                      </div>
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.iconClass}`}>
+                        {stat.icon}
+                      </div>
                     </div>
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <BookOpen className="w-6 h-6 text-blue-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Attendance Rate</p>
-                      <p className="text-3xl font-bold">95%</p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Current GPA</p>
-                      <p className="text-3xl font-bold">3.8</p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Award className="w-6 h-6 text-purple-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Pending Tasks</p>
-                      <p className="text-3xl font-bold">4</p>
-                    </div>
-                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-orange-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

@@ -24,23 +24,30 @@ class NotificationController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if ($user->role !== User::ROLE_ADMIN) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        $now = Carbon::now();
+        $items = collect();
+
+        if ($user->role === User::ROLE_ADMIN) {
+            $announcementsExpireSoonDays = 3;
+            $eventsEndingSoonDays = 3;
+
+            $items = $items
+                ->merge($this->teacherMessageNotifications($user))
+                ->merge($this->announcementNotifications())
+                ->merge($this->expiringAnnouncementNotifications($now, $announcementsExpireSoonDays))
+                ->merge($this->userAddedNotifications())
+                ->merge($this->courseAddedNotifications())
+                ->merge($this->classSessionAddedNotifications())
+                ->merge($this->eventAddedNotifications())
+                ->merge($this->eventEndingSoonNotifications($now, $eventsEndingSoonDays));
+        } elseif ($user->role === User::ROLE_TEACHER) {
+            $items = $items->merge($this->teacherCourseAssignedNotifications($user));
+        } elseif ($user->role === User::ROLE_STUDENT) {
+            $items = $items->merge($this->studentCourseEnrolledNotifications($user))
+                           ->merge($this->studentCourseDroppedNotifications($user));
         }
 
-        $now = Carbon::now();
-        $announcementsExpireSoonDays = 3;
-        $eventsEndingSoonDays = 3;
-
-        $items = collect()
-            ->merge($this->teacherMessageNotifications($user))
-            ->merge($this->announcementNotifications())
-            ->merge($this->expiringAnnouncementNotifications($now, $announcementsExpireSoonDays))
-            ->merge($this->userAddedNotifications())
-            ->merge($this->courseAddedNotifications())
-            ->merge($this->classSessionAddedNotifications())
-            ->merge($this->eventAddedNotifications())
-            ->merge($this->eventEndingSoonNotifications($now, $eventsEndingSoonDays))
+        $items = $items
             ->filter(fn ($n) => is_array($n) && ! empty($n['publishedAt']))
             ->sortByDesc('publishedAt')
             ->values()
@@ -351,6 +358,116 @@ class NotificationController extends Controller
                         'endsAt' => $e->ends_at ? $e->ends_at->toIso8601String() : null,
                     ],
                     'expiresAt' => $e->ends_at ? $e->ends_at->toIso8601String() : null,
+                ];
+            })
+            ->values();
+    }
+
+    private function teacherCourseAssignedNotifications(User $teacher): Collection
+    {
+        return Course::query()
+            ->where('teacher_id', $teacher->id)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get()
+            ->map(function (Course $c) {
+                return [
+                    'id' => 'course_assigned:'.(string) $c->id,
+                    'type' => 'course_assigned',
+                    'title' => 'You have been assigned as teacher for: '.$c->code.' — '.$c->title,
+                    'publishedAt' => $c->created_at->toIso8601String(),
+                    'isPinned' => false,
+                    'course' => [
+                        'id' => (string) $c->id,
+                        'code' => $c->code,
+                        'title' => $c->title,
+                    ],
+                    'author' => [
+                        'id' => 'admin',
+                        'name' => 'System Admin',
+                        'role' => 'admin',
+                    ],
+                    'user' => null,
+                    'event' => null,
+                    'expiresAt' => null,
+                ];
+            })
+            ->values();
+    }
+
+    private function studentCourseEnrolledNotifications(User $student): Collection
+    {
+        return \App\Models\Enrollment::query()
+            ->where('student_id', $student->id)
+            ->with(['course', 'course.teacher'])
+            ->orderByDesc('enrolled_at')
+            ->limit(10)
+            ->get()
+            ->map(function (\App\Models\Enrollment $e) {
+                $courseTitle = $e->course ? ($e->course->code.' — '.$e->course->title) : 'a course';
+                return [
+                    'id' => 'course_enrolled:'.(string) $e->id,
+                    'type' => 'course_enrolled',
+                    'title' => 'You have been enrolled in: '.$courseTitle,
+                    'publishedAt' => $e->enrolled_at ? $e->enrolled_at->toIso8601String() : $e->created_at->toIso8601String(),
+                    'isPinned' => false,
+                    'course' => $e->course ? [
+                        'id' => (string) $e->course->id,
+                        'code' => $e->course->code,
+                        'title' => $e->course->title,
+                    ] : null,
+                    'author' => ($e->course && $e->course->teacher) ? [
+                        'id' => (string) $e->course->teacher->id,
+                        'name' => $e->course->teacher->name,
+                        'role' => $e->course->teacher->role,
+                    ] : [
+                        'id' => 'admin',
+                        'name' => 'System Admin',
+                        'role' => 'admin',
+                    ],
+                    'user' => null,
+                    'event' => null,
+                    'expiresAt' => null,
+                ];
+            })
+            ->values();
+    }
+
+    private function studentCourseDroppedNotifications(User $student): Collection
+    {
+        return \App\Models\Enrollment::query()
+            ->where('student_id', $student->id)
+            ->where('status', 'dropped')
+            ->whereNotNull('dropped_at')
+            ->with(['course', 'course.teacher'])
+            ->orderByDesc('dropped_at')
+            ->limit(10)
+            ->get()
+            ->map(function (\App\Models\Enrollment $e) {
+                $courseTitle = $e->course ? ($e->course->code.' — '.$e->course->title) : 'a course';
+                return [
+                    'id' => 'course_dropped:'.(string) $e->id,
+                    'type' => 'course_dropped',
+                    'title' => 'You have been removed from: '.$courseTitle,
+                    'publishedAt' => $e->dropped_at->toIso8601String(),
+                    'isPinned' => false,
+                    'course' => $e->course ? [
+                        'id' => (string) $e->course->id,
+                        'code' => $e->course->code,
+                        'title' => $e->course->title,
+                    ] : null,
+                    'author' => ($e->course && $e->course->teacher) ? [
+                        'id' => (string) $e->course->teacher->id,
+                        'name' => $e->course->teacher->name,
+                        'role' => $e->course->teacher->role,
+                    ] : [
+                        'id' => 'admin',
+                        'name' => 'System Admin',
+                        'role' => 'admin',
+                    ],
+                    'user' => null,
+                    'event' => null,
+                    'expiresAt' => null,
                 ];
             })
             ->values();

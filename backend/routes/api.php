@@ -100,8 +100,8 @@ Route::middleware('jwt')->group(function () {
     Route::get('/analytics/teacher', [AnalyticsController::class, 'teacher'])->middleware('role:teacher');
     Route::get('/analytics/student', [AnalyticsController::class, 'student'])->middleware('role:student');
 
-    // Notifications (admin)
-    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('role:admin');
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
 
     // Messages (mailbox)
     Route::get('/messages', [MessageController::class, 'index']);

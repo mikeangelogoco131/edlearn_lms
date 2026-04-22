@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Progress } from '../components/ui/progress';
 import { Input } from '../components/ui/input';
@@ -80,11 +81,11 @@ function QuizBuilder({
       </div>
 
       {data.questions.length === 0 ? (
-        <div className="text-xs text-gray-500">No questions added yet. Click 'Add Question' to start building your quiz.</div>
+        <div className="text-xs text-muted-foreground/80">No questions added yet. Click 'Add Question' to start building your quiz.</div>
       ) : (
         <div className="space-y-6">
           {data.questions.map((q, qIdx) => (
-            <div key={qIdx} className="p-3 border rounded-md space-y-3 bg-gray-50 relative">
+            <div key={qIdx} className="p-3 border rounded-md space-y-3 bg-muted/40 relative">
               <div className="absolute top-3 right-3 text-red-500">
                 <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => removeQuestion(qIdx)} disabled={disabled}>
                   <Trash2 className="w-4 h-4" />
@@ -149,7 +150,7 @@ function QuizBuilder({
                       }}
                       disabled={disabled || q.options.length <= 2}
                     >
-                      <Trash2 className="w-3 h-3 text-gray-500 hover:text-red-500" />
+                      <Trash2 className="w-3 h-3 text-muted-foreground/80 hover:text-red-500" />
                     </Button>
                   </div>
                 ))}
@@ -307,6 +308,7 @@ export default function CourseDetails() {
   });
 
   const [showLessonComposer, setShowLessonComposer] = useState(false);
+  const [viewingLesson, setViewingLesson] = useState<ApiLesson | null>(null);
 
   const [activeTab, setActiveTab] = useState('lessons');
 
@@ -755,7 +757,7 @@ export default function CourseDetails() {
     return (
       <DashboardLayout title="Loading...">
         <div className="text-center py-12">
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </DashboardLayout>
     );
@@ -765,7 +767,7 @@ export default function CourseDetails() {
     return (
       <DashboardLayout title="Course Not Found">
         <div className="text-center py-12">
-          <p className="text-gray-600">Course not found</p>
+          <p className="text-muted-foreground">Course not found</p>
           <Button className="mt-4" onClick={handleBackToDashboard}>
             Back to Dashboard
           </Button>
@@ -835,22 +837,22 @@ export default function CourseDetails() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{course.title}</h2>
-                  <p className="text-gray-600">{course.code} • {course.section}</p>
+                  <p className="text-muted-foreground">{course.code} • {course.section}</p>
                 </div>
               </div>
-              <p className="text-gray-600 mb-4">{course.description}</p>
+              <p className="text-muted-foreground mb-4">{course.description}</p>
               <div className="flex flex-wrap gap-6 text-sm">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">{course.teacher}</span>
+                  <Users className="w-4 h-4 text-muted-foreground/80" />
+                  <span className="text-muted-foreground">{course.teacher}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">{course.schedule}</span>
+                  <Calendar className="w-4 h-4 text-muted-foreground/80" />
+                  <span className="text-muted-foreground">{course.schedule}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">{course.term}</span>
+                  <BookOpen className="w-4 h-4 text-muted-foreground/80" />
+                  <span className="text-muted-foreground">{course.term}</span>
                 </div>
               </div>
             </div>
@@ -868,21 +870,21 @@ export default function CourseDetails() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-muted/40 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">{course.materials}</div>
-              <div className="text-sm text-gray-600">Materials</div>
+              <div className="text-sm text-muted-foreground">Materials</div>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-muted/40 rounded-lg">
               <div className="text-2xl font-bold text-green-600">{course.assignments}</div>
-              <div className="text-sm text-gray-600">Assignments</div>
+              <div className="text-sm text-muted-foreground">Assignments</div>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-muted/40 rounded-lg">
               <div className="text-2xl font-bold text-purple-600">{course.students}</div>
-              <div className="text-sm text-gray-600">Students</div>
+              <div className="text-sm text-muted-foreground">Students</div>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-muted/40 rounded-lg">
               <div className="text-2xl font-bold text-orange-600">68%</div>
-              <div className="text-sm text-gray-600">Progress</div>
+              <div className="text-sm text-muted-foreground">Progress</div>
             </div>
           </div>
         </CardContent>
@@ -996,7 +998,7 @@ export default function CourseDetails() {
               <div className="space-y-4">
 
                 {isTeacher && showLessonComposer && (
-                  <Card className="bg-gray-50" id="lesson-composer">
+                  <Card className="bg-muted/40" id="lesson-composer">
                     <CardContent className="p-4 space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -1061,7 +1063,7 @@ export default function CourseDetails() {
                             }
                           }}
                         />
-                        <div className="text-xs text-gray-600">Docs, PPTX, PDFs, etc. will be uploaded as a lesson file in the selected week.</div>
+                        <div className="text-xs text-muted-foreground">Docs, PPTX, PDFs, etc. will be uploaded as a lesson file in the selected week.</div>
                       </div>
 
                       <div className="flex justify-end gap-2 pt-2">
@@ -1117,9 +1119,9 @@ export default function CourseDetails() {
                         <CardContent className="p-0">
                           <div className="flex flex-col md:flex-row">
                             <div className="md:w-64 p-4">
-                              <div className="w-full aspect-video rounded-lg bg-gray-100 border flex items-center justify-center">
+                              <div className="w-full aspect-video rounded-lg bg-muted border flex items-center justify-center">
                                 <div className="text-center">
-                                  <div className="text-xs text-gray-500">{course.code}</div>
+                                  <div className="text-xs text-muted-foreground/80">{course.code}</div>
                                   <div className="text-lg font-semibold">{period.label}</div>
                                 </div>
                               </div>
@@ -1129,13 +1131,13 @@ export default function CourseDetails() {
                               <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                   <div className="text-lg font-semibold">{period.label}</div>
-                                  <div className="text-sm text-gray-600 mt-1">
+                                  <div className="text-sm text-muted-foreground mt-1">
                                     {periodLessons.length} lessons • {periodAssessments.length} assessments • {periodMaterials.length} files
                                   </div>
                                   <div className="mt-3 max-w-md">
                                     <div className="flex items-center justify-between text-sm">
-                                      <div className="text-gray-600">{progressPercent}% curriculum coverage</div>
-                                      <div className="text-gray-600">{coveredWeeks}/4 weeks</div>
+                                      <div className="text-muted-foreground">{progressPercent}% curriculum coverage</div>
+                                      <div className="text-muted-foreground">{coveredWeeks}/4 weeks</div>
                                     </div>
                                     <Progress value={progressPercent} className="mt-2" />
                                   </div>
@@ -1179,35 +1181,46 @@ export default function CourseDetails() {
 
                           {isExpanded ? (
                             <div className="border-t">
-                              <div className="hidden md:grid grid-cols-[1fr_100px_100px_100px_80px] gap-4 p-4 bg-gray-900 border-b border-gray-800 text-gray-200 text-sm font-bold">
+                              <div className="hidden md:grid grid-cols-[1fr_100px_100px_100px_80px] gap-4 p-4 bg-muted/60 border-b border-border/60 text-foreground text-sm font-bold">
                                 <div>Section</div>
                                 <div className="text-center">Submitted</div>
                                 <div className="text-center">Score</div>
                                 <div className="text-center">Due</div>
                                 <div className="text-center">Status</div>
                               </div>
-                              <div className="divide-y divide-gray-800 bg-[#16161E] text-gray-200 overflow-hidden rounded-b-lg">
+                              <div className="divide-y divide-border/60 bg-card text-foreground overflow-hidden rounded-b-lg">
                                 {allPeriodItems.length === 0 ? (
-                                  <div className="p-6 text-center text-gray-400">No sections added yet.</div>
+                                  <div className="p-6 text-center text-muted-foreground/60">No sections added yet.</div>
                                 ) : (
                                   allPeriodItems.map((item) => (
-                                    <div key={`${item.type}-${item.id}`} className="grid grid-cols-1 md:grid-cols-[1fr_100px_100px_100px_80px] gap-4 p-4 items-center hover:bg-gray-800 transition-colors">
+                                    <div key={`${item.type}-${item.id}`} className="grid grid-cols-1 md:grid-cols-[1fr_100px_100px_100px_80px] gap-4 p-4 items-center hover:bg-muted/60 transition-colors">
                                       <div className="flex items-center gap-3 min-w-0">
-                                        {item.type === 'lesson' && <FileText className="w-5 h-5 text-gray-400 shrink-0" />}
-                                        {item.type === 'material' && <FileText className="w-5 h-5 text-gray-400 shrink-0" />}
-                                        {item.type === 'assessment' && <Edit className="w-5 h-5 text-gray-400 shrink-0" />}
-                                        <div className="font-medium truncate">{item.title}</div>
+                                        {item.type === 'lesson' && <FileText className="w-5 h-5 text-blue-500 shrink-0" />}
+                                        {item.type === 'material' && <Download className="w-5 h-5 text-muted-foreground/60 shrink-0" />}
+                                        {item.type === 'assessment' && <Edit className="w-5 h-5 text-muted-foreground/60 shrink-0" />}
+                                        <div 
+                                          className={`font-medium truncate ${item.type === 'lesson' || item.type === 'material' ? 'cursor-pointer hover:underline text-blue-600 dark:text-blue-400' : ''}`}
+                                          onClick={() => {
+                                            if (item.type === 'lesson') {
+                                              setViewingLesson(item.obj as ApiLesson);
+                                            } else if (item.type === 'material') {
+                                              openMaterial(item.obj as ApiMaterial);
+                                            }
+                                          }}
+                                        >
+                                          {item.title}
+                                        </div>
                                       </div>
-                                      <div className="text-center text-sm md:block hidden text-gray-400">—</div>
-                                      <div className="text-center text-sm md:block hidden text-gray-400">
+                                      <div className="text-center text-sm md:block hidden text-muted-foreground/60">—</div>
+                                      <div className="text-center text-sm md:block hidden text-muted-foreground/60">
                                         {item.type === 'assessment' && item.points ? `M` : ''}
                                       </div>
-                                      <div className="text-center text-sm md:block hidden text-gray-400">
+                                      <div className="text-center text-sm md:block hidden text-muted-foreground/60">
                                         {item.type === 'assessment' && item.due ? format(new Date(item.due), 'MMM d') : ''}
                                       </div>
                                       <div className="flex justify-center shrink-0">
                                         {item.type === 'assessment' ? (
-                                          <ChevronDown className="w-5 h-5 text-gray-400 -rotate-90" />
+                                          <ChevronDown className="w-5 h-5 text-muted-foreground/60 -rotate-90" />
                                         ) : (
                                           <CheckCircle className="w-5 h-5 text-green-500" />
                                         )}
@@ -1250,7 +1263,7 @@ export default function CourseDetails() {
               <div className="space-y-4">
 
                 {isTeacher && (
-                  <Card className="bg-gray-50">
+                  <Card className="bg-muted/40">
                     <CardContent className="p-4 space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -1357,7 +1370,7 @@ export default function CourseDetails() {
                         </div>
 
                         {newAssignment.rubric.length === 0 ? (
-                          <div className="text-xs text-gray-600">No rubric categories added.</div>
+                          <div className="text-xs text-muted-foreground">No rubric categories added.</div>
                         ) : (
                           <div className="space-y-2">
                             {newAssignment.rubric.map((row, idx) => (
@@ -1413,18 +1426,18 @@ export default function CourseDetails() {
                   )}
 
                   {activeAssignments.length === 0 ? (
-                    <div className="text-sm text-gray-600">No assessments.</div>
+                    <div className="text-sm text-muted-foreground">No assessments.</div>
                   ) : (
                     activeAssignments.map((assignment) => (
-                      <Card key={assignment.id} className="bg-gray-50">
+                      <Card key={assignment.id} className="bg-muted/40">
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <div className="font-semibold">{assignment.title}</div>
                             {assignment.description ? (
-                              <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{assignment.description}</p>
                             ) : null}
-                            <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground/80 mt-2">
                               <div>
                                 {normalizePeriod(assignment.period)} • Week {normalizeWeek(assignment.weekInPeriod)}
                               </div>
@@ -1651,7 +1664,7 @@ export default function CourseDetails() {
                                     </div>
 
                                     {(draft.rubric || []).length === 0 ? (
-                                      <div className="text-xs text-gray-600">No rubric categories added.</div>
+                                      <div className="text-xs text-muted-foreground">No rubric categories added.</div>
                                     ) : (
                                       <div className="space-y-2">
                                         {(draft.rubric || []).map((row, idx) => (
@@ -1775,8 +1788,8 @@ export default function CourseDetails() {
                               <div className="space-y-4">
                                 <div className="text-sm font-medium">Take Quiz</div>
                                 {assignment.quizData.questions.map((q, qIdx) => (
-                                  <div key={qIdx} className="space-y-2 p-3 bg-gray-50 border rounded-md">
-                                    <div className="text-sm font-medium">{qIdx + 1}. {q.question} <span className="text-gray-500 font-normal">({q.points} pts)</span></div>
+                                  <div key={qIdx} className="space-y-2 p-3 bg-muted/40 border rounded-md">
+                                    <div className="text-sm font-medium">{qIdx + 1}. {q.question} <span className="text-muted-foreground/80 font-normal">({q.points} pts)</span></div>
                                     <div className="space-y-1 pl-4">
                                       {q.options.map((opt, oIdx) => {
                                         if (!opt.trim()) return null;
@@ -1824,7 +1837,7 @@ export default function CourseDetails() {
                         {openSubmissionsFor === assignment.id && (
                           <div className="pt-3 border-t space-y-3">
                             {submissions.length === 0 ? (
-                              <div className="text-sm text-gray-600">No submissions yet.</div>
+                              <div className="text-sm text-muted-foreground">No submissions yet.</div>
                             ) : (
                               submissions.map((s) => {
                                 const draft = gradingDrafts[s.id] || { grade: s.grade != null ? String(s.grade) : '', feedback: s.feedback || '' };
@@ -1836,7 +1849,7 @@ export default function CourseDetails() {
                                         <div className="font-medium">
                                           {s.student ? s.student.name : 'You'}
                                         </div>
-                                        <div className="text-sm text-gray-600">
+                                        <div className="text-sm text-muted-foreground">
                                           Status: {s.status}{s.submittedAt ? ` • Submitted ${format(new Date(s.submittedAt), 'MMM d, h:mm a')}` : ''}
                                         </div>
                                         {s.content ? (
@@ -1848,30 +1861,30 @@ export default function CourseDetails() {
                                               {s.originalFileName || 'Download file'}
                                             </a>
                                             {s.fileMimeType ? (
-                                              <span className="ml-2 text-xs text-gray-500">({s.fileMimeType})</span>
+                                              <span className="ml-2 text-xs text-muted-foreground/80">({s.fileMimeType})</span>
                                             ) : null}
                                             {typeof s.fileSizeBytes === 'number' ? (
-                                              <span className="ml-2 text-xs text-gray-500">{(s.fileSizeBytes / 1024).toFixed(1)} KB</span>
+                                              <span className="ml-2 text-xs text-muted-foreground/80">{(s.fileSizeBytes / 1024).toFixed(1)} KB</span>
                                             ) : null}
                                           </div>
                                         ) : null}
                                         
                                         {Array.isArray(s.quizAnswers) && assignment.quizData?.questions && (
                                           <div className="mt-3 space-y-2">
-                                            <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">Quiz Responses:</div>
+                                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quiz Responses:</div>
                                             <div className="grid grid-cols-1 gap-2">
                                               {assignment.quizData.questions.map((q, idx) => {
                                                 const stuAnsObj = s.quizAnswers?.find((a: any) => a.questionIndex === idx);
                                                 const stuAns = stuAnsObj ? stuAnsObj.answer : null;
                                                 const isCorrect = stuAns === q.correctAnswer;
                                                 return (
-                                                  <div key={idx} className={`p-2 border-l-4 rounded bg-gray-50 flex flex-col gap-1 text-sm ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
+                                                  <div key={idx} className={`p-2 border-l-4 rounded bg-muted/40 flex flex-col gap-1 text-sm ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
                                                     <div className="font-medium">{idx + 1}. {q.question}</div>
                                                     <div className="flex items-center flex-wrap gap-2">
-                                                      <span className="text-gray-600 font-semibold">Answer:</span>
+                                                      <span className="text-muted-foreground font-semibold">Answer:</span>
                                                       <span className={isCorrect ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>{stuAns || '(Skipped)'}</span>
                                                       {!isCorrect && (
-                                                        <span className="text-gray-500 text-xs ml-1">(Correct: {q.correctAnswer})</span>
+                                                        <span className="text-muted-foreground/80 text-xs ml-1">(Correct: {q.correctAnswer})</span>
                                                       )}
                                                     </div>
                                                   </div>
@@ -1952,7 +1965,7 @@ export default function CourseDetails() {
             <CardContent>
               <div className="space-y-4">
                 {isTeacher && (
-                  <Card className="bg-gray-50">
+                  <Card className="bg-muted/40">
                     <CardContent className="p-4 space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -1973,10 +1986,10 @@ export default function CourseDetails() {
                 )}
 
                 {courseMaterials.length === 0 ? (
-                  <div className="text-sm text-gray-600">No materials.</div>
+                  <div className="text-sm text-muted-foreground">No materials.</div>
                 ) : (
                   courseMaterials.map((material) => (
-                    <div key={material.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div key={material.id} className="flex items-center justify-between p-4 bg-muted/40 rounded-lg hover:bg-muted transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                           <FileText className="w-5 h-5 text-blue-600" />
@@ -1988,7 +2001,7 @@ export default function CourseDetails() {
                           aria-label={`Open ${material.title || material.originalName}`}
                         >
                           <div className="font-medium truncate group-hover:underline">{material.title}</div>
-                          <div className="text-sm text-gray-600 truncate group-hover:underline">
+                          <div className="text-sm text-muted-foreground truncate group-hover:underline">
                             {material.originalName} • {(material.sizeBytes / (1024 * 1024)).toFixed(1)} MB
                           </div>
                         </button>
@@ -2031,7 +2044,7 @@ export default function CourseDetails() {
                     myStatus = rec ? rec.status : null;
                   }
                   return (
-                    <div key={session.id} className="flex flex-col gap-2 p-4 bg-gray-50 rounded-lg">
+                    <div key={session.id} className="flex flex-col gap-2 p-4 bg-muted/40 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 bg-blue-600 rounded-lg flex flex-col items-center justify-center text-white">
@@ -2056,7 +2069,7 @@ export default function CourseDetails() {
                           </div>
                           <div>
                             <div className="font-semibold">{session.title}</div>
-                            <div className="text-sm text-gray-600">
+                            <div className="text-sm text-muted-foreground">
                               {session.time} • {session.duration}
                             </div>
                             {session.status === 'completed' && (
@@ -2111,7 +2124,7 @@ export default function CourseDetails() {
                         <div className="mt-4 p-4 bg-white border rounded-lg">
                           <div className="font-semibold mb-2">Mark Attendance</div>
                           {attendanceLoading ? (
-                            <div className="text-gray-600">Loading...</div>
+                            <div className="text-muted-foreground">Loading...</div>
                           ) : attendanceRecords[session.id] && attendanceRecords[session.id].length > 0 ? (
                             <div className="space-y-2">
                               {attendanceRecords[session.id].map((rec) => (
@@ -2161,7 +2174,7 @@ export default function CourseDetails() {
                               ))}
                             </div>
                           ) : (
-                            <div className="text-gray-600">No students found for this session.</div>
+                            <div className="text-muted-foreground">No students found for this session.</div>
                           )}
                         </div>
                       )}
@@ -2185,7 +2198,7 @@ export default function CourseDetails() {
               {isTeacher ? (
                 <div className="space-y-3">
                   {gradebook.length === 0 ? (
-                    <div className="text-sm text-gray-600">No enrolled students.</div>
+                    <div className="text-sm text-muted-foreground">No enrolled students.</div>
                   ) : (
                     gradebook.map((row) => {
                       const draft = gradeOverrideDrafts[row.student.id] || {
@@ -2195,17 +2208,17 @@ export default function CourseDetails() {
                       const final = row.finalGrade ?? row.computedPercent;
                       const finalText = typeof final === 'number' ? `${final.toFixed(2)}%` : '—';
                       return (
-                        <div key={row.student.id} className="p-4 bg-gray-50 rounded-lg space-y-3">
+                        <div key={row.student.id} className="p-4 bg-muted/40 rounded-lg space-y-3">
                           <div className="flex items-start justify-between gap-4 flex-wrap">
                             <div>
                               <div className="font-semibold">{row.student.name}</div>
-                              <div className="text-sm text-gray-600">{row.student.email}</div>
-                              <div className="text-sm text-gray-500 mt-1">
+                              <div className="text-sm text-muted-foreground">{row.student.email}</div>
+                              <div className="text-sm text-muted-foreground/80 mt-1">
                                 Computed: {row.computedPercent != null ? `${row.computedPercent.toFixed(2)}%` : '—'} • Graded: {row.gradedCount}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-sm text-gray-600">Final</div>
+                              <div className="text-sm text-muted-foreground">Final</div>
                               <div className="text-xl font-bold text-blue-600">{finalText}</div>
                             </div>
                           </div>
@@ -2256,7 +2269,7 @@ export default function CourseDetails() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="p-4 bg-muted/40 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Overall Grade</span>
                       <span className="text-2xl font-bold text-blue-600">
@@ -2264,13 +2277,13 @@ export default function CourseDetails() {
                       </span>
                     </div>
                     <Progress value={avgCoursePercent ?? 0} className="h-3" />
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {myGrade?.finalGrade != null ? 'Final grade set by teacher.' : 'Computed from graded submissions.'}
                       {myGrade?.remarks ? ` • ${myGrade.remarks}` : ''}
                     </p>
                   </div>
 
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground">
                     Graded assessments: {myGrade?.gradedCount ?? 0}
                   </div>
                 </div>
@@ -2301,7 +2314,7 @@ export default function CourseDetails() {
               </CardHeader>
               <CardContent>
                 {showAddStudent && (
-                  <div className="mb-6 p-4 border rounded-lg bg-gray-50 flex flex-col md:flex-row items-end gap-4">
+                  <div className="mb-6 p-4 border rounded-lg bg-muted/40 flex flex-col md:flex-row items-end gap-4">
                     <div className="flex-1">
                       <label className="text-sm font-medium mb-1 block">Select Student</label>
                       <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={loadingStudents}>
@@ -2323,24 +2336,44 @@ export default function CourseDetails() {
                   </div>
                 )}
                 {loadingEnrollments ? (
-                  <div className="text-sm text-gray-600">Loading students...</div>
+                  <div className="text-sm text-muted-foreground">Loading students...</div>
                 ) : courseEnrollments.length === 0 ? (
-                  <div className="text-sm text-gray-600">No students enrolled.</div>
+                  <div className="text-sm text-muted-foreground">No students enrolled.</div>
                 ) : (
                   <div className="space-y-2">
                     {courseEnrollments
                       .slice()
                       .sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''))
                       .map((enrollment) => (
-                        <div key={enrollment.id} className="flex items-start justify-between gap-3 bg-gray-50 border rounded-lg p-3">
+                        <div key={enrollment.id} className="flex items-start justify-between gap-3 bg-muted/40 border rounded-lg p-3">
                           <div className="min-w-0">
                             <div className="font-medium truncate">{enrollment.student?.name || 'Student'}</div>
-                            <div className="text-sm text-gray-600 truncate">{enrollment.student?.email || '—'}</div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-sm text-muted-foreground truncate">{enrollment.student?.email || '—'}</div>
+                            <div className="text-xs text-muted-foreground/80 mt-1">
                               Status: {enrollment.status}
                               {enrollment.enrolledAt ? ` • Enrolled ${format(new Date(enrollment.enrolledAt), 'MMM d, yyyy')}` : ''}
                             </div>
                           </div>
+                          {isTeacher && enrollment.status !== 'dropped' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 shrink-0"
+                              onClick={async () => {
+                                if (!confirm(`Are you sure you want to remove ${enrollment.student?.name} from this course?`)) return;
+                                try {
+                                  await api.dropEnrollment(courseId, enrollment.id);
+                                  toast.success('Student removed from course');
+                                  void loadEnrollments();
+                                } catch (e: any) {
+                                  toast.error(e.message || 'Failed to remove student');
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Remove
+                            </Button>
+                          )}
                         </div>
                       ))}
                   </div>
@@ -2352,6 +2385,32 @@ export default function CourseDetails() {
           </div>
         </div>
       </Tabs>
+
+      {/* Lesson Viewer Dialog */}
+      <Dialog open={!!viewingLesson} onOpenChange={(open) => !open && setViewingLesson(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{viewingLesson?.title}</DialogTitle>
+            {viewingLesson?.description && (
+              <DialogDescription className="text-base mt-2">
+                {viewingLesson.description}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {viewingLesson?.duration && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 p-2 rounded-md w-fit">
+                <Clock className="w-4 h-4" />
+                <span>Estimated duration: {viewingLesson.duration}</span>
+              </div>
+            )}
+            
+            <div className="prose prose-sm dark:prose-invert max-w-none mt-6 pb-6 whitespace-pre-wrap leading-relaxed text-foreground">
+              {viewingLesson?.content || <span className="italic text-muted-foreground">No content provided for this lesson.</span>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
