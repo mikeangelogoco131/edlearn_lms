@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Input } from '../components/ui/input';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { api, ApiCourse } from '../lib/api';
+import { api, ApiCourse, ApiClassSession } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Participant {
   id: string;
@@ -30,7 +31,10 @@ interface ChatMessage {
 
 export default function VirtualClassroom() {
   const { classId } = useParams();
+  const { user } = useAuth();
   const [course, setCourse] = useState<ApiCourse | null>(null);
+  const [session, setSession] = useState<ApiClassSession | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,8 +42,15 @@ export default function VirtualClassroom() {
     async function load() {
       if (!classId) return;
       try {
+        // Try to load as a course first (legacy/fallback)
         const res = await api.course(classId);
-        if (!cancelled) setCourse(res.data);
+        if (!cancelled) {
+          setCourse(res.data);
+          // If we found a course, also try to find the "live" session for it
+          const sessionsRes = await api.courseSessions(res.data.id);
+          const live = sessionsRes.data.find(s => s.status === 'live') || sessionsRes.data[0];
+          if (live) setSession(live);
+        }
       } catch {
         if (!cancelled) setCourse(null);
       }
@@ -50,6 +61,28 @@ export default function VirtualClassroom() {
       cancelled = true;
     };
   }, [classId]);
+
+  useEffect(() => {
+    if (!session?.id) return;
+    let cancelled = false;
+
+    async function loadMessages() {
+      try {
+        const res = await api.getClassroomMessages(session!.id);
+        if (!cancelled) setMessages(res.data);
+      } catch {
+        // ignore
+      }
+    }
+
+    loadMessages();
+    const interval = setInterval(loadMessages, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session?.id]);
   
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -59,26 +92,40 @@ export default function VirtualClassroom() {
   const [sidebarTab, setSidebarTab] = useState('chat');
   const [chatMessage, setChatMessage] = useState('');
 
-  const [participants] = useState<Participant[]>([
-    { id: '1', name: 'Prof. Sarah Johnson', role: 'teacher', isMuted: false, isVideoOn: true, isHandRaised: false },
-    { id: '2', name: 'Alex Martinez', role: 'student', isMuted: true, isVideoOn: true, isHandRaised: false },
-    { id: '3', name: 'Emma Wilson', role: 'student', isMuted: true, isVideoOn: true, isHandRaised: false },
-    { id: '4', name: 'James Brown', role: 'student', isMuted: true, isVideoOn: false, isHandRaised: false },
-    { id: '5', name: 'Sophia Chen', role: 'student', isMuted: true, isVideoOn: true, isHandRaised: true },
-    { id: '6', name: 'Michael Johnson', role: 'student', isMuted: true, isVideoOn: true, isHandRaised: false },
-  ]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
-  const [chatMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'Prof. Sarah Johnson', message: 'Welcome everyone! Let\'s begin today\'s session.', timestamp: '09:00 AM' },
-    { id: '2', sender: 'Alex Martinez', message: 'Good morning, Professor!', timestamp: '09:01 AM' },
-    { id: '3', sender: 'Emma Wilson', message: 'Can you share your screen?', timestamp: '09:02 AM' },
-    { id: '4', sender: 'Prof. Sarah Johnson', message: 'Yes, sharing now...', timestamp: '09:02 AM' },
-  ]);
+  useEffect(() => {
+    if (!session?.id) return;
+    let cancelled = false;
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      // In production, this would send the message to the server
+    async function loadParticipants() {
+      try {
+        const res = await api.getClassroomParticipants(session!.id);
+        if (!cancelled) setParticipants(res.data);
+      } catch {
+        // ignore
+      }
+    }
+
+    loadParticipants();
+    const interval = setInterval(loadParticipants, 10000); // Poll participants every 10s
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session?.id]);
+
+  const handleSendMessage = async () => {
+    if (chatMessage.trim() && session?.id) {
+      const body = chatMessage.trim();
       setChatMessage('');
+      try {
+        const res = await api.sendClassroomMessage(session.id, body);
+        setMessages(prev => [...prev, res.data]);
+      } catch {
+        // failed to send
+      }
     }
   };
 
@@ -198,15 +245,20 @@ export default function VirtualClassroom() {
               <TabsContent value="chat" className="flex-1 flex flex-col m-0">
                 <ScrollArea className="flex-1 px-4">
                   <div className="space-y-4 pb-4">
-                    {chatMessages.map((msg) => (
+                    {messages.map((msg) => (
                       <div key={msg.id} className="space-y-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="font-semibold text-sm">{msg.sender}</span>
-                          <span className="text-xs text-gray-500">{msg.timestamp}</span>
+                          <span className={`font-semibold text-sm ${msg.userId === user?.id ? 'text-blue-600' : ''}`}>{msg.userName}</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
-                        <div className="text-sm text-gray-700">{msg.message}</div>
+                        <div className="text-sm text-foreground/80">{msg.body}</div>
                       </div>
                     ))}
+                    {messages.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground text-sm">No messages yet. Say hello!</div>
+                    )}
                   </div>
                 </ScrollArea>
 

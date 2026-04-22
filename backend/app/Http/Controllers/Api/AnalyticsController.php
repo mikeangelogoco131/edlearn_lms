@@ -181,12 +181,21 @@ class AnalyticsController extends Controller
         $upcomingSessions = ClassSession::query()->whereIn('course_id', $courses)->where('status', 'scheduled')->where('starts_at', '>=', now())->count();
         $assignments = Assignment::query()->whereIn('course_id', $courses)->count();
 
+        // Pending Grading: Submissions in teacher's courses that are 'submitted' but not 'graded'
+        $pendingGrading = \App\Models\Submission::query()
+            ->whereIn('assignment_id', function($q) use ($courses) {
+                $q->select('id')->from('assignments')->whereIn('course_id', $courses);
+            })
+            ->where('status', 'submitted')
+            ->count();
+
         return response()->json([
             'data' => [
                 'totalCourses' => $totalCourses,
                 'totalStudents' => $totalStudents,
                 'upcomingSessions' => $upcomingSessions,
                 'assignments' => $assignments,
+                'pendingGrading' => $pendingGrading,
             ],
         ]);
     }
@@ -203,10 +212,12 @@ class AnalyticsController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $courseIds = Enrollment::query()
+        $enrollments = Enrollment::query()
             ->where('student_id', $user->id)
             ->where('status', 'enrolled')
-            ->pluck('course_id');
+            ->get();
+
+        $courseIds = $enrollments->pluck('course_id');
 
         $totalCourses = $courseIds->count();
         $upcomingSessions = ClassSession::query()
@@ -215,10 +226,69 @@ class AnalyticsController extends Controller
             ->where('starts_at', '>=', now())
             ->count();
 
+        // Calculate Average Grade (GPA Proxy)
+        $grades = \App\Models\CourseGrade::query()
+            ->where('student_id', $user->id)
+            ->whereIn('course_id', $courseIds)
+            ->get();
+        
+        $avgGrade = $grades->avg('final_grade') ?? 0;
+
+        // Calculate Attendance Rate
+        $attendance = \App\Models\Attendance::query()
+            ->where('student_id', $user->id)
+            ->get();
+        
+        $totalAttendanceRecords = $attendance->count();
+        $presentOrLate = $attendance->whereIn('status', ['present', 'late'])->count();
+        $attendanceRate = $totalAttendanceRecords > 0 ? round(($presentOrLate / $totalAttendanceRecords) * 100, 1) : 0;
+
+        // Calculate Pending Tasks (Assignments with no submission)
+        $totalAssignments = Assignment::query()
+            ->whereIn('course_id', $courseIds)
+            ->where('status', 'published')
+            ->count();
+        
+        $submissionsCount = \App\Models\Submission::query()
+            ->where('student_id', $user->id)
+            ->whereIn('assignment_id', function($q) use ($courseIds) {
+                $q->select('id')->from('assignments')->whereIn('course_id', $courseIds);
+            })
+            ->count();
+        
+        $pendingTasks = max(0, $totalAssignments - $submissionsCount);
+
+        // Course Progress (Total lessons vs total completed - placeholder logic)
+        $progress = 0;
+        if ($totalCourses > 0) {
+            // Simplified: % of assignments submitted as a proxy for progress
+            $progress = $totalAssignments > 0 ? round(($submissionsCount / $totalAssignments) * 100, 1) : 0;
+        }
+
+        // Recent Grades
+        $recentGrades = \App\Models\Submission::query()
+            ->with(['assignment', 'assignment.course'])
+            ->where('student_id', $user->id)
+            ->where('status', 'graded')
+            ->orderBy('graded_at', 'desc')
+            ->limit(3)
+            ->get()
+            ->map(fn($s) => [
+                'assignment' => $s->assignment->title,
+                'course' => $s->assignment->course->code,
+                'grade' => $s->grade,
+                'points' => $s->assignment->points,
+            ]);
+
         return response()->json([
             'data' => [
                 'totalCourses' => $totalCourses,
                 'upcomingSessions' => $upcomingSessions,
+                'avgGrade' => round($avgGrade, 1),
+                'attendanceRate' => $attendanceRate,
+                'pendingTasks' => $pendingTasks,
+                'progress' => $progress,
+                'recentGrades' => $recentGrades,
             ],
         ]);
     }

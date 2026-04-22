@@ -129,8 +129,6 @@ type AdminSystemSettings = {
 	};
 };
 
-const SYSTEM_SETTINGS_STORAGE_KEY = 'edlearn_admin_system_settings_v1';
-
 const DEFAULT_SYSTEM_SETTINGS: AdminSystemSettings = {
 	academicTerm: {
 		termName: '',
@@ -152,29 +150,6 @@ const DEFAULT_SYSTEM_SETTINGS: AdminSystemSettings = {
 		lastBackupAt: null,
 	},
 };
-
-function loadSystemSettings(): AdminSystemSettings {
-	try {
-		const raw = localStorage.getItem(SYSTEM_SETTINGS_STORAGE_KEY);
-		if (!raw) return DEFAULT_SYSTEM_SETTINGS;
-		const parsed = JSON.parse(raw) as Partial<AdminSystemSettings>;
-		return {
-			academicTerm: { ...DEFAULT_SYSTEM_SETTINGS.academicTerm, ...(parsed.academicTerm || {}) },
-			security: { ...DEFAULT_SYSTEM_SETTINGS.security, ...(parsed.security || {}) },
-			backup: { ...DEFAULT_SYSTEM_SETTINGS.backup, ...(parsed.backup || {}) },
-		};
-	} catch {
-		return DEFAULT_SYSTEM_SETTINGS;
-	}
-}
-
-function saveSystemSettings(next: AdminSystemSettings) {
-	try {
-		localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, JSON.stringify(next));
-	} catch {
-		// ignore
-	}
-}
 
 function csvCell(value: unknown) {
 	const str = value === null || value === undefined ? '' : String(value);
@@ -236,6 +211,8 @@ export default function AdminDashboard() {
 	const [composeSuccess, setComposeSuccess] = useState('');
 	const [composeSuggestions, setComposeSuggestions] = useState<ApiUser[]>([]);
 	const [composeSuggestionsLoading, setComposeSuggestionsLoading] = useState(false);
+	const [backups, setBackups] = useState<any[]>([]);
+	const [backupsLoading, setBackupsLoading] = useState(false);
 
 	const selectedMessage = useMemo(() => {
 		return selectedMessageId ? messages.find((m) => m.id === selectedMessageId) || null : null;
@@ -393,13 +370,13 @@ export default function AdminDashboard() {
 	const [programCode, setProgramCode] = useState('');
 	const [programTitle, setProgramTitle] = useState('');
 
-	const [systemSettings, setSystemSettings] = useState<AdminSystemSettings>(() => loadSystemSettings());
+	const [systemSettings, setSystemSettings] = useState<AdminSystemSettings>(DEFAULT_SYSTEM_SETTINGS);
 	const [settingsNotice, setSettingsNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(
 		null,
 	);
 
-	const [reportType, setReportType] = useState<'users' | 'courses' | 'analytics'>('users');
-	const [reportFormat, setReportFormat] = useState<'csv' | 'json'>('csv');
+	const [reportType, setReportType] = useState<'analytics' | 'users' | 'enrollments'>('analytics');
+	const [reportFormat, setReportFormat] = useState<'json' | 'csv'>('json');
 	const [reportIncludeArchived, setReportIncludeArchived] = useState(false);
 	const [reportGenerating, setReportGenerating] = useState(false);
 
@@ -775,10 +752,15 @@ export default function AdminDashboard() {
 		setDashboardSearchParam('role', role === 'all' ? null : role);
 	};
 
-	const persistSystemSettings = (next: AdminSystemSettings) => {
-		setSystemSettings(next);
-		saveSystemSettings(next);
-		setSettingsNotice({ type: 'success', message: 'Settings saved.' });
+	const persistSystemSettings = async (next: AdminSystemSettings) => {
+		setSettingsNotice(null);
+		try {
+			await api.updateSettings(next);
+			setSystemSettings(next);
+			setSettingsNotice({ type: 'success', message: 'Settings saved to server.' });
+		} catch (e: any) {
+			setSettingsNotice({ type: 'error', message: e.message || 'Failed to save settings.' });
+		}
 	};
 
 	const generateReport = async () => {
@@ -807,100 +789,115 @@ export default function AdminDashboard() {
 				}
 				setSettingsNotice({ type: 'success', message: 'Report generated.' });
 				return;
-			}
-
-			if (reportType === 'courses') {
-				const activeRes = await api.courses({ archived: false });
-				const archivedRes = reportIncludeArchived ? await api.courses({ archived: true }) : null;
-				const coursesAll = [
-					...activeRes.data,
-					...(archivedRes?.data || []),
-				].filter((course, idx, arr) => arr.findIndex((c) => c.id === course.id) === idx);
-
+			} else if (reportType === 'users') {
+				const res = await api.users({ archived: reportIncludeArchived, limit: 5000 });
+				const data = res.data;
 				if (reportFormat === 'json') {
-					downloadTextFile(
-						`courses-report-${dateTag}.json`,
-						JSON.stringify({ data: coursesAll }, null, 2),
-						'application/json',
-					);
+					downloadTextFile(`users-report-${dateTag}.json`, JSON.stringify(data, null, 2), 'application/json');
 				} else {
-					const header = [
-						'id',
-						'code',
-						'title',
-						'teacher',
-						'term',
-						'section',
-						'schedule',
-						'status',
-						'students',
-					].join(',');
-					const lines = coursesAll.map((c) =>
-						[
-							csvCell(c.id),
-							csvCell(c.code),
-							csvCell(c.title),
-							csvCell(c.teacher),
-							csvCell(c.term),
-							csvCell(c.section),
-							csvCell(c.schedule),
-							csvCell(c.status),
-							csvCell(c.students),
-						].join(','),
-					);
-					const csv = [header, ...lines].join('\n');
+					const headers = ['ID', 'Name', 'Email', 'Role', 'Status'];
+					const rows = data.map((u) => [
+						u.id,
+						u.name,
+						u.email,
+						u.role,
+						u.archivedAt ? 'Archived' : 'Active',
+					]);
+					const csv = [headers.join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\n');
+					downloadTextFile(`users-report-${dateTag}.csv`, csv, 'text/csv');
+				}
+				setSettingsNotice({ type: 'success', message: 'Report generated.' });
+				return;
+			} else if (reportType === 'enrollments') {
+				const res = await api.allEnrollments();
+				const data = res.data;
+				if (reportFormat === 'json') {
+					downloadTextFile(`enrollments-report-${dateTag}.json`, JSON.stringify(data, null, 2), 'application/json');
+				} else {
+					const headers = ['ID', 'Student Name', 'Student Email', 'Course Code', 'Course Title', 'Status', 'Enrolled At'];
+					const rows = data.map((e: any) => [
+						e.id, 
+						e.student?.name || '—', 
+						e.student?.email || '—', 
+						e.course?.code || '—', 
+						e.course?.title || '—',
+						e.status,
+						e.enrolledAt || '—'
+					]);
+					const csv = [headers.join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\n');
+					downloadTextFile(`enrollments-report-${dateTag}.csv`, csv, 'text/csv');
+				}
+				setSettingsNotice({ type: 'success', message: 'Report generated.' });
+				return;
+			} else if (reportType === 'courses') {
+				const res = await api.courses({ archived: reportIncludeArchived });
+				const data = res.data;
+				if (reportFormat === 'json') {
+					downloadTextFile(`courses-report-${dateTag}.json`, JSON.stringify(data, null, 2), 'application/json');
+				} else {
+					const headers = ['ID', 'Code', 'Title', 'Teacher', 'Term', 'Section', 'Students'];
+					const rows = data.map((c) => [
+						c.id,
+						c.code,
+						c.title,
+						c.teacher,
+						c.term,
+						c.section,
+						c.students,
+					]);
+					const csv = [headers, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
 					downloadTextFile(`courses-report-${dateTag}.csv`, csv, 'text/csv');
 				}
 				setSettingsNotice({ type: 'success', message: 'Report generated.' });
 				return;
 			}
-
-			// users
-			const fetchUsersAll = async (archived: boolean) => {
-				let page = 1;
-				const perPage = 200;
-				const all: ApiUser[] = [];
-				while (true) {
-					const res = await api.users({ page, perPage, archived });
-					all.push(...res.data);
-					const pages = res.meta?.pages || 1;
-					if (page >= pages) break;
-					page += 1;
-				}
-				return all;
-			};
-
-			const activeUsers = await fetchUsersAll(false);
-			const archivedUsers = reportIncludeArchived ? await fetchUsersAll(true) : [];
-			const usersAll = [...activeUsers, ...archivedUsers].filter(
-				(user, idx, arr) => arr.findIndex((u) => u.id === user.id) === idx,
-			);
-
-			if (reportFormat === 'json') {
-				downloadTextFile(
-					`users-report-${dateTag}.json`,
-					JSON.stringify({ data: usersAll }, null, 2),
-					'application/json',
-				);
-			} else {
-				const header = ['id', 'name', 'email', 'role', 'archivedAt'].join(',');
-				const lines = usersAll.map((u) =>
-					[csvCell(u.id), csvCell(u.name), csvCell(u.email), csvCell(u.role), csvCell(u.archivedAt)].join(
-						',',
-					),
-				);
-				const csv = [header, ...lines].join('\n');
-				downloadTextFile(`users-report-${dateTag}.csv`, csv, 'text/csv');
-			}
-
-			setSettingsNotice({ type: 'success', message: 'Report generated.' });
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to generate report.';
-			setSettingsNotice({ type: 'error', message: msg });
+		} catch (e: any) {
+			setSettingsNotice({ type: 'error', message: e.message || 'Failed to generate report.' });
 		} finally {
 			setReportGenerating(false);
 		}
 	};
+
+	useEffect(() => {
+		if (activeTab !== 'settings') return;
+		let cancelled = false;
+		async function load() {
+			try {
+				const data = await api.settings();
+				if (cancelled) return;
+				// Merge with defaults in case some keys are missing
+				setSystemSettings((prev) => ({
+					academicTerm: { ...prev.academicTerm, ...(data.academicTerm || {}) },
+					security: { ...prev.security, ...(data.security || {}) },
+					backup: { ...prev.backup, ...(data.backup || {}) },
+				}));
+			} catch {
+				// ignore, keep defaults
+			}
+		}
+		load();
+		return () => {
+			cancelled = true;
+		};
+	}, [activeTab]);
+
+	const refreshBackups = async () => {
+		setBackupsLoading(true);
+		try {
+			const res = await api.backups();
+			setBackups(res.data);
+		} catch {
+			// ignore
+		} finally {
+			setBackupsLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		if (activeTab === 'settings') {
+			refreshBackups();
+		}
+	}, [activeTab]);
 
 	const resetCourseForm = () => {
 		setEditingCourseId(null);
@@ -3122,9 +3119,10 @@ export default function AdminDashboard() {
 													<SelectValue placeholder="Select" />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="users">Users</SelectItem>
-													<SelectItem value="courses">Courses</SelectItem>
 													<SelectItem value="analytics">Analytics Summary</SelectItem>
+													<SelectItem value="users">User Directory</SelectItem>
+													<SelectItem value="enrollments">Enrollment Overview</SelectItem>
+													<SelectItem value="courses">Courses</SelectItem>
 												</SelectContent>
 											</Select>
 										</div>
@@ -3423,13 +3421,23 @@ export default function AdminDashboard() {
 									<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
 										<Button
 											variant="outline"
-											onClick={() => {
-												const next: AdminSystemSettings = {
-													...systemSettings,
-													backup: { ...systemSettings.backup, lastBackupAt: new Date().toISOString() },
-												};
-												persistSystemSettings(next);
-												setSettingsNotice({ type: 'success', message: 'Backup started.' });
+											disabled={backupsLoading}
+											onClick={async () => {
+												setBackupsLoading(true);
+												try {
+													await api.createBackup();
+													await refreshBackups();
+													const next: AdminSystemSettings = {
+														...systemSettings,
+														backup: { ...systemSettings.backup, lastBackupAt: new Date().toISOString() },
+													};
+													persistSystemSettings(next);
+													setSettingsNotice({ type: 'success', message: 'Backup created.' });
+												} catch (err: any) {
+													setSettingsNotice({ type: 'error', message: err.message || 'Backup failed.' });
+												} finally {
+													setBackupsLoading(false);
+												}
 											}}
 										>
 											Backup Now
@@ -3437,6 +3445,50 @@ export default function AdminDashboard() {
 										<Button variant="outline" onClick={() => persistSystemSettings(systemSettings)}>
 											Save Backup Settings
 										</Button>
+									</div>
+
+									<div className="pt-4 border-t space-y-3">
+										<div className="text-sm font-medium">Available Backups</div>
+										{backupsLoading && backups.length === 0 ? (
+											<div className="text-xs text-muted-foreground italic">Loading backups...</div>
+										) : backups.length === 0 ? (
+											<div className="text-xs text-muted-foreground italic">No backups found.</div>
+										) : (
+											<div className="space-y-2">
+												{backups.map((b) => (
+													<div key={b.id} className="flex items-center justify-between p-2 rounded border bg-background/50">
+														<div className="min-w-0">
+															<div className="text-xs font-medium truncate">{b.filename}</div>
+															<div className="text-[10px] text-muted-foreground">
+																{(b.size / 1024).toFixed(1)} KB • {new Date(b.createdAt).toLocaleString()}
+															</div>
+														</div>
+														<div className="flex items-center gap-1">
+															<Button variant="ghost" size="sm" className="h-7 px-2 text-[10px]" asChild>
+																<a href={api.backupDownloadUrl(b.filename)} download>Download</a>
+															</Button>
+															<Button 
+																variant="ghost" 
+																size="sm" 
+																className="h-7 px-2 text-[10px] text-red-600 hover:text-red-700"
+																onClick={async () => {
+																	if (confirm('Delete this backup?')) {
+																		try {
+																			await api.deleteBackup(b.filename);
+																			await refreshBackups();
+																		} catch (err: any) {
+																			alert(err.message || 'Delete failed');
+																		}
+																	}
+																}}
+															>
+																Delete
+															</Button>
+														</div>
+													</div>
+												))}
+											</div>
+										)}
 									</div>
 								</div>
 							</div>

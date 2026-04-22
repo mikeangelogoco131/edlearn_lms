@@ -91,6 +91,32 @@ class AuthController extends Controller
             'credential' => ['required', 'string'],
         ]);
 
+        // Development/Mock fallback for testing
+        if (config('app.debug') && Str::startsWith($validated['credential'], 'MOCK_GOOGLE_CREDENTIAL_')) {
+            $role = strtolower(Str::after($validated['credential'], 'MOCK_GOOGLE_CREDENTIAL_'));
+            $user = User::query()->where('role', $role)->first();
+            if (!$user) {
+                return response()->json(['message' => "No user found with role: $role"], 404);
+            }
+            
+            $token = Jwt::encode([
+                'sub' => (string) $user->id,
+                'role' => $user->role,
+                'email' => $user->email,
+            ]);
+
+            return response()->json([
+                'token' => $token,
+                'user' => [
+                    'id' => (string) $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'avatarUrl' => $this->avatarUrl($user),
+                ],
+            ]);
+        }
+
         $googleClientId = (string) config('services.google.client_id', '');
         if ($googleClientId === '') {
             return response()->json(['message' => 'Google sign-in not configured'], 500);

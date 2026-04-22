@@ -48,4 +48,15 @@ class AttendanceController extends Controller
             ->get();
         return response()->json($attendance);
     }
+
+    // Teacher/Admin: Get attendance report for a whole course
+    public function courseReport(Request $request, $courseId)
+    {
+        $sessionIds = ClassSession::where('course_id', $courseId)->pluck('id');
+        $attendance = Attendance::with(['student', 'session'])
+            ->whereIn('session_id', $sessionIds)
+            ->get();
+            
+        return response()->json($attendance);
+    }
 }

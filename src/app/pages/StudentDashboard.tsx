@@ -37,9 +37,19 @@ import { toast } from 'sonner';
 export default function StudentDashboard() {
   const { user } = useAuth();
   const [studentCourses, setStudentCourses] = useState<ApiCourse[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<ApiCourse[]>([]);
   const [sessions, setSessions] = useState<ApiClassSession[]>([]);
   const [assignments, setAssignments] = useState<ApiAssignment[]>([]);
   const [coursesView, setCoursesView] = useState<'enrolled' | 'completed'>('enrolled');
+  const [studentAnalytics, setStudentAnalytics] = useState({
+    avgGrade: 0,
+    attendanceRate: 0,
+    pendingTasks: 0,
+    progress: 0,
+    totalCourses: 0,
+    upcomingSessions: 0,
+  });
+  const [joiningCourseId, setJoiningCourseId] = useState<string | null>(null);
   const coursesScrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -74,6 +84,16 @@ export default function StudentDashboard() {
             .filter((r): r is PromiseFulfilledResult<ApiAssignment[]> => r.status === 'fulfilled')
             .flatMap((r) => r.value);
           setAssignments(nextAssignments);
+        }
+
+        const analyticsRes = await api.analyticsStudent();
+        if (!cancelled) {
+          setStudentAnalytics(analyticsRes.data);
+        }
+
+        const catalogRes = await api.courses({ available: true });
+        if (!cancelled) {
+          setAvailableCourses(catalogRes.data);
         }
       } catch {
         // Keep UI stable if API is unavailable
@@ -156,9 +176,7 @@ export default function StudentDashboard() {
     el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' });
   }
 
-  const completedAssignments = 12;
-  const totalAssignments = 15;
-  const completionRate = Math.round((completedAssignments / totalAssignments) * 100);
+  const completionRate = Math.round(studentAnalytics.progress);
 
   return (
     <DashboardLayout title="Student Dashboard" layout="full" showTitle={false}>
@@ -203,6 +221,9 @@ export default function StudentDashboard() {
                 <TabsTrigger value="courses" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <BookOpen className="w-4 h-4 mr-2" /> My Courses
                 </TabsTrigger>
+                <TabsTrigger value="catalog" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
+                  <Plus className="w-4 h-4 mr-2" /> Course Catalog
+                </TabsTrigger>
                 <TabsTrigger value="assignments" className="data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm rounded-lg px-4 py-2 whitespace-nowrap transition-all font-medium text-sm">
                   <FileText className="w-4 h-4 mr-2" /> Assignments
                 </TabsTrigger>
@@ -228,10 +249,10 @@ export default function StudentDashboard() {
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {[
-                { label: 'Enrolled Courses', value: studentCourses.length, icon: <BookOpen className="w-6 h-6" />, iconClass: 'stat-icon-indigo' },
-                { label: 'Attendance Rate', value: '95%', icon: <CheckCircle className="w-6 h-6" />, iconClass: 'stat-icon-emerald' },
-                { label: 'Current GPA', value: '3.8', icon: <Award className="w-6 h-6" />, iconClass: 'stat-icon-violet' },
-                { label: 'Pending Tasks', value: assessmentsDueCount || 0, icon: <FileText className="w-6 h-6" />, iconClass: 'stat-icon-amber' },
+                { label: 'Enrolled Courses', value: studentAnalytics.totalCourses, icon: <BookOpen className="w-6 h-6" />, iconClass: 'stat-icon-indigo' },
+                { label: 'Attendance Rate', value: `${studentAnalytics.attendanceRate}%`, icon: <CheckCircle className="w-6 h-6" />, iconClass: 'stat-icon-emerald' },
+                { label: 'Current Avg', value: `${studentAnalytics.avgGrade}%`, icon: <Award className="w-6 h-6" />, iconClass: 'stat-icon-violet' },
+                { label: 'Pending Tasks', value: studentAnalytics.pendingTasks, icon: <FileText className="w-6 h-6" />, iconClass: 'stat-icon-amber' },
               ].map((stat) => (
                 <Card key={stat.label} className="glass-card">
                   <CardContent className="p-6">
@@ -313,27 +334,27 @@ export default function StudentDashboard() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Course Progress</span>
-                  <span className="text-sm text-gray-600">68%</span>
                 </div>
-                <Progress value={68} className="h-2" />
+                <Progress value={studentAnalytics.progress} className="h-2" />
                 <p className="text-xs text-gray-500 mt-1">On track with learning goals</p>
               </div>
 
               <div className="pt-4 border-t">
                 <div className="text-sm font-medium mb-3">Recent Grades</div>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Python Basics</span>
-                    <span className="font-semibold text-green-600">95/100</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Integration Quiz</span>
-                    <span className="font-semibold text-green-600">88/100</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Essay Draft</span>
-                    <span className="font-semibold text-blue-600">Pending</span>
-                  </div>
+                  {studentAnalytics.recentGrades && studentAnalytics.recentGrades.length > 0 ? (
+                    studentAnalytics.recentGrades.map((rg, idx) => (
+                      <div key={idx} className="flex justify-between text-sm">
+                        <div className="flex flex-col">
+                          <span className="text-gray-600 font-medium">{rg.assignment}</span>
+                          <span className="text-[10px] text-gray-500 uppercase">{rg.course}</span>
+                        </div>
+                        <span className="font-semibold text-emerald-600">{rg.grade}/{rg.points}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-gray-500 italic">No recent grades available.</div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -516,6 +537,68 @@ export default function StudentDashboard() {
                 </div>
               </TabsContent>
 
+              <TabsContent value="catalog" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {availableCourses.map((course, index) => (
+                    <Card key={course.id} className="glass-card overflow-hidden">
+                      <div className="w-full aspect-video overflow-hidden">
+                        <ImageWithFallback
+                          src={courseImages[index % courseImages.length]}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <CardContent className="p-5 space-y-4">
+                        <div>
+                          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{course.code}</div>
+                          <h3 className="text-lg font-bold line-clamp-1">{course.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{course.description || 'No description available.'}</p>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <div className="text-xs text-muted-foreground">
+                            Instructor: <span className="font-medium text-foreground">{course.teacher}</span>
+                          </div>
+                          <Button 
+                            className="bg-emerald-600 hover:bg-emerald-700 min-w-[100px]" 
+                            size="sm"
+                            disabled={joiningCourseId === course.id}
+                            onClick={async () => {
+                              setJoiningCourseId(course.id);
+                              try {
+                                await api.selfEnroll(course.id);
+                                toast.success(`Enrolled in ${course.code}!`);
+                                // Refresh
+                                const coursesRes = await api.courses();
+                                setStudentCourses(coursesRes.data);
+                                setAvailableCourses(prev => prev.filter(c => c.id !== course.id));
+                              } catch (err: any) {
+                                toast.error(err.message || 'Enrollment failed');
+                              } finally {
+                                setJoiningCourseId(null);
+                              }
+                            }}
+                          >
+                            {joiningCourseId === course.id ? (
+                              <>
+                                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                Joining
+                              </>
+                            ) : (
+                              'Join Course'
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {availableCourses.length === 0 && (
+                    <div className="col-span-full py-12 text-center text-muted-foreground italic">
+                      No new courses available at the moment.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
               <TabsContent value="calendar" className="space-y-6">
                 <EventsCalendar canManage={false} />
               </TabsContent>
@@ -588,41 +671,34 @@ export default function StudentDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-6">
-                      {studentCourses.map((course) => {
-                        const grades = [
-                          { name: 'Assignments', score: 92, weight: 40 },
-                          { name: 'Quizzes', score: 88, weight: 30 },
-                          { name: 'Midterm', score: 85, weight: 15 },
-                          { name: 'Participation', score: 95, weight: 15 },
-                        ];
-                        const finalGrade = grades.reduce((sum, g) => sum + (g.score * g.weight) / 100, 0);
-
-                        return (
-                          <div key={course.id} className="p-4 glass-item">
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <div className="font-semibold">{course.code}</div>
-                                <div className="text-sm text-gray-600">{course.title}</div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-2xl font-bold text-blue-600">{finalGrade.toFixed(1)}%</div>
-                                <div className="text-sm text-gray-600">A-</div>
-                              </div>
+                      {studentCourses.map((course) => (
+                        <div key={course.id} className="p-4 glass-item">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <div className="font-semibold">{course.code}</div>
+                              <div className="text-sm text-gray-600">{course.title}</div>
                             </div>
-                            <div className="space-y-2">
-                              {grades.map((grade, i) => (
-                                <div key={i} className="flex items-center justify-between text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-gray-600">{grade.name}</span>
-                                    <span className="text-xs text-gray-400">({grade.weight}%)</span>
-                                  </div>
-                                  <span className="font-medium">{grade.score}%</span>
-                                </div>
-                              ))}
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {course.id ? (
+                                  <span className="text-xl">
+                                    {/* For a real dashboard, we'd fetch this in a loop or have a bulk API. 
+                                        Since we have analytics, we'll display the calculated course progress here as a proxy for grades if specific grade fetching isn't bulked. */}
+                                    View Details
+                                  </span>
+                                ) : '—'}
+                              </div>
                             </div>
                           </div>
-                        );
-                      })}
+                          <div className="flex justify-end">
+                            <Link to={`/course/${course.id}?tab=grades`}>
+                              <Button variant="link" size="sm" className="text-blue-600 h-auto p-0">
+                                View Gradebook
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -636,25 +712,19 @@ export default function StudentDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {[
-                        'Week 1: Introduction to Python',
-                        'Week 2: Variables and Data Types',
-                        'Week 3: Control Flow',
-                        'Week 4: Functions',
-                      ].map((material, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 glass-item">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-blue-600" />
-                            </div>
+                      {studentCourses.map((course) => (
+                        <div key={course.id} className="p-4 glass-item">
+                          <div className="flex items-center justify-between">
                             <div>
-                              <div className="font-semibold">{material}</div>
-                              <div className="text-sm text-gray-600">CS 101 - Introduction to Computer Science</div>
+                              <div className="font-semibold">{course.code} - {course.title}</div>
+                              <div className="text-sm text-gray-600">{course.materials} items available</div>
                             </div>
+                            <Link to={`/course/${course.id}?tab=materials`}>
+                              <Button variant="outline" size="sm">
+                                Open Materials
+                              </Button>
+                            </Link>
                           </div>
-                          <Button variant="outline" size="sm">
-                            Download
-                          </Button>
                         </div>
                       ))}
                     </div>

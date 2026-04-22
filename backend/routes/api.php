@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
+use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\ClassroomController;
 use App\Http\Controllers\Api\ClassSessionController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\ChatController;
@@ -17,6 +19,7 @@ use App\Http\Controllers\Api\MaterialController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\SubmissionController;
+use App\Http\Controllers\Api\SystemSettingController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +37,7 @@ Route::middleware('jwt')->group(function () {
         // Attendance
         Route::get('/sessions/{session}/attendance', [\App\Http\Controllers\Api\AttendanceController::class, 'index'])->middleware('role:teacher');
         Route::patch('/sessions/{session}/attendance/{student}', [\App\Http\Controllers\Api\AttendanceController::class, 'update'])->middleware('role:teacher');
+        Route::get('/courses/{course}/attendance-report', [\App\Http\Controllers\Api\AttendanceController::class, 'courseReport'])->middleware('role:admin,teacher');
         Route::get('/me/attendance', [\App\Http\Controllers\Api\AttendanceController::class, 'studentAttendance'])->middleware('role:student');
 
     // Programs (Course list, e.g., BSIT/BSN/BSA) - admin only
@@ -50,8 +54,10 @@ Route::middleware('jwt')->group(function () {
     Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->middleware('role:admin,teacher');
 
     // Enrollments
+    Route::get('/enrollments', [EnrollmentController::class, 'allEnrollments'])->middleware('role:admin');
     Route::get('/courses/{course}/enrollments', [EnrollmentController::class, 'index']);
     Route::post('/courses/{course}/enrollments', [EnrollmentController::class, 'store'])->middleware('role:admin,teacher');
+    Route::post('/courses/{course}/self-enroll', [EnrollmentController::class, 'selfEnroll'])->middleware('role:student');
     Route::delete('/courses/{course}/enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->middleware('role:admin,teacher');
 
     // Sessions
@@ -59,6 +65,11 @@ Route::middleware('jwt')->group(function () {
     Route::post('/courses/{course}/sessions', [ClassSessionController::class, 'store'])->middleware('role:admin,teacher');
     Route::patch('/courses/{course}/sessions/{session}', [ClassSessionController::class, 'update'])->middleware('role:admin,teacher');
     Route::delete('/courses/{course}/sessions/{session}', [ClassSessionController::class, 'destroy'])->middleware('role:admin,teacher');
+
+    // Virtual Classroom
+    Route::get('/sessions/{session}/messages', [ClassroomController::class, 'index']);
+    Route::post('/sessions/{session}/messages', [ClassroomController::class, 'store']);
+    Route::get('/sessions/{session}/participants', [ClassroomController::class, 'participants']);
 
     // Assignments
     Route::get('/courses/{course}/assignments', [AssignmentController::class, 'index']);
@@ -130,4 +141,14 @@ Route::middleware('jwt')->group(function () {
     Route::patch('/users/{user}/archive', [UserController::class, 'archive'])->middleware('role:admin');
     Route::patch('/users/{user}/unarchive', [UserController::class, 'unarchive'])->middleware('role:admin');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin');
+
+    // System Settings (admin only)
+    Route::get('/settings', [SystemSettingController::class, 'index'])->middleware('role:admin');
+    Route::patch('/settings', [SystemSettingController::class, 'update'])->middleware('role:admin');
+
+    // Backups
+    Route::get('/backups', [BackupController::class, 'index'])->middleware('role:admin');
+    Route::post('/backups', [BackupController::class, 'store'])->middleware('role:admin');
+    Route::get('/backups/{filename}/download', [BackupController::class, 'download'])->middleware('role:admin');
+    Route::delete('/backups/{filename}', [BackupController::class, 'destroy'])->middleware('role:admin');
 });

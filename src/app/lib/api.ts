@@ -31,6 +31,10 @@ export const attendanceApi = {
   async getMyAttendance() {
     return apiFetch<ApiAttendanceRecord[]>(`/api/me/attendance`);
   },
+  // Teacher/Admin: Get attendance report for a course
+  async getCourseAttendanceReport(courseId: string) {
+    return apiFetch<ApiAttendanceRecord[]>(`/api/courses/${encodeURIComponent(courseId)}/attendance-report`);
+  },
 };
 export type ApiUserRole = 'admin' | 'teacher' | 'student';
 
@@ -553,10 +557,11 @@ export const api = {
     });
   },
 
-  async courses(params?: { archived?: boolean }) {
+  async courses(params?: { archived?: boolean; available?: boolean }) {
     const qs = new URLSearchParams();
     if (params?.archived === true) qs.set('archived', '1');
     if (params?.archived === false) qs.set('archived', '0');
+    if (params?.available === true) qs.set('available', '1');
     const suffix = qs.toString() ? `?${qs.toString()}` : '';
     return apiFetch<ApiListResponse<ApiCourse>>(`/api/courses${suffix}`);
   },
@@ -836,12 +841,25 @@ export const api = {
     );
   },
 
+  async allEnrollments() {
+    return apiFetch<ApiListResponse<any>>('/api/enrollments');
+  },
+
   async enrollStudent(courseId: string, studentId: string) {
     return apiFetch<ApiItemResponse<ApiEnrollment>>(
       `/api/courses/${encodeURIComponent(courseId)}/enrollments`,
       {
         method: 'POST',
         body: JSON.stringify({ student_id: Number(studentId) }),
+      },
+    );
+  },
+
+  async selfEnroll(courseId: string) {
+    return apiFetch<ApiItemResponse<ApiEnrollment>>(
+      `/api/courses/${encodeURIComponent(courseId)}/self-enroll`,
+      {
+        method: 'POST',
       },
     );
   },
@@ -1051,5 +1069,96 @@ export const api = {
     return apiFetch<ApiMessageResponse>(`/api/users/${encodeURIComponent(userId)}`, {
       method: 'DELETE',
     });
+  },
+
+  async settings() {
+    return apiFetch<Record<string, any>>('/api/settings');
+  },
+  async updateSettings(settings: Record<string, any>) {
+    return apiFetch<ApiMessageResponse>('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({ settings }),
+    });
+  },
+
+  async analyticsTeacher() {
+    return apiFetch<ApiItemResponse<{
+      totalCourses: number;
+      totalStudents: number;
+      upcomingSessions: number;
+      assignments: number;
+    }>>('/api/analytics/teacher');
+  },
+
+  async analyticsStudent() {
+    return apiFetch<ApiItemResponse<{
+      totalCourses: number;
+      upcomingSessions: number;
+      avgGrade: number;
+      attendanceRate: number;
+      pendingTasks: number;
+      progress: number;
+      recentGrades?: Array<{ assignment: string; course: string; grade: number; points: number }>;
+    }>>('/api/analytics/student');
+  },
+
+  async getClassroomMessages(sessionId: string) {
+    return apiFetch<ApiListResponse<{
+      id: string;
+      userId: string;
+      userName: string;
+      userRole: string;
+      body: string;
+      createdAt: string;
+    }>>(`/api/sessions/${encodeURIComponent(sessionId)}/messages`);
+  },
+
+  async sendClassroomMessage(sessionId: string, body: string) {
+    return apiFetch<ApiItemResponse<{
+      id: string;
+      userId: string;
+      userName: string;
+      userRole: string;
+      body: string;
+      createdAt: string;
+    }>>(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+  },
+  async getClassroomParticipants(sessionId: string) {
+    return apiFetch<ApiListResponse<any>>(`/api/sessions/${encodeURIComponent(sessionId)}/participants`);
+  },
+
+  async backups() {
+    return apiFetch<ApiListResponse<{
+      id: string;
+      filename: string;
+      size: number;
+      createdAt: string;
+    }>>('/api/backups');
+  },
+
+  async createBackup() {
+    return apiFetch<ApiItemResponse<{
+      id: string;
+      filename: string;
+      size: number;
+      createdAt: string;
+    }>>('/api/backups', {
+      method: 'POST',
+    });
+  },
+
+  async deleteBackup(filename: string) {
+    return apiFetch<ApiItemResponse<any>>(`/api/backups/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  backupDownloadUrl(filename: string) {
+    const baseUrl = getApiBaseUrl();
+    const token = getToken();
+    return `${baseUrl}/api/backups/${encodeURIComponent(filename)}/download?token=${token || ''}`;
   },
 };

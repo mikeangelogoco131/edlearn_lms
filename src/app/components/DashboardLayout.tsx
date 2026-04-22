@@ -549,6 +549,20 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
                       </DropdownMenuItem>
                     ))
                   )}
+                  <DropdownMenuSeparator />
+                  <div className="p-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        navigate('/notifications');
+                      }}
+                    >
+                      See All Notifications
+                    </Button>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 

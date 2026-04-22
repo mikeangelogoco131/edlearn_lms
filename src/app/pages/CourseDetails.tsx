@@ -244,6 +244,9 @@ export default function CourseDetails() {
   const [myGrade, setMyGrade] = useState<ApiMyCourseGrade | null>(null);
   const [gradeOverrideDrafts, setGradeOverrideDrafts] = useState<Record<string, { finalGrade: string; remarks: string }>>({});
 
+  const [attendanceReport, setAttendanceReport] = useState<any[]>([]);
+  const [loadingAttendanceReport, setLoadingAttendanceReport] = useState(false);
+
   const [newLesson, setNewLesson] = useState({
     title: '',
     description: '',
@@ -311,6 +314,12 @@ export default function CourseDetails() {
   const [viewingLesson, setViewingLesson] = useState<ApiLesson | null>(null);
 
   const [activeTab, setActiveTab] = useState('lessons');
+
+  useEffect(() => {
+    if (activeTab === 'attendance-report' && isTeacher) {
+      loadAttendanceReport();
+    }
+  }, [activeTab, isTeacher]);
 
 
   const periods = [
@@ -486,6 +495,19 @@ export default function CourseDetails() {
       toast.error(msg);
     } finally {
       setLoadingEnrollments(false);
+    }
+  }
+
+  async function loadAttendanceReport() {
+    if (!courseId) return;
+    setLoadingAttendanceReport(true);
+    try {
+      const data = await attendanceApi.getCourseAttendanceReport(courseId);
+      setAttendanceReport(data);
+    } catch (e) {
+      toast.error('Failed to load attendance report');
+    } finally {
+      setLoadingAttendanceReport(false);
     }
   }
 
@@ -935,6 +957,12 @@ export default function CourseDetails() {
                       Students
                     </TabsTrigger>
                   ) : null}
+                  {isTeacher && (
+                    <TabsTrigger value="attendance-report" className="w-full justify-start gap-2">
+                      <ClipboardList className="w-4 h-4" />
+                      Attendance Report
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </CardContent>
             </Card>
@@ -2376,6 +2404,66 @@ export default function CourseDetails() {
                           )}
                         </div>
                       ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {isTeacher && (
+          <TabsContent value="attendance-report" className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Attendance Report</CardTitle>
+                    <CardDescription>Overview of student attendance across all sessions</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadAttendanceReport} disabled={loadingAttendanceReport}>
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingAttendanceReport ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading report...</div>
+                ) : attendanceReport.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground italic">No attendance records found.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="p-3 text-left font-semibold">Student</th>
+                          <th className="p-3 text-left font-semibold">Session</th>
+                          <th className="p-3 text-left font-semibold">Date</th>
+                          <th className="p-3 text-left font-semibold">Status</th>
+                          <th className="p-3 text-left font-semibold">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendanceReport.map((rec) => (
+                          <tr key={rec.id} className="border-b hover:bg-muted/10 transition-colors">
+                            <td className="p-3 font-medium">{rec.student?.name}</td>
+                            <td className="p-3">{rec.session?.title}</td>
+                            <td className="p-3 text-gray-500">
+                              {rec.session?.startsAt || rec.session?.date ? format(new Date(rec.session.startsAt || rec.session.date), 'MMM d, yyyy') : '—'}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                rec.status === 'present' ? 'bg-green-100 text-green-700' :
+                                rec.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {rec.status}
+                              </span>
+                            </td>
+                            <td className="p-3 text-xs text-gray-500 italic">{rec.remarks || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>

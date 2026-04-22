@@ -29,6 +29,15 @@ export default function TeacherDashboard() {
   const [teacherCourses, setTeacherCourses] = useState<ApiCourse[]>([]);
   const [sessions, setSessions] = useState<ApiClassSession[]>([]);
   const [coursesView, setCoursesView] = useState<'enrolled' | 'completed'>('enrolled');
+  const [teacherAnalytics, setTeacherAnalytics] = useState({
+    totalCourses: 0,
+    totalStudents: 0,
+    upcomingSessions: 0,
+    assignments: 0,
+    pendingGrading: 0,
+  });
+  const [pagedStudents, setPagedStudents] = useState<ApiUser[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<ApiAssignment[]>([]);
   const coursesScrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -44,6 +53,21 @@ export default function TeacherDashboard() {
           coursesRes.data.map((c) => api.courseSessions(c.id).then((r) => r.data))
         );
         if (!cancelled) setSessions(sessionsRes.flat());
+
+        const analyticsRes = await api.analyticsTeacher();
+        if (!cancelled) {
+          setTeacherAnalytics(analyticsRes.data);
+        }
+
+        const studentsRes = await api.users({ role: 'student', limit: 5 });
+        if (!cancelled) {
+          setPagedStudents(studentsRes.data);
+        }
+
+        const assignmentsRes = await Promise.all(
+          coursesRes.data.map((c) => api.courseAssignments(c.id).then((r) => r.data))
+        );
+        if (!cancelled) setTeacherAssignments(assignmentsRes.flat());
       } catch {
         // Keep UI stable if API is unavailable
       }
@@ -85,7 +109,6 @@ export default function TeacherDashboard() {
     el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' });
   }
 
-  const teacherAssignments: unknown[] = [];
 
   return (
     <DashboardLayout title="Teacher Dashboard" layout="full" showTitle={false}>
@@ -169,10 +192,10 @@ export default function TeacherDashboard() {
               {/* Overview Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { label: 'My Courses', value: teacherCourses.length, icon: <BookOpen className="w-6 h-6" />, iconClass: 'stat-icon-indigo' },
-                  { label: 'Total Students', value: teacherCourses.reduce((sum, c) => sum + c.students, 0), icon: <Users className="w-6 h-6" />, iconClass: 'stat-icon-emerald' },
-                  { label: 'Upcoming Classes', value: upcomingSessions.length, icon: <Calendar className="w-6 h-6" />, iconClass: 'stat-icon-violet' },
-                  { label: 'Pending Grading', value: 23, icon: <FileText className="w-6 h-6" />, iconClass: 'stat-icon-amber' },
+                  { label: 'My Courses', value: teacherAnalytics.totalCourses, icon: <BookOpen className="w-6 h-6" />, iconClass: 'stat-icon-indigo' },
+                  { label: 'Total Students', value: teacherAnalytics.totalStudents, icon: <Users className="w-6 h-6" />, iconClass: 'stat-icon-emerald' },
+                  { label: 'Upcoming Classes', value: teacherAnalytics.upcomingSessions, icon: <Calendar className="w-6 h-6" />, iconClass: 'stat-icon-violet' },
+                  { label: 'Pending Grading', value: teacherAnalytics.pendingGrading, icon: <FileText className="w-6 h-6" />, iconClass: 'stat-icon-amber' },
                 ].map((stat) => (
                   <Card key={stat.label} className="glass-card">
                     <CardContent className="p-6">
@@ -398,8 +421,29 @@ export default function TeacherDashboard() {
                   <CardContent>
                     <div className="space-y-4">
                       {teacherAssignments.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">No assignments.</div>
-                      ) : null}
+                        <div className="text-center py-8 text-muted-foreground">No assignments.</div>
+                      ) : (
+                        teacherAssignments.map((a) => {
+                          const course = teacherCourses.find((c) => c.id === a.courseId);
+                          return (
+                            <div key={a.id} className="p-4 glass-item">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="font-semibold">{a.title}</div>
+                                  <div className="text-sm text-gray-600">{course?.code} - {course?.title}</div>
+                                  <div className="text-sm text-gray-500 mt-1">Due: {a.dueDate ? format(new Date(a.dueDate), 'MMM d, h:mm a') : 'No due date'}</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-bold text-blue-600">{a.points} pts</div>
+                                  <Link to={`/course/${a.courseId}?tab=assignments`}>
+                                    <Button variant="link" size="sm" className="h-auto p-0 mt-1">Manage</Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -413,32 +457,30 @@ export default function TeacherDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {['Alex Martinez', 'Emma Wilson', 'James Brown', 'Sophia Chen', 'Michael Johnson'].map(
-                        (name, index) => (
-                          <div key={index} className="flex items-center justify-between p-4 glass-item">
+                      {pagedStudents.map((student, index) => (
+                          <div key={student.id} className="flex items-center justify-between p-4 glass-item">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                {name
+                                {student.name
                                   .split(' ')
                                   .map((n) => n[0])
                                   .join('')}
                               </div>
                               <div>
-                                <div className="font-semibold">{name}</div>
-                                <div className="text-sm text-gray-600">3 courses enrolled</div>
+                                <div className="font-semibold">{student.name}</div>
+                                <div className="text-sm text-gray-600">{student.email}</div>
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <div className="text-sm font-semibold">92% Avg</div>
-                                <div className="text-xs text-gray-600">95% Attendance</div>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                View Profile
+                              <Button variant="outline" size="sm" asChild>
+                                <Link to={`/admin?tab=users&q=${encodeURIComponent(student.email)}`}>View Profile</Link>
                               </Button>
                             </div>
                           </div>
                         )
+                      )}
+                      {pagedStudents.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">No students found.</div>
                       )}
                     </div>
                   </CardContent>

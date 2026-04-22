@@ -13,6 +13,7 @@ import MessagesPage from "./pages/Messages";
 import Profile from "./pages/Profile";
 import VirtualClassroom from "./pages/VirtualClassroom";
 import CourseDetails from "./pages/CourseDetails";
+import NotificationsPage from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -71,6 +72,10 @@ export const router = createBrowserRouter([
   {
     path: "/course/:courseId",
     Component: CourseDetails,
+  },
+  {
+    path: "/notifications",
+    Component: NotificationsPage,
   },
   {
     path: "*",

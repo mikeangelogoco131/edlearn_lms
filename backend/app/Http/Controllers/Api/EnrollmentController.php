@@ -43,6 +43,30 @@ class EnrollmentController extends Controller
         ]);
     }
 
+    public function allEnrollments(Request $request)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+        if (!$user || $user->role !== User::ROLE_ADMIN) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $enrollments = Enrollment::query()
+            ->with(['student', 'course'])
+            ->orderByDesc('enrolled_at')
+            ->limit(5000)
+            ->get();
+
+        return response()->json([
+            'data' => $enrollments->map(fn (Enrollment $e) => array_merge($this->enrollmentToArray($e), [
+                'course' => $e->course ? [
+                    'code' => $e->course->code,
+                    'title' => $e->course->title,
+                ] : null
+            ]))->values(),
+        ]);
+    }
+
     public function store(Request $request, Course $course)
     {
         /** @var User|null $user */
@@ -67,54 +91,9 @@ class EnrollmentController extends Controller
         }
 
         // Prevent time conflicts across the student's enrolled courses.
-        $now = now()->subMinute();
-        $candidateSessions = ClassSession::query()
-            ->where('course_id', $course->id)
-            ->whereIn('status', ['scheduled', 'live'])
-            ->where('starts_at', '>=', $now)
-            ->get();
-
-        if ($candidateSessions->isNotEmpty()) {
-            $otherCourseIds = Enrollment::query()
-                ->where('student_id', $student->id)
-                ->where('status', 'enrolled')
-                ->where('course_id', '!=', $course->id)
-                ->pluck('course_id')
-                ->all();
-
-            if (! empty($otherCourseIds)) {
-                $existingSessions = ClassSession::query()
-                    ->whereIn('course_id', $otherCourseIds)
-                    ->whereIn('status', ['scheduled', 'live'])
-                    ->where('starts_at', '>=', $now)
-                    ->get();
-
-                if ($existingSessions->isNotEmpty()) {
-                    $existingByDay = [];
-                    foreach ($existingSessions as $s) {
-                        if (! $s->starts_at) continue;
-                        $dayKey = Carbon::instance($s->starts_at)->toDateString();
-                        $existingByDay[$dayKey][] = $s;
-                    }
-
-                    foreach ($candidateSessions as $c) {
-                        if (! $c->starts_at) continue;
-                        $cStart = Carbon::instance($c->starts_at);
-                        $cEnd = $c->ends_at ? Carbon::instance($c->ends_at) : (clone $cStart)->addMinutes(60);
-                        $dayKey = $cStart->toDateString();
-                        foreach (($existingByDay[$dayKey] ?? []) as $e) {
-                            if (! $e->starts_at) continue;
-                            $eStart = Carbon::instance($e->starts_at);
-                            $eEnd = $e->ends_at ? Carbon::instance($e->ends_at) : (clone $eStart)->addMinutes(60);
-                            if ($cStart->lt($eEnd) && $eStart->lt($cEnd)) {
-                                return response()->json([
-                                    'message' => 'Schedule conflict: student already has another subject at that time.',
-                                ], 422);
-                            }
-                        }
-                    }
-                }
-            }
+        $conflict = $this->checkScheduleConflict($student, $course);
+        if ($conflict) {
+            return response()->json(['message' => $conflict], 422);
         }
 
         $enrollment = Enrollment::query()->firstOrNew([
@@ -132,6 +111,47 @@ class EnrollmentController extends Controller
         $enrollment->save();
 
         $enrollment->load('student');
+
+        return response()->json(['data' => $this->enrollmentToArray($enrollment)], 201);
+    }
+
+    public function selfEnroll(Request $request, Course $course)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if ($user->role !== User::ROLE_STUDENT) {
+            return response()->json(['message' => 'Only students can self-enroll'], 403);
+        }
+
+        // Check if already enrolled
+        $existing = Enrollment::query()
+            ->where('course_id', $course->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'enrolled')
+            ->exists();
+
+        if ($existing) {
+            return response()->json(['message' => 'Already enrolled in this course'], 422);
+        }
+
+        // Check for schedule conflicts
+        $conflict = $this->checkScheduleConflict($user, $course);
+        if ($conflict) {
+            return response()->json(['message' => $conflict], 422);
+        }
+        $enrollment = Enrollment::query()->updateOrCreate(
+            ['course_id' => $course->id, 'student_id' => $user->id],
+            [
+                'status' => 'enrolled',
+                'enrolled_at' => now(),
+                'dropped_at' => null,
+                'completed_at' => null,
+            ]
+        );
 
         return response()->json(['data' => $this->enrollmentToArray($enrollment)], 201);
     }
@@ -157,6 +177,65 @@ class EnrollmentController extends Controller
         $enrollment->save();
 
         return response()->json(['message' => 'Dropped']);
+    }
+
+    private function checkScheduleConflict(User $student, Course $course): ?string
+    {
+        $now = now()->subMinute();
+        $candidateSessions = ClassSession::query()
+            ->where('course_id', $course->id)
+            ->whereIn('status', ['scheduled', 'live'])
+            ->where('starts_at', '>=', $now)
+            ->get();
+
+        if ($candidateSessions->isEmpty()) {
+            return null;
+        }
+
+        $otherCourseIds = Enrollment::query()
+            ->where('student_id', $student->id)
+            ->where('status', 'enrolled')
+            ->where('course_id', '!=', $course->id)
+            ->pluck('course_id')
+            ->all();
+
+        if (empty($otherCourseIds)) {
+            return null;
+        }
+
+        $existingSessions = ClassSession::query()
+            ->whereIn('course_id', $otherCourseIds)
+            ->whereIn('status', ['scheduled', 'live'])
+            ->where('starts_at', '>=', $now)
+            ->get();
+
+        if ($existingSessions->isEmpty()) {
+            return null;
+        }
+
+        $existingByDay = [];
+        foreach ($existingSessions as $s) {
+            if (! $s->starts_at) continue;
+            $dayKey = Carbon::instance($s->starts_at)->toDateString();
+            $existingByDay[$dayKey][] = $s;
+        }
+
+        foreach ($candidateSessions as $c) {
+            if (! $c->starts_at) continue;
+            $cStart = Carbon::instance($c->starts_at);
+            $cEnd = $c->ends_at ? Carbon::instance($c->ends_at) : (clone $cStart)->addMinutes(60);
+            $dayKey = $cStart->toDateString();
+            foreach (($existingByDay[$dayKey] ?? []) as $e) {
+                if (! $e->starts_at) continue;
+                $eStart = Carbon::instance($e->starts_at);
+                $eEnd = $e->ends_at ? Carbon::instance($e->ends_at) : (clone $eStart)->addMinutes(60);
+                if ($cStart->lt($eEnd) && $eStart->lt($cEnd)) {
+                    return 'Schedule conflict: student already has another subject at that time.';
+                }
+            }
+        }
+
+        return null;
     }
 
     private function canManageCourse(User $user, Course $course): bool
