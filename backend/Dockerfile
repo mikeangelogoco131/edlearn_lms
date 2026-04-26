@@ -12,10 +12,8 @@ RUN composer install --no-dev --optimize-autoloader
 
 RUN chmod -R 755 storage bootstrap/cache
 
-# Create database file and run migrations during build
-RUN mkdir -p database && touch database/database.sqlite && \
-    php artisan migrate --force && \
-    php artisan db:seed --force
+# Copy pre-initialized database
+COPY database/database.sqlite database/database.sqlite
 
 EXPOSE 8000
 
