@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { Progress } from '../components/ui/progress';
-import { api, ApiClassSession, ApiCourse } from '../lib/api';
+import { api, ApiAssignment, ApiClassSession, ApiCourse, ApiUser } from '../lib/api';
 import { EventsCalendar } from '../components/EventsCalendar';
 import { CourseAnnouncements } from '../components/CourseAnnouncements';
 import { format } from 'date-fns';

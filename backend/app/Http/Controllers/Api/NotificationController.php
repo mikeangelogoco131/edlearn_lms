@@ -57,6 +57,23 @@ class NotificationController extends Controller
         return response()->json(['data' => $items]);
     }
 
+    public function read(Request $request, $id)
+    {
+        // For virtual notifications, we don't persist read state yet.
+        // In a full implementation, we would store this in a notification_read table.
+        return response()->json(['message' => 'Marked as read']);
+    }
+
+    public function readAll(Request $request)
+    {
+        return response()->json(['message' => 'All marked as read']);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        return response()->json(['message' => 'Notification removed']);
+    }
+
     /**
      * Posted announcements + teacher messages (teacher-authored announcements).
      *

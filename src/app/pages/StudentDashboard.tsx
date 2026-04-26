@@ -24,6 +24,7 @@ import {
   Menu,
   X,
   Play,
+  Plus,
 } from 'lucide-react';
 import { Progress } from '../components/ui/progress';
 import { api, ApiAssignment, ApiClassSession, ApiCourse } from '../lib/api';
@@ -177,6 +178,8 @@ export default function StudentDashboard() {
   }
 
   const completionRate = Math.round(studentAnalytics.progress);
+  const totalAssignments = assignments.length;
+  const completedAssignments = assignments.filter((a) => a.status === 'graded' || a.status === 'submitted').length;
 
   return (
     <DashboardLayout title="Student Dashboard" layout="full" showTitle={false}>

@@ -124,6 +124,16 @@ export interface ApiAssignment {
   } | null;
 }
 
+export interface ApiNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  data: any;
+  readAt: string | null;
+  createdAt: string;
+}
+
 export interface ApiLesson {
   id: string;
   courseId: string;
@@ -1160,5 +1170,23 @@ export const api = {
     const baseUrl = getApiBaseUrl();
     const token = getToken();
     return `${baseUrl}/api/backups/${encodeURIComponent(filename)}/download?token=${token || ''}`;
+  },
+
+  async markNotificationAsRead(id: string) {
+    return apiFetch<ApiItemResponse<any>>(`/api/notifications/${encodeURIComponent(id)}/read`, {
+      method: 'POST',
+    });
+  },
+
+  async markAllNotificationsAsRead() {
+    return apiFetch<ApiItemResponse<any>>('/api/notifications/read-all', {
+      method: 'POST',
+    });
+  },
+
+  async deleteNotification(id: string) {
+    return apiFetch<ApiItemResponse<any>>(`/api/notifications/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
 };

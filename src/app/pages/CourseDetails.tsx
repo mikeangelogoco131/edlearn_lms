@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Video, FileText, BookOpen, Users, Calendar, Clock, Download, 
-  Play, CheckCircle, Upload, Plus, Edit, ArrowLeft, ChevronDown, ChevronUp, Trash2
+  Play, CheckCircle, Upload, Plus, Edit, ArrowLeft, ChevronDown, ChevronUp, Trash2, ClipboardList
 } from 'lucide-react';
 import {
   api,
