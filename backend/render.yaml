@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: edlearn-lms
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    preDeployCommand: >
+      php artisan migrate --force &&
+      php artisan db:seed --force
