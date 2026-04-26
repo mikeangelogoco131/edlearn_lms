@@ -2,11 +2,14 @@
   "rewrites": [
     {
       "source": "/(api|storage)/:path*",
-      "destination": "https://YOUR_BACKEND_URL/:path*"
+      "destination": "https://edlearn-lms.onrender.com/:path*"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://edlearn-lms.onrender.com"
+  }
 }
