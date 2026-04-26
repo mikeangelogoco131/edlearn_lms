@@ -1,40 +1,17 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    zip \
-    unzip \
-    mysql-client \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git curl unzip && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && rm composer-setup.php
 
 WORKDIR /app
 
-# Copy composer files
-COPY composer.json composer.lock ./
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Copy application code
 COPY . .
 
-# Generate app key
-RUN php artisan key:generate || true
+RUN composer install --no-dev --optimize-autoloader
 
-# Create storage directories
-RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views
-RUN chmod -R 775 storage bootstrap/cache
+RUN chmod -R 755 storage bootstrap/cache
 
-# Expose port
 EXPOSE 8000
 
-# Start PHP-FPM and a simple server
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
