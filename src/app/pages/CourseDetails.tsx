@@ -1429,6 +1429,7 @@ export default function CourseDetails() {
                                 max={50} 
                                 defaultValue={10}
                                 id="quizQuestionCount"
+                                placeholder="Enter number of questions"
                                 className="border rounded px-2 py-1 w-full" 
                               />
                             </div>

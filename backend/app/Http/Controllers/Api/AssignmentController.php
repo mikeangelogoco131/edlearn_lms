@@ -104,7 +104,7 @@ class AssignmentController extends Controller
                 ]);
             } catch (\Throwable $e) {
                 // Log but don't fail the assignment creation if announcement fails
-                \Log::warning('Failed to create announcement for assignment', ['error' => $e->getMessage()]);
+                    Log::warning('Failed to create announcement for assignment', ['error' => $e->getMessage()]);
             }
         }
 

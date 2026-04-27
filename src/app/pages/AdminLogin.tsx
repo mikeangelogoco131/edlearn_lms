@@ -41,39 +41,20 @@ export default function AdminLogin() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
       {/* Violet/purple background gradient */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124,58,237,0.2) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 110%, rgba(99,102,241,0.12) 0%, transparent 60%)',
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(124,58,237,0.2)_0%,transparent_60%),radial-gradient(ellipse_60%_50%_at_80%_110%,rgba(99,102,241,0.12)_0%,transparent_60%)]" />
       {/* Grid pattern */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-40"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%237c3aed' fill-opacity='0.06'%3E%3Cpath d='M0 0h40v40H0z'/%3E%3Cpath d='M0 0h1v40H0zM39 0h1v40h-1zM0 0v1h40V0zM0 39v1h40v-1z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-40 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%220%200%2040%2040%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%237c3aed%22%20fill-opacity%3D%220.06%22%3E%3Cpath%20d%3D%22M0%200h40v40H0z%22%2F%3E%3Cpath%20d%3D%22M0%200h1v40H0zM39%200h1v40h-1zM0%200v1h40V0zM0%2039v1h40v-1z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')]" />
 
       <div className="relative z-10 w-full max-w-md px-4">
         {/* Admin badge */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex flex-col items-center gap-3">
             <div className="relative">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                  boxShadow: '0 8px 32px rgba(124,58,237,0.45)',
-                }}
-              >
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[linear-gradient(135deg,#7c3aed_0%,#6d28d9_100%)] shadow-[0_8px_32px_rgba(124,58,237,0.45)]">
                 <BookOpen className="w-7 h-7 text-white" />
               </div>
               {/* Admin shield badge */}
-              <div
-                className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center border-2 border-background"
-                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
-              >
+              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center border-2 border-background bg-[linear-gradient(135deg,#f59e0b_0%,#d97706_100%)]">
                 <Shield className="w-3 h-3 text-white" />
               </div>
             </div>
@@ -85,14 +66,7 @@ export default function AdminLogin() {
         </div>
 
         {/* Card */}
-        <div
-          className="rounded-3xl border p-8"
-          style={{
-            background: 'var(--card)',
-            boxShadow: '0 8px 40px rgba(124,58,237,0.12), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)',
-            borderColor: 'var(--border)',
-          }}
-        >
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-8 shadow-[0_8px_40px_rgba(124,58,237,0.12),0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.8)]">
           {/* Admin access indicator */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 dark:bg-violet-950/40 dark:border-violet-800 mb-6">
             <Shield className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0" />
@@ -158,11 +132,7 @@ export default function AdminLogin() {
 
             <Button
               type="submit"
-              className="w-full h-11 rounded-xl font-semibold text-white border-0 shadow-none"
-              style={{
-                background: loading ? '#94a3b8' : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                boxShadow: loading ? 'none' : '0 4px 20px rgba(124,58,237,0.4)',
-              }}
+              className={`w-full h-11 rounded-xl font-semibold text-white border-0 ${loading ? 'bg-slate-400 shadow-none' : 'bg-[linear-gradient(135deg,#7c3aed_0%,#6d28d9_100%)] shadow-[0_4px_20px_rgba(124,58,237,0.4)]'}`}
               disabled={loading}
             >
               {loading ? (

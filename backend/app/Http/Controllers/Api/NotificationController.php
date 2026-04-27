@@ -499,7 +499,7 @@ class NotificationController extends Controller
             ->whereHas('course', function ($query) use ($student) {
                 $query->whereHas('enrollments', function ($q) use ($student) {
                     $q->where('student_id', $student->id)
-                      ->where('status', 'active');
+                      ->whereIn('status', ['active', 'enrolled']);
                 });
             })
             ->where('status', 'published')
@@ -537,3 +537,5 @@ class NotificationController extends Controller
             })
             ->values();
     }
+}
+

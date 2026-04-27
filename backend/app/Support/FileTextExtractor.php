@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class FileTextExtractor
@@ -27,7 +28,7 @@ class FileTextExtractor
         }
 
         if (!file_exists($fullPath)) {
-            \Log::warning('FileTextExtractor: File not found', ['filePath' => $filePath, 'fullPath' => $fullPath ?? 'null']);
+            Log::warning('FileTextExtractor: File not found', ['filePath' => $filePath, 'fullPath' => $fullPath ?? 'null']);
             return '';
         }
 

@@ -319,16 +319,15 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ backgroundImage: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.07) 0%, transparent 60%)' }}>
+    <div className="min-h-screen bg-background text-foreground bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(99,102,241,0.07)_0%,transparent_60%)]">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 border-b backdrop-blur-xl" style={{ background: 'rgba(var(--background), 0.85)', borderColor: 'var(--border)' }}>
+      <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[rgba(var(--background),0.85)] backdrop-blur-xl">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
               <Link to="/" className="flex items-center gap-2.5">
                 <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center bg-[linear-gradient(135deg,#6366f1_0%,#8b5cf6_100%)] shadow-[0_4px_14px_rgba(99,102,241,0.35)]"
                 >
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
