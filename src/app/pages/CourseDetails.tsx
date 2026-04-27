@@ -1358,6 +1358,59 @@ export default function CourseDetails() {
                         </div>
                       </div>
 
+                      {newAssignment.submissionType === 'quiz' && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">Generate from lesson</div>
+                            <Select value={String(newAssignment.quizData?.lessonId || '')} onValueChange={(v) => setNewAssignment((s) => ({ ...s, quizData: { ...(s.quizData || { questions: [] }), lessonId: v ? Number(v) : undefined } }))}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select lesson (topic)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {courseLessons.map((l) => (
+                                  <SelectItem key={l.id} value={String(l.id)}>
+                                    {l.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">Questions</div>
+                            <input type="number" min={1} max={50} value={(newAssignment.quizData && (newAssignment.quizData.questions||[]).length) || 10} onChange={(e) => { const v = Number(e.target.value) || 10; setNewAssignment((s) => ({ ...s, quizData: { ...(s.quizData || { questions: [] }), questions: s.quizData?.questions || Array.from({length: v}, () => ({ question: '', options: [], correctAnswer: '', points: 1 })) } })); }} className="border rounded px-2 py-1 w-full" />
+                          </div>
+
+                          <div className="space-y-1 flex items-end">
+                            <div />
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={async () => {
+                                if (!courseId || !newAssignment.quizData || !newAssignment.quizData.lessonId) { toast.error('Select a lesson to generate from'); return; }
+                                setSaving(true);
+                                try {
+                                  const res = await api.generateQuiz(courseId, { lesson_id: Number(newAssignment.quizData.lessonId), count: 10, types: ['mcq','tf','identification'] });
+                                  if (res && res.data && res.data.questions) {
+                                    setNewAssignment((s) => ({ ...s, quizData: { questions: res.data.questions } }));
+                                    toast.success('Generated quiz questions');
+                                  } else {
+                                    toast.error('Failed to generate quiz');
+                                  }
+                                } catch (e) {
+                                  const msg = e instanceof Error ? e.message : 'Failed to generate quiz';
+                                  toast.error(msg);
+                                } finally { setSaving(false); }
+                              }}>Generate Quiz</Button>
+
+                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={async () => {
+                                // open a simple editor to manually add questions; for now ensure quizData exists
+                                setNewAssignment((s) => ({ ...s, quizData: s.quizData || { questions: [] } }));
+                                toast.info('You can edit questions after creating the assessment by clicking Edit');
+                              }}>Manual Add</Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <div className="text-sm font-medium">Period</div>

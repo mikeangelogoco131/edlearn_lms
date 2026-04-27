@@ -77,6 +77,7 @@ Route::middleware('jwt')->group(function () {
     // Assignments
     Route::get('/courses/{course}/assignments', [AssignmentController::class, 'index']);
     Route::post('/courses/{course}/assignments', [AssignmentController::class, 'store'])->middleware('role:admin,teacher');
+    Route::post('/courses/{course}/generate-quiz', [AssignmentController::class, 'generateQuiz'])->middleware('role:admin,teacher');
     Route::get('/assignments/{assignment}', [AssignmentController::class, 'show']);
     Route::patch('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update'])->middleware('role:admin,teacher');
     Route::delete('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'destroy'])->middleware('role:admin,teacher');
