@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Models\Assignment;
 use App\Models\ClassSession;
 use App\Models\Course;
 use App\Models\Event;
@@ -44,7 +45,8 @@ class NotificationController extends Controller
             $items = $items->merge($this->teacherCourseAssignedNotifications($user));
         } elseif ($user->role === User::ROLE_STUDENT) {
             $items = $items->merge($this->studentCourseEnrolledNotifications($user))
-                           ->merge($this->studentCourseDroppedNotifications($user));
+                           ->merge($this->studentCourseDroppedNotifications($user))
+                           ->merge($this->studentAssignmentAddedNotifications($user));
         }
 
         $items = $items
@@ -489,4 +491,49 @@ class NotificationController extends Controller
             })
             ->values();
     }
-}
+
+    private function studentAssignmentAddedNotifications(User $student): Collection
+    {
+        return \App\Models\Assignment::query()
+            ->with(['course', 'course.teacher'])
+            ->whereHas('course', function ($query) use ($student) {
+                $query->whereHas('enrollments', function ($q) use ($student) {
+                    $q->where('student_id', $student->id)
+                      ->where('status', 'active');
+                });
+            })
+            ->where('status', 'published')
+            ->orderByDesc('created_at')
+            ->limit(15)
+            ->get()
+            ->map(function (\App\Models\Assignment $a) {
+                $courseTitle = $a->course ? ($a->course->code.' — '.$a->course->title) : 'a course';
+                $assignmentType = $a->submission_type === 'quiz' ? 'Quiz' : 'Assignment';
+                
+                return [
+                    'id' => 'assignment_added:'.(string) $a->id,
+                    'type' => 'assignment_added',
+                    'title' => 'New '.$assignmentType.': '.$a->title.' in '.$courseTitle,
+                    'publishedAt' => $a->created_at->toIso8601String(),
+                    'isPinned' => false,
+                    'course' => $a->course ? [
+                        'id' => (string) $a->course->id,
+                        'code' => $a->course->code,
+                        'title' => $a->course->title,
+                    ] : null,
+                    'author' => ($a->course && $a->course->teacher) ? [
+                        'id' => (string) $a->course->teacher->id,
+                        'name' => $a->course->teacher->name,
+                        'role' => $a->course->teacher->role,
+                    ] : [
+                        'id' => 'admin',
+                        'name' => 'System Admin',
+                        'role' => 'admin',
+                    ],
+                    'user' => null,
+                    'event' => null,
+                    'expiresAt' => $a->due_date ? $a->due_date->toIso8601String() : null,
+                ];
+            })
+            ->values();
+    }
