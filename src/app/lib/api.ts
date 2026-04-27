@@ -766,7 +766,7 @@ export const api = {
     );
   },
 
-  async generateQuiz(courseId: string, payload: { lesson_id: number; count?: number; types?: string[] }) {
+  async generateQuiz(courseId: string, payload: { lesson_id?: number | null; material_id?: number | null; count?: number; types?: string[] }) {
     return apiFetch<any>(`/api/courses/${encodeURIComponent(courseId)}/generate-quiz`, {
       method: 'POST',
       body: JSON.stringify(payload),

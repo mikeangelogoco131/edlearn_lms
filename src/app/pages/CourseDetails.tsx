@@ -303,6 +303,10 @@ export default function CourseDetails() {
     quizData: null as { questions: Array<{ question: string; options: string[]; correctAnswer: string; points: number }> } | null,
   });
 
+  const [quizGenerationSource, setQuizGenerationSource] = useState<'lesson' | 'material'>('lesson');
+  const [quizGenerationLessonId, setQuizGenerationLessonId] = useState<string>('');
+  const [quizGenerationMaterialId, setQuizGenerationMaterialId] = useState<string>('');
+
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [assignmentDrafts, setAssignmentDrafts] = useState<
     Record<
@@ -1359,53 +1363,128 @@ export default function CourseDetails() {
                       </div>
 
                       {newAssignment.submissionType === 'quiz' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                          <div className="space-y-1">
-                            <div className="text-sm font-medium">Generate from lesson</div>
-                            <Select value={String(newAssignment.quizData?.lessonId || '')} onValueChange={(v) => setNewAssignment((s) => ({ ...s, quizData: { ...(s.quizData || { questions: [] }), lessonId: v ? Number(v) : undefined } }))}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select lesson (topic)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {courseLessons.map((l) => (
-                                  <SelectItem key={l.id} value={String(l.id)}>
-                                    {l.title}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                        <div className="space-y-3 mb-3 p-3 bg-muted/30 border rounded-md">
+                          <div className="text-sm font-medium">Generate Quiz from Content</div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">Source Type</div>
+                              <Select value={quizGenerationSource} onValueChange={(v) => setQuizGenerationSource(v as 'lesson' | 'material')}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Choose source" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="lesson">From Lesson</SelectItem>
+                                  <SelectItem value="material">From Uploaded File</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {quizGenerationSource === 'lesson' && (
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium">Select Lesson</div>
+                                <Select value={quizGenerationLessonId} onValueChange={setQuizGenerationLessonId}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select lesson" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {courseLessons.map((l) => (
+                                      <SelectItem key={l.id} value={String(l.id)}>
+                                        {l.title}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {quizGenerationSource === 'material' && (
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium">Select File</div>
+                                <Select value={quizGenerationMaterialId} onValueChange={setQuizGenerationMaterialId}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select file" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {courseMaterials.map((m) => (
+                                      <SelectItem key={m.id} value={String(m.id)}>
+                                        {m.title || m.originalName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                           </div>
 
-                          <div className="space-y-1">
-                            <div className="text-sm font-medium">Questions</div>
-                            <input type="number" min={1} max={50} value={(newAssignment.quizData && (newAssignment.quizData.questions||[]).length) || 10} onChange={(e) => { const v = Number(e.target.value) || 10; setNewAssignment((s) => ({ ...s, quizData: { ...(s.quizData || { questions: [] }), questions: s.quizData?.questions || Array.from({length: v}, () => ({ question: '', options: [], correctAnswer: '', points: 1 })) } })); }} className="border rounded px-2 py-1 w-full" />
-                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">Number of Questions</div>
+                              <input 
+                                type="number" 
+                                min={1} 
+                                max={50} 
+                                defaultValue={10}
+                                id="quizQuestionCount"
+                                className="border rounded px-2 py-1 w-full" 
+                              />
+                            </div>
 
-                          <div className="space-y-1 flex items-end">
-                            <div />
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={async () => {
-                                if (!courseId || !newAssignment.quizData || !newAssignment.quizData.lessonId) { toast.error('Select a lesson to generate from'); return; }
-                                setSaving(true);
-                                try {
-                                  const res = await api.generateQuiz(courseId, { lesson_id: Number(newAssignment.quizData.lessonId), count: 10, types: ['mcq','tf','identification'] });
-                                  if (res && res.data && res.data.questions) {
-                                    setNewAssignment((s) => ({ ...s, quizData: { questions: res.data.questions } }));
-                                    toast.success('Generated quiz questions');
-                                  } else {
-                                    toast.error('Failed to generate quiz');
+                            <div className="space-y-1 flex items-end gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={async () => {
+                                  if (!courseId) { toast.error('Course not found'); return; }
+                                  if (quizGenerationSource === 'lesson' && !quizGenerationLessonId) { 
+                                    toast.error('Select a lesson'); 
+                                    return; 
                                   }
-                                } catch (e) {
-                                  const msg = e instanceof Error ? e.message : 'Failed to generate quiz';
-                                  toast.error(msg);
-                                } finally { setSaving(false); }
-                              }}>Generate Quiz</Button>
+                                  if (quizGenerationSource === 'material' && !quizGenerationMaterialId) { 
+                                    toast.error('Select a file'); 
+                                    return; 
+                                  }
+                                  
+                                  setSaving(true);
+                                  try {
+                                    const countInput = document.getElementById('quizQuestionCount') as HTMLInputElement;
+                                    const count = parseInt(countInput?.value || '10', 10);
+                                    
+                                    const payload = {
+                                      lesson_id: quizGenerationSource === 'lesson' ? Number(quizGenerationLessonId) : null,
+                                      material_id: quizGenerationSource === 'material' ? Number(quizGenerationMaterialId) : null,
+                                      count,
+                                      types: ['mcq', 'tf', 'identification']
+                                    };
+                                    
+                                    const res = await api.generateQuiz(courseId, payload);
+                                    if (res && res.data && res.data.questions) {
+                                      setNewAssignment((s) => ({ ...s, quizData: { questions: res.data.questions } }));
+                                      toast.success(`Generated ${res.data.questions.length} quiz questions from ${quizGenerationSource === 'lesson' ? 'lesson' : 'file'}`);
+                                    } else {
+                                      toast.error('Failed to generate quiz');
+                                    }
+                                  } catch (e) {
+                                    const msg = e instanceof Error ? e.message : 'Failed to generate quiz';
+                                    toast.error(msg);
+                                  } finally { 
+                                    setSaving(false); 
+                                  }
+                                }}
+                              >
+                                Generate Quiz
+                              </Button>
 
-                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={async () => {
-                                // open a simple editor to manually add questions; for now ensure quizData exists
-                                setNewAssignment((s) => ({ ...s, quizData: s.quizData || { questions: [] } }));
-                                toast.info('You can edit questions after creating the assessment by clicking Edit');
-                              }}>Manual Add</Button>
+                              <Button 
+                                size="sm" 
+                                className="bg-blue-600 hover:bg-blue-700" 
+                                onClick={() => {
+                                  setNewAssignment((s) => ({ ...s, quizData: s.quizData || { questions: [] } }));
+                                  toast.info('You can edit questions after creating the assessment by clicking Edit');
+                                }}
+                              >
+                                Manual Add
+                              </Button>
                             </div>
                           </div>
                         </div>

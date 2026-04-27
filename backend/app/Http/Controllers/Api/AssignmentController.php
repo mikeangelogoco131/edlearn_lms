@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\Course;
+use App\Models\CourseMaterial;
 use App\Models\Enrollment;
 use App\Models\User;
+use App\Support\FileTextExtractor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AssignmentController extends Controller
 {
@@ -193,19 +196,50 @@ class AssignmentController extends Controller
         }
 
         $validated = $request->validate([
-            'lesson_id' => ['required', 'integer'],
+            'lesson_id' => ['nullable', 'integer'],
+            'material_id' => ['nullable', 'integer'],
             'count' => ['nullable', 'integer', 'min:1', 'max:50'],
             'types' => ['nullable', 'array'],
         ]);
 
-        $lesson = \App\Models\Lesson::query()->find($validated['lesson_id']);
-        if (! $lesson) {
-            return response()->json(['message' => 'Lesson not found'], 404);
+        // Get content from either lesson or material
+        $content = '';
+        $source = '';
+
+        if ($validated['lesson_id'] ?? false) {
+            $lesson = \App\Models\Lesson::query()->find($validated['lesson_id']);
+            if (! $lesson) {
+                return response()->json(['message' => 'Lesson not found'], 404);
+            }
+            $content = (string) ($lesson->content ?? $lesson->description ?? $lesson->title);
+            $source = $lesson->title;
+        } elseif ($validated['material_id'] ?? false) {
+            $material = CourseMaterial::query()->where('course_id', $course->id)->find($validated['material_id']);
+            if (! $material) {
+                return response()->json(['message' => 'Material not found'], 404);
+            }
+
+            // Extract text from uploaded file
+            try {
+                $content = FileTextExtractor::extractText($material->file_path, $material->mime_type);
+                if (! $content) {
+                    return response()->json(['message' => 'Could not extract text from file. Ensure file format is supported (TXT, PDF, DOCX, PPTX).'], 400);
+                }
+                $source = $material->original_name;
+            } catch (\Throwable $e) {
+                Log::error('File text extraction failed', ['error' => $e->getMessage(), 'material_id' => $material->id]);
+                return response()->json(['message' => 'Failed to extract text from file: ' . $e->getMessage()], 400);
+            }
+        } else {
+            return response()->json(['message' => 'Either lesson_id or material_id is required'], 400);
         }
 
-        $content = (string) ($lesson->content ?? $lesson->description ?? $lesson->title);
         $sentences = preg_split('/(?<=[.!?])\s+/', strip_tags($content));
         $sentences = array_values(array_filter(array_map('trim', $sentences)));
+
+        if (empty($sentences)) {
+            return response()->json(['message' => 'No content found to generate questions from'], 400);
+        }
 
         $count = $validated['count'] ?? min(10, max(1, count($sentences)));
         $types = $validated['types'] ?? ['mcq', 'tf', 'identification'];
@@ -213,19 +247,20 @@ class AssignmentController extends Controller
         $questions = [];
         for ($i = 0; $i < $count; $i++) {
             $type = $types[$i % count($types)];
-            $seed = $sentences ? $sentences[$i % count($sentences)] : ($lesson->title ?: "Question $i");
+            $seed = $sentences[$i % count($sentences)] ?? "Question $i";
 
             if ($type === 'mcq') {
                 $options = [];
                 $correct = substr($seed, 0, 120);
                 $options[] = $correct;
-                // pick up to 3 distractors
+                // pick up to 3 distractors from other sentences
                 $distractors = [];
-                foreach ($sentences as $s) {
-                    if (count($distractors) >= 3) break;
-                    if (trim($s) === trim($seed)) continue;
-                    $distractors[] = substr($s, 0, 120);
+                for ($j = 0; $j < count($sentences) && count($distractors) < 3; $j++) {
+                    if (trim($sentences[$j]) !== trim($seed)) {
+                        $distractors[] = substr($sentences[$j], 0, 120);
+                    }
                 }
+                // Fill remaining options if needed
                 while (count($distractors) < 3) {
                     $distractors[] = 'Option ' . chr(65 + count($distractors));
                 }
@@ -235,7 +270,7 @@ class AssignmentController extends Controller
                 shuffle($shuffled);
                 $questions[] = [
                     'type' => 'mcq',
-                    'question' => 'Based on the lesson, which of the following is correct?',
+                    'question' => 'Based on the material, which of the following is correct?',
                     'options' => array_values($shuffled),
                     'correctAnswer' => $correct,
                     'points' => 1,
@@ -244,7 +279,7 @@ class AssignmentController extends Controller
                 $statement = substr($seed, 0, 200);
                 $questions[] = [
                     'type' => 'tf',
-                    'question' => $statement,
+                    'question' => 'True or False: ' . $statement,
                     'options' => ['True', 'False'],
                     'correctAnswer' => 'True',
                     'points' => 1,
@@ -254,7 +289,7 @@ class AssignmentController extends Controller
                 $answer = trim($parts[0] ?? $seed);
                 $questions[] = [
                     'type' => 'identification',
-                    'question' => 'Identify the key term or phrase from the topic:',
+                    'question' => 'Identify the key term or phrase:',
                     'options' => [],
                     'correctAnswer' => $answer,
                     'points' => 1,
@@ -262,7 +297,7 @@ class AssignmentController extends Controller
             }
         }
 
-        return response()->json(['data' => ['questions' => $questions]]);
+        return response()->json(['data' => ['questions' => $questions, 'source' => $source]]);
     }
 
     public function destroy(Request $request, Course $course, Assignment $assignment)
