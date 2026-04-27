@@ -327,6 +327,8 @@ export default function CourseDetails() {
   >({});
 
   const [studentQuizDrafts, setStudentQuizDrafts] = useState<Record<string, Record<number, string>>>({});
+  const [studentAssessmentStarted, setStudentAssessmentStarted] = useState<Record<string, boolean>>({});
+  const [selectedAssignmentForView, setSelectedAssignmentForView] = useState<string | null>(null);
   const [newMaterial, setNewMaterial] = useState<{ title: string; description: string; file: File | null }>({
     title: '',
     description: '',
@@ -612,8 +614,8 @@ export default function CourseDetails() {
     setSaving(true);
     try {
       const rubric = newAssignment.rubric
-        .filter((row) => row.name.trim())
-        .map((row) => ({ name: row.name.trim(), weight: Number(row.weight) || 0 }));
+        .filter((row) => row.name && row.name.trim())
+        .map((row) => ({ name: (row.name || '').trim(), weight: Number(row.weight) || 0 }));
 
       await api.createCourseAssignment(courseId, {
         title: newAssignment.title.trim(),
@@ -672,8 +674,8 @@ export default function CourseDetails() {
     if (!draft) return;
 
     const rubric = (draft.rubric || [])
-      .filter((row) => row.name.trim())
-      .map((row) => ({ name: row.name.trim(), weight: Number(row.weight) || 0 }));
+      .filter((row) => row.name && row.name.trim())
+      .map((row) => ({ name: (row.name || '').trim(), weight: Number(row.weight) || 0 }));
 
     setSaving(true);
     try {
@@ -802,8 +804,9 @@ export default function CourseDetails() {
 
   async function handleSetFinalGrade(studentId: string, finalGrade: string, remarks: string) {
     if (!courseId) return;
-    const gradeNum = finalGrade.trim() === '' ? null : Number(finalGrade);
-    if (finalGrade.trim() !== '' && !Number.isFinite(gradeNum)) return;
+    const grade = finalGrade || '';
+    const gradeNum = grade.trim() === '' ? null : Number(grade);
+    if (grade.trim() !== '' && !Number.isFinite(gradeNum)) return;
     setSaving(true);
     try {
       await api.setCourseGrade(courseId, studentId, { final_grade: gradeNum, remarks: remarks || null });
@@ -1954,78 +1957,128 @@ export default function CourseDetails() {
                         ) : null}
 
                         {isStudent && (
-                          <div className="space-y-2 pt-3 border-t">
-                            {(assignment.submissionType === 'online_text' || assignment.submissionType === 'text_and_file' || !assignment.submissionType) && (
-                              <>
-                                <div className="text-sm font-medium">Submit answer (text)</div>
-                                <Textarea
-                                  value={studentSubmissionDrafts[assignment.id] || ''}
-                                  onChange={(e) => setStudentSubmissionDrafts((s) => ({ ...s, [assignment.id]: e.target.value }))}
-                                  rows={3}
-                                />
-                              </>
-                            )}
-                            {(assignment.submissionType === 'file_upload' || assignment.submissionType === 'text_and_file') && (
-                              <>
-                                <div className="text-sm font-medium">Upload file (doc, PDF, etc.)</div>
-                                <Input
-                                  type="file"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    setStudentSubmissionFiles((prev) => ({ ...prev, [assignment.id]: file }));
-                                  }}
-                                />
-                              </>
-                            )}
-
-                            {assignment.submissionType === 'quiz' && assignment.quizData?.questions && (
-                              <div className="space-y-4">
-                                <div className="text-sm font-medium">Take Quiz</div>
-                                {assignment.quizData.questions.map((q, qIdx) => (
-                                  <div key={qIdx} className="space-y-2 p-3 bg-muted/40 border rounded-md">
-                                    <div className="text-sm font-medium">{qIdx + 1}. {q.question} <span className="text-muted-foreground/80 font-normal">({q.points} pts)</span></div>
-                                    <div className="space-y-1 pl-4">
-                                      {q.options.map((opt, oIdx) => {
-                                        if (!opt.trim()) return null;
-                                        return (
-                                          <label key={oIdx} className="flex items-center gap-2 text-sm cursor-pointer">
-                                            <input
-                                              type="radio"
-                                              name={`quiz-${assignment.id}-q-${qIdx}`}
-                                              value={opt}
-                                              checked={studentQuizDrafts[assignment.id]?.[qIdx] === opt}
-                                              onChange={() => {
-                                                setStudentQuizDrafts(prev => ({
-                                                  ...prev,
-                                                  [assignment.id]: {
-                                                    ...(prev[assignment.id] || {}),
-                                                    [qIdx]: opt
-                                                  }
-                                                }));
-                                              }}
-                                              className="mt-0.5"
-                                            />
-                                            <span>{opt}</span>
-                                          </label>
-                                        );
-                                      })}
-                                    </div>
+                          <>
+                            {selectedAssignmentForView !== assignment.id ? (
+                              <div className="flex justify-end pt-3">
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => setSelectedAssignmentForView(assignment.id)}
+                                >
+                                  View Details
+                                </Button>
+                              </div>
+                            ) : !studentAssessmentStarted[assignment.id] ? (
+                              <div className="space-y-4 pt-3 border-t">
+                                <div className="space-y-2">
+                                  <div className="text-sm font-medium">Assignment Details</div>
+                                  {assignment.description && (
+                                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">{assignment.description}</div>
+                                  )}
+                                  <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-md space-y-1 text-sm">
+                                    {assignment.dueDate && (
+                                      <div><span className="font-medium">Due Date:</span> {format(new Date(assignment.dueDate), 'MMM d, yyyy h:mm a')}</div>
+                                    )}
+                                    <div><span className="font-medium">Points:</span> {assignment.points}</div>
+                                    <div><span className="font-medium">Type:</span> {assignment.submissionType === 'quiz' ? 'Quiz' : assignment.submissionType === 'online_text' ? 'Text Submission' : assignment.submissionType === 'file_upload' ? 'File Upload' : assignment.submissionType === 'text_and_file' ? 'Text & File' : assignment.submissionType}</div>
                                   </div>
-                                ))}
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                  <Button 
+                                    variant="outline"
+                                    onClick={() => setSelectedAssignmentForView(null)}
+                                  >
+                                    Back
+                                  </Button>
+                                  <Button
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => setStudentAssessmentStarted((prev) => ({ ...prev, [assignment.id]: true }))}
+                                  >
+                                    <Play className="w-4 h-4 mr-2" />
+                                    Start Assessment
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 pt-3 border-t">
+                                {(assignment.submissionType === 'online_text' || assignment.submissionType === 'text_and_file' || !assignment.submissionType) && (
+                                  <>
+                                    <div className="text-sm font-medium">Submit answer (text)</div>
+                                    <Textarea
+                                      value={studentSubmissionDrafts[assignment.id] || ''}
+                                      onChange={(e) => setStudentSubmissionDrafts((s) => ({ ...s, [assignment.id]: e.target.value }))}
+                                      rows={3}
+                                    />
+                                  </>
+                                )}
+                                {(assignment.submissionType === 'file_upload' || assignment.submissionType === 'text_and_file') && (
+                                  <>
+                                    <div className="text-sm font-medium">Upload file (doc, PDF, etc.)</div>
+                                    <Input
+                                      type="file"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        setStudentSubmissionFiles((prev) => ({ ...prev, [assignment.id]: file }));
+                                      }}
+                                    />
+                                  </>
+                                )}
+
+                                {assignment.submissionType === 'quiz' && assignment.quizData?.questions && (
+                                  <div className="space-y-4">
+                                    <div className="text-sm font-medium">Take Quiz</div>
+                                    {assignment.quizData.questions.map((q, qIdx) => (
+                                      <div key={qIdx} className="space-y-2 p-3 bg-muted/40 border rounded-md">
+                                        <div className="text-sm font-medium">{qIdx + 1}. {q.question} <span className="text-muted-foreground/80 font-normal">({q.points} pts)</span></div>
+                                        <div className="space-y-1 pl-4">
+                                          {q.options.map((opt, oIdx) => {
+                                            if (!opt || !opt.trim()) return null;
+                                            return (
+                                              <label key={oIdx} className="flex items-center gap-2 text-sm cursor-pointer">
+                                                <input
+                                                  type="radio"
+                                                  name={`quiz-${assignment.id}-q-${qIdx}`}
+                                                  value={opt}
+                                                  checked={studentQuizDrafts[assignment.id]?.[qIdx] === opt}
+                                                  onChange={() => {
+                                                    setStudentQuizDrafts(prev => ({
+                                                      ...prev,
+                                                      [assignment.id]: {
+                                                        ...(prev[assignment.id] || {}),
+                                                        [qIdx]: opt
+                                                      }
+                                                    }));
+                                                  }}
+                                                  className="mt-0.5"
+                                                />
+                                                <span>{opt}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2 justify-end pt-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setStudentAssessmentStarted((prev) => ({ ...prev, [assignment.id]: false }))}
+                                  >
+                                    Back to Details
+                                  </Button>
+                                  <Button
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                    onClick={() => handleStudentSubmit(assignment.id, assignment.submissionType)}
+                                    disabled={saving}
+                                  >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Submit
+                                  </Button>
+                                </div>
                               </div>
                             )}
-
-                            <div className="flex justify-end pt-2">
-                              <Button
-                                className="bg-blue-600 hover:bg-blue-700"
-                                onClick={() => handleStudentSubmit(assignment.id, assignment.submissionType)}
-                                disabled={saving}
-                              >
-                                <Upload className="w-4 h-4 mr-2" />
-                                Submit
-                              </Button>
-                            </div>
-                          </div>
+                          </>
                         )}
 
                         {openSubmissionsFor === assignment.id && (
