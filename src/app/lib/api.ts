@@ -518,6 +518,38 @@ export const api = {
   },
 
   async loginWithGoogle(credential: string) {
+    // Dev-only quick access credentials should not depend on a running backend.
+    if ((import.meta as any).env?.DEV && credential.startsWith('MOCK_GOOGLE_CREDENTIAL_')) {
+      const role = credential.replace('MOCK_GOOGLE_CREDENTIAL_', '').toLowerCase() as ApiUserRole;
+      const userByRole: Record<ApiUserRole, ApiUser> = {
+        admin: {
+          id: 'dev-admin',
+          name: 'Admin User',
+          email: 'admin@dev.local',
+          role: 'admin',
+        },
+        teacher: {
+          id: 'dev-teacher',
+          name: 'Teacher User',
+          email: 'teacher@dev.local',
+          role: 'teacher',
+        },
+        student: {
+          id: 'dev-student',
+          name: 'Student User',
+          email: 'student@dev.local',
+          role: 'student',
+        },
+      };
+
+      if (role in userByRole) {
+        return {
+          token: `dev-mock-token-${role}`,
+          user: userByRole[role],
+        };
+      }
+    }
+
     return apiFetch<ApiLoginResponse>('/api/auth/google', {
       method: 'POST',
       body: JSON.stringify({ credential }),

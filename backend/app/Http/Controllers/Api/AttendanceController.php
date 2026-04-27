@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\ClassSession;
-use App\Models\User;
 
 class AttendanceController extends Controller
 {
