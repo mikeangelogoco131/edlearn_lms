@@ -1,19 +1,23 @@
 FROM php:8.2-cli
 
-RUN apt-get update && apt-get install -y git curl unzip && rm -rf /var/lib/apt/lists/*
-
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && rm composer-setup.php
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+    rm composer-setup.php && \
+    composer install --no-dev --optimize-autoloader 2>&1 | head -20
 
-RUN chmod -R 755 storage bootstrap/cache
-
-# Copy pre-initialized database
-COPY database/database.sqlite database/database.sqlite
+RUN mkdir -p storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs && \
+    chmod -R 755 storage bootstrap/cache database
 
 EXPOSE 8000
 
