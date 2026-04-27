@@ -36,4 +36,9 @@ export default defineConfig({
       },
     },
   },
+
+  // Keep PostCSS config scoped to this project to avoid parent directory lookup.
+  css: {
+    postcss: {},
+  },
 })

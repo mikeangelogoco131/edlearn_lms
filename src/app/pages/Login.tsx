@@ -35,8 +35,9 @@ export default function Login() {
     try {
       const user = await login(email, password);
       navigateByRole(user.role);
-    } catch {
-      setError('Invalid email or password. Please try again.');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Sign in failed.';
+      setError(message || 'Sign in failed.');
     } finally {
       setLoading(false);
     }
