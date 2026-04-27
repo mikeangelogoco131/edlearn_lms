@@ -84,6 +84,20 @@ class AssignmentController extends Controller
             'published_at' => $publishedAt,
         ]);
 
+        // Create an announcement so enrolled students see a notification for new assignments
+        try {
+            \App\Models\Announcement::query()->create([
+                'course_id' => $course->id,
+                'author_id' => $user->id,
+                'title' => 'New Assessment: ' . ($validated['title'] ?? 'Assessment'),
+                'body' => ($validated['description'] ?? '') . '\n\nPlease check the assessments tab for details.',
+                'is_pinned' => false,
+                'published_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Non-fatal if announcement creation fails
+        }
+
         return response()->json(['data' => $this->assignmentToArray($assignment, 0, 0)], 201);
     }
 
@@ -157,6 +171,91 @@ class AssignmentController extends Controller
         $assignment->save();
 
         return response()->json(['data' => $this->assignmentToArray($assignment, 0, 0)]);
+    }
+
+    public function generateQuiz(Request $request, Course $course)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if (! $this->canManageCourse($user, $course)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'lesson_id' => ['required', 'integer'],
+            'count' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'types' => ['nullable', 'array'],
+        ]);
+
+        $lesson = \App\Models\Lesson::query()->find($validated['lesson_id']);
+        if (! $lesson) {
+            return response()->json(['message' => 'Lesson not found'], 404);
+        }
+
+        $content = (string) ($lesson->content ?? $lesson->description ?? $lesson->title);
+        $sentences = preg_split('/(?<=[.!?])\s+/', strip_tags($content));
+        $sentences = array_values(array_filter(array_map('trim', $sentences)));
+
+        $count = $validated['count'] ?? min(10, max(1, count($sentences)));
+        $types = $validated['types'] ?? ['mcq', 'tf', 'identification'];
+
+        $questions = [];
+        for ($i = 0; $i < $count; $i++) {
+            $type = $types[$i % count($types)];
+            $seed = $sentences ? $sentences[$i % count($sentences)] : ($lesson->title ?: "Question $i");
+
+            if ($type === 'mcq') {
+                $options = [];
+                $correct = substr($seed, 0, 120);
+                $options[] = $correct;
+                // pick up to 3 distractors
+                $distractors = [];
+                foreach ($sentences as $s) {
+                    if (count($distractors) >= 3) break;
+                    if (trim($s) === trim($seed)) continue;
+                    $distractors[] = substr($s, 0, 120);
+                }
+                while (count($distractors) < 3) {
+                    $distractors[] = 'Option ' . chr(65 + count($distractors));
+                }
+                $options = array_merge($options, array_slice($distractors, 0, 3));
+                // shuffle but keep correctAnswer track
+                $shuffled = $options;
+                shuffle($shuffled);
+                $questions[] = [
+                    'type' => 'mcq',
+                    'question' => 'Based on the lesson, which of the following is correct?',
+                    'options' => array_values($shuffled),
+                    'correctAnswer' => $correct,
+                    'points' => 1,
+                ];
+            } elseif ($type === 'tf') {
+                $statement = substr($seed, 0, 200);
+                $questions[] = [
+                    'type' => 'tf',
+                    'question' => $statement,
+                    'options' => ['True', 'False'],
+                    'correctAnswer' => 'True',
+                    'points' => 1,
+                ];
+            } else { // identification
+                $parts = preg_split('/[,;:\-]/', $seed);
+                $answer = trim($parts[0] ?? $seed);
+                $questions[] = [
+                    'type' => 'identification',
+                    'question' => 'Identify the key term or phrase from the topic:',
+                    'options' => [],
+                    'correctAnswer' => $answer,
+                    'points' => 1,
+                ];
+            }
+        }
+
+        return response()->json(['data' => ['questions' => $questions]]);
     }
 
     public function destroy(Request $request, Course $course, Assignment $assignment)

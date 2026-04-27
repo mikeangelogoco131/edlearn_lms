@@ -766,6 +766,13 @@ export const api = {
     );
   },
 
+  async generateQuiz(courseId: string, payload: { lesson_id: number; count?: number; types?: string[] }) {
+    return apiFetch<any>(`/api/courses/${encodeURIComponent(courseId)}/generate-quiz`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   async updateCourseLesson(courseId: string, lessonId: string, payload: Partial<{
     title: string;
     description: string | null;
