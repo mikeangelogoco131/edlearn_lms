@@ -17,10 +17,8 @@ RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" &&
     composer install --no-dev --optimize-autoloader --quiet
 
 RUN mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs && \
-    chmod -R 777 database storage bootstrap/cache && \
-    php artisan config:cache && \
-    php artisan route:cache
+    chmod -R 777 database storage bootstrap/cache
 
 EXPOSE 8000
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
