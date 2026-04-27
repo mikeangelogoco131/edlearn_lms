@@ -17,7 +17,7 @@ RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" &&
     composer install --no-dev --optimize-autoloader --quiet
 
 RUN mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs && \
-    chmod -R 755 storage bootstrap/cache database
+    chmod -R 777 database storage bootstrap/cache
 
 EXPOSE 8000
 
