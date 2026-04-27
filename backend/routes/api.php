@@ -23,6 +23,9 @@ use App\Http\Controllers\Api\SystemSettingController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
+// Health check - no auth required
+Route::get('/health', fn() => response()->json(['status' => 'ok']));
+
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'google']);
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
