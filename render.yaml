@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: edlearn_lms
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    region: oregon
+    envVars:
+      - key: APP_ENV
+        value: production
