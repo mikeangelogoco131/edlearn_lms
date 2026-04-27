@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -195,7 +196,7 @@ export default function Login() {
                 setError('');
                 setLoading(true);
                 try {
-                  const user = await loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
+                  const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
                   navigateByRole(user.role);
                 } catch (err: any) {
                   setError(err.message || 'Google sign-in failed.');
@@ -239,7 +240,7 @@ export default function Login() {
                     setError('');
                     setLoading(true);
                     try {
-                      const user = await loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_ADMIN');
+                      const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_ADMIN');
                       navigateByRole(user.role);
                     } catch (err: any) {
                       setError(err.message || 'Login failed');
@@ -258,7 +259,7 @@ export default function Login() {
                     setError('');
                     setLoading(true);
                     try {
-                      const user = await loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_TEACHER');
+                      const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_TEACHER');
                       navigateByRole(user.role);
                     } catch (err: any) {
                       setError(err.message || 'Login failed');
@@ -277,7 +278,7 @@ export default function Login() {
                     setError('');
                     setLoading(true);
                     try {
-                      const user = await loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
+                      const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
                       navigateByRole(user.role);
                     } catch (err: any) {
                       setError(err.message || 'Login failed');
