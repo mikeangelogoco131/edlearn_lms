@@ -219,6 +219,40 @@ export default function CourseDetails() {
     }
   }
 
+  // Mark all students present in the current draft for this session
+  function markAllPresent(sessionId: string) {
+    const recs = attendanceRecords[sessionId] || [];
+    if (recs.length === 0) return;
+    const updated: Record<string, { status: ApiAttendanceStatus; remarks: string }> = { ...attendanceDraft };
+    for (const r of recs) {
+      updated[r.student_id] = { status: 'present', remarks: updated[r.student_id]?.remarks || '' };
+    }
+    setAttendanceDraft(updated);
+    toast.success('Marked all students as present (draft)');
+  }
+
+  // Save all attendance draft entries for a session
+  async function saveAllAttendance(sessionId: string) {
+    const recs = attendanceRecords[sessionId] || [];
+    if (recs.length === 0) return;
+    setAttendanceLoading(true);
+    try {
+      // Save sequentially to avoid hammering the API
+      for (const r of recs) {
+        const draft = attendanceDraft[r.student_id];
+        if (draft) {
+          await attendanceApi.setAttendance(sessionId, r.student_id, draft.status, draft.remarks);
+        }
+      }
+      await loadAttendance(sessionId);
+      toast.success('All attendance saved');
+    } catch (err) {
+      toast.error('Failed to save all attendance');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  }
+
   // Student: fetch own attendance
   const [myAttendance, setMyAttendance] = useState<any[]>([]);
   useEffect(() => {
@@ -2151,6 +2185,24 @@ export default function CourseDetails() {
                       {isTeacher && attendanceSessionId === session.id && (
                         <div className="mt-4 p-4 bg-white border rounded-lg">
                           <div className="font-semibold mb-2">Mark Attendance</div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => markAllPresent(session.id)}
+                              disabled={attendanceLoading}
+                            >
+                              Mark All Present
+                            </Button>
+                            <Button
+                              className="bg-blue-600 hover:bg-blue-700"
+                              size="sm"
+                              onClick={() => saveAllAttendance(session.id)}
+                              disabled={attendanceLoading}
+                            >
+                              Save All
+                            </Button>
+                          </div>
                           {attendanceLoading ? (
                             <div className="text-muted-foreground">Loading...</div>
                           ) : attendanceRecords[session.id] && attendanceRecords[session.id].length > 0 ? (
