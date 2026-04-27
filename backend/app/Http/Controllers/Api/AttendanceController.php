@@ -16,6 +16,39 @@ class AttendanceController extends Controller
         $attendance = Attendance::with('student')
             ->where('session_id', $sessionId)
             ->get();
+
+        // If there are no attendance records yet, return a draft list based on enrolled students
+        if ($attendance->isEmpty()) {
+            $session = ClassSession::find($sessionId);
+            if (! $session) {
+                return response()->json([], 200);
+            }
+
+            $courseId = $session->course_id;
+            $enrollments = \App\Models\Enrollment::with('student')
+                ->where('course_id', $courseId)
+                ->whereNull('dropped_at')
+                ->get();
+
+            $draft = $enrollments->map(function ($en) use ($sessionId) {
+                return [
+                    'id' => null,
+                    'session_id' => $sessionId,
+                    'student_id' => (string) $en->student_id,
+                    'status' => 'absent',
+                    'remarks' => null,
+                    'student' => [
+                        'id' => (string) $en->student->id,
+                        'name' => $en->student->name,
+                        'email' => $en->student->email,
+                        'role' => $en->student->role,
+                    ],
+                ];
+            });
+
+            return response()->json($draft->values());
+        }
+
         return response()->json($attendance);
     }
 
