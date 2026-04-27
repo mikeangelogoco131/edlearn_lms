@@ -315,7 +315,8 @@ export type ApiNotificationType =
   | 'event_ending'
   | 'course_assigned'
   | 'course_enrolled'
-  | 'course_dropped';
+  | 'course_dropped'
+  | 'assignment_added';
 
 export interface ApiNotification {
   id: string;
