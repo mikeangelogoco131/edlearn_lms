@@ -85,17 +85,24 @@ class AssignmentController extends Controller
         ]);
 
         // Create an announcement so enrolled students see a notification for new assignments
-        try {
-            \App\Models\Announcement::query()->create([
-                'course_id' => $course->id,
-                'author_id' => $user->id,
-                'title' => 'New Assessment: ' . ($validated['title'] ?? 'Assessment'),
-                'body' => ($validated['description'] ?? '') . '\n\nPlease check the assessments tab for details.',
-                'is_pinned' => false,
-                'published_at' => now(),
-            ]);
-        } catch (\Throwable $e) {
-            // Non-fatal if announcement creation fails
+        if ($status === 'published') {
+            try {
+                $title = 'New Assessment: ' . $validated['title'];
+                $description = $validated['description'] ?? '';
+                $body = $description ? $description . "\n\nPlease check the assessments tab for details." : 'Please check the assessments tab for details.';
+                
+                \App\Models\Announcement::query()->create([
+                    'course_id' => $course->id,
+                    'author_id' => $user->id,
+                    'title' => $title,
+                    'body' => $body,
+                    'is_pinned' => false,
+                    'published_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                // Log but don't fail the assignment creation if announcement fails
+                \Log::warning('Failed to create announcement for assignment', ['error' => $e->getMessage()]);
+            }
         }
 
         return response()->json(['data' => $this->assignmentToArray($assignment, 0, 0)], 201);
