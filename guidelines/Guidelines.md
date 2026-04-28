@@ -59,3 +59,30 @@ or initiating processes. They communicate interactivity and should have clear, a
   * Visual Style : Text-only with no border, using primary color
   * Usage : For actions that should be available but not emphasized
 -->
+
+# Progress Documentation Policy
+
+Every task update must be documented in `PROGRESS_LOG.md`.
+
+## Required for each entry
+
+- Date (YYYY-MM-DD)
+- Time (local)
+- Task title
+- Status (planned, in_progress, blocked, completed)
+- Summary of work done
+- Files changed
+- Verification done (build/tests/manual checks)
+- Next step
+
+## Update frequency
+
+- Create one entry when work starts.
+- Add a new entry whenever status changes.
+- Add a completion entry when the task is done.
+
+## Rules
+
+- Keep entries concise and factual.
+- Do not skip blocked items; include blocker and owner.
+- Include command outputs only as short summaries.

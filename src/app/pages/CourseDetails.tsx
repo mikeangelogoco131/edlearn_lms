@@ -395,33 +395,62 @@ export default function CourseDetails() {
       setLoading(true);
 
       try {
-        const [courseRes, assignmentsRes, sessionsRes, lessonsRes, materialsRes] = await Promise.all([
-          api.course(courseId),
-          api.courseAssignments(courseId),
-          api.courseSessions(courseId),
-          api.courseLessons(courseId),
-          api.courseMaterials(courseId),
-        ]);
-
-        const gradeRes = isTeacher
-          ? await api.courseGrades(courseId)
-          : isStudent
-            ? await api.myCourseGrade(courseId)
-            : null;
-
+        const courseRes = await api.course(courseId);
         if (cancelled) return;
         setCourse(courseRes.data);
-        setCourseAssignments(assignmentsRes.data);
-        setCourseSessions(sessionsRes.data);
-        setCourseLessons(lessonsRes.data);
-        setCourseMaterials(materialsRes.data);
-        if (gradeRes && 'data' in gradeRes && Array.isArray((gradeRes as any).data)) {
-          setGradebook((gradeRes as any).data as ApiCourseGradeRow[]);
-        } else if (gradeRes && 'data' in gradeRes && !Array.isArray((gradeRes as any).data)) {
-          setMyGrade((gradeRes as any).data as ApiMyCourseGrade);
-        } else {
-          setGradebook([]);
-          setMyGrade(null);
+
+        // Load other resources individually so a single failing endpoint
+        // doesn't mark the whole course as not found.
+        try {
+          const assignmentsRes = await api.courseAssignments(courseId);
+          if (!cancelled) setCourseAssignments(assignmentsRes.data);
+        } catch {
+          if (!cancelled) setCourseAssignments([]);
+        }
+
+        try {
+          const sessionsRes = await api.courseSessions(courseId);
+          if (!cancelled) setCourseSessions(sessionsRes.data);
+        } catch {
+          if (!cancelled) setCourseSessions([]);
+        }
+
+        try {
+          const lessonsRes = await api.courseLessons(courseId);
+          if (!cancelled) setCourseLessons(lessonsRes.data);
+        } catch {
+          if (!cancelled) setCourseLessons([]);
+        }
+
+        try {
+          const materialsRes = await api.courseMaterials(courseId);
+          if (!cancelled) setCourseMaterials(materialsRes.data);
+        } catch {
+          if (!cancelled) setCourseMaterials([]);
+        }
+
+        try {
+          const gradeRes = isTeacher
+            ? await api.courseGrades(courseId)
+            : isStudent
+              ? await api.myCourseGrade(courseId)
+              : null;
+
+          if (!cancelled) {
+            if (gradeRes && 'data' in gradeRes && Array.isArray((gradeRes as any).data)) {
+              setGradebook((gradeRes as any).data as ApiCourseGradeRow[]);
+            } else if (gradeRes && 'data' in gradeRes && !Array.isArray((gradeRes as any).data)) {
+              setMyGrade((gradeRes as any).data as ApiMyCourseGrade);
+            } else {
+              setGradebook([]);
+              setMyGrade(null);
+            }
+          }
+        } catch {
+          if (!cancelled) {
+            setGradebook([]);
+            setMyGrade(null);
+          }
         }
       } catch {
         if (!cancelled) {

@@ -21,11 +21,13 @@ import {
 import { Progress } from '../components/ui/progress';
 import { api, ApiAssignment, ApiClassSession, ApiCourse, ApiUser } from '../lib/api';
 import { EventsCalendar } from '../components/EventsCalendar';
+import { useAuth } from '../contexts/AuthContext';
 import { CourseAnnouncements } from '../components/CourseAnnouncements';
 import { format } from 'date-fns';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 export default function TeacherDashboard() {
+  const auth = useAuth();
   const [teacherCourses, setTeacherCourses] = useState<ApiCourse[]>([]);
   const [sessions, setSessions] = useState<ApiClassSession[]>([]);
   const [coursesView, setCoursesView] = useState<'enrolled' | 'completed'>('enrolled');
@@ -47,10 +49,16 @@ export default function TeacherDashboard() {
       try {
         const coursesRes = await api.courses();
         if (cancelled) return;
-        setTeacherCourses(coursesRes.data);
+        // If logged-in user is a teacher, only show courses assigned to them
+        const currentUser = auth.user;
+        const filteredCourses = currentUser && currentUser.role === 'teacher'
+          ? coursesRes.data.filter((c) => c.teacherId === currentUser.id)
+          : coursesRes.data;
+
+        setTeacherCourses(filteredCourses);
 
         const sessionsRes = await Promise.all(
-          coursesRes.data.map((c) => api.courseSessions(c.id).then((r) => r.data))
+          filteredCourses.map((c) => api.courseSessions(c.id).then((r) => r.data))
         );
         if (!cancelled) setSessions(sessionsRes.flat());
 
@@ -65,7 +73,7 @@ export default function TeacherDashboard() {
         }
 
         const assignmentsRes = await Promise.all(
-          coursesRes.data.map((c) => api.courseAssignments(c.id).then((r) => r.data))
+          filteredCourses.map((c) => api.courseAssignments(c.id).then((r) => r.data))
         );
         if (!cancelled) setTeacherAssignments(assignmentsRes.flat());
       } catch {
@@ -77,7 +85,7 @@ export default function TeacherDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [auth.user]);
 
   const upcomingSessions = useMemo(
     () => sessions.filter((s) => s.status === 'scheduled'),
@@ -117,17 +125,14 @@ export default function TeacherDashboard() {
           
           {/* Top Hero & Nav Area */}
           <div
-            className="text-white pb-6 pt-12 px-6 shadow-lg relative border-b border-white/10 overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 45%, #7c3aed 100%)' }}
+            className="text-white pb-6 pt-12 px-6 shadow-lg relative border-b border-white/10 overflow-hidden bg-[linear-gradient(135deg,_#4338ca_0%,_#6366f1_45%,_#7c3aed_100%)]"
           >
             {/* Decorative orbs */}
             <div
-              className="pointer-events-none absolute -top-20 right-0 w-[450px] h-[450px] rounded-full opacity-20"
-              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%)' }}
+              className="pointer-events-none absolute -top-20 right-0 w-[450px] h-[450px] rounded-full opacity-20 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_transparent_70%)]"
             />
             <div
-              className="pointer-events-none absolute bottom-0 left-1/4 w-72 h-72 rounded-full opacity-10"
-              style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.6) 0%, transparent 70%)' }}
+              className="pointer-events-none absolute bottom-0 left-1/4 w-72 h-72 rounded-full opacity-10 bg-[radial-gradient(circle,_rgba(20,184,166,0.6)_0%,_transparent_70%)]"
             />
 
             <div className="max-w-7xl mx-auto flex flex-col gap-8 relative z-10">
@@ -172,16 +177,15 @@ export default function TeacherDashboard() {
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Start Live Class', icon: <Video className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', glow: 'rgba(99,102,241,0.4)' },
-                  { label: 'Create Assignment', icon: <Plus className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #059669 0%, #047857 100%)', glow: 'rgba(5,150,105,0.4)' },
-                  { label: 'Schedule Class', icon: <Calendar className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', glow: 'rgba(124,58,237,0.4)' },
-                  { label: 'Upload Material', icon: <FileText className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', glow: 'rgba(217,119,6,0.4)' },
+                  { label: 'Start Live Class', icon: <Video className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', glow: 'rgba(99,102,241,0.4)', className: 'bg-[linear-gradient(135deg,_#6366f1_0%,_#4f46e5_100%)] shadow-[0_4px_20px_rgba(99,102,241,0.4)]' },
+                  { label: 'Create Assignment', icon: <Plus className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #059669 0%, #047857 100%)', glow: 'rgba(5,150,105,0.4)', className: 'bg-[linear-gradient(135deg,_#059669_0%,_#047857_100%)] shadow-[0_4px_20px_rgba(5,150,105,0.4)]' },
+                  { label: 'Schedule Class', icon: <Calendar className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', glow: 'rgba(124,58,237,0.4)', className: 'bg-[linear-gradient(135deg,_#7c3aed_0%,_#6d28d9_100%)] shadow-[0_4px_20px_rgba(124,58,237,0.4)]' },
+                  { label: 'Upload Material', icon: <FileText className="w-6 h-6" />, gradient: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', glow: 'rgba(217,119,6,0.4)', className: 'bg-[linear-gradient(135deg,_#d97706_0%,_#b45309_100%)] shadow-[0_4px_20px_rgba(217,119,6,0.4)]' },
                 ].map((action) => (
                   <button
                     key={action.label}
                     type="button"
-                    className="h-auto py-6 rounded-2xl flex flex-col gap-3 items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 active:scale-100"
-                    style={{ background: action.gradient, boxShadow: `0 4px 20px ${action.glow}` }}
+                    className={`h-auto py-6 rounded-2xl flex flex-col gap-3 items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 active:scale-100 ${action.className}`}
                   >
                     {action.icon}
                     <span>{action.label}</span>
@@ -493,3 +497,4 @@ export default function TeacherDashboard() {
     </DashboardLayout>
   );
 }
+

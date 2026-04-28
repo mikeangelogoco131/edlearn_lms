@@ -284,6 +284,8 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
       case 'course_enrolled':
       case 'course_dropped':
         return 'courses';
+      case 'assignment_added':
+        return 'courses';
       default:
         return null;
     }
@@ -313,6 +315,8 @@ export function DashboardLayout({ children, title, layout = 'container', showTit
         return n.course ? `Enrolled in ${n.course.code}${n.author ? ` • By ${n.author.name}` : ''}` : 'Enrolled in course';
       case 'course_dropped':
         return n.course ? `Removed from ${n.course.code}${n.author ? ` • By ${n.author.name}` : ''}` : 'Removed from course';
+      case 'assignment_added':
+        return n.course ? `Assignment added • ${n.course.code}` : 'Assignment added';
       default:
         return 'Notification';
     }
