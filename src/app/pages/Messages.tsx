@@ -23,6 +23,8 @@ export default function MessagesPage() {
 	const { user } = useAuth();
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
+	const isTeacher = user?.role === 'teacher';
+	const isStudent = user?.role === 'student';
 
 	const [messageFolder, setMessageFolder] = useState<MessageFolder>(() => {
 		const raw = searchParams.get('folder');
@@ -46,6 +48,16 @@ export default function MessagesPage() {
 	const [contactQuery, setContactQuery] = useState('');
 	const [contactLoading, setContactLoading] = useState(false);
 	const [contactResults, setContactResults] = useState<ApiUser[]>([]);
+	const [composeOpen, setComposeOpen] = useState(() => searchParams.get('compose') === '1');
+	const [composeRecipientQuery, setComposeRecipientQuery] = useState('');
+	const [composeRecipientId, setComposeRecipientId] = useState<string | null>(null);
+	const [composeRecipientLoading, setComposeRecipientLoading] = useState(false);
+	const [composeRecipientResults, setComposeRecipientResults] = useState<ApiUser[]>([]);
+	const [composeSubject, setComposeSubject] = useState('');
+	const [composeBody, setComposeBody] = useState('');
+	const [composeSaving, setComposeSaving] = useState(false);
+	const [composeError, setComposeError] = useState('');
+	const [composeSuccess, setComposeSuccess] = useState('');
 
 	const selectedMessage = useMemo(() => {
 		return selectedMessageId ? messages.find((m) => m.id === selectedMessageId) || null : null;
@@ -53,6 +65,7 @@ export default function MessagesPage() {
 
 	const currentUserId = user?.id ? String(user.id) : null;
 	const threadScrollRef = useRef<HTMLDivElement | null>(null);
+	const notifiedMessageIdsRef = useRef<Set<string>>(new Set());
 
 	const setParam = (key: string, value: string | null) => {
 		const next = new URLSearchParams(searchParams);
@@ -65,6 +78,15 @@ export default function MessagesPage() {
 		const raw = searchParams.get('folder');
 		setMessageFolder(isMessageFolder(raw) ? raw : 'inbox');
 	}, [searchParams]);
+
+	useEffect(() => {
+		// Allow compose for teachers and students (role-aware)
+		if (!isTeacher && !isStudent) {
+			setComposeOpen(false);
+			return;
+		}
+		setComposeOpen(searchParams.get('compose') === '1');
+	}, [searchParams, isTeacher, isStudent]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -86,6 +108,44 @@ export default function MessagesPage() {
 			cancelled = true;
 		};
 	}, [messageFolder, messagesRefreshKey]);
+
+	useEffect(() => {
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== 'edlearn_dev_messages' && event.key !== 'edlearn_message_mods') return;
+			setMessagesRefreshKey((k) => k + 1);
+		};
+
+		window.addEventListener('storage', handleStorage);
+		return () => window.removeEventListener('storage', handleStorage);
+	}, []);
+
+	// Notify about new unread messages in inbox
+	useEffect(() => {
+		if (messageFolder !== 'inbox') return;
+		
+		messages.forEach((m) => {
+			// Only notify for unread, incoming messages that haven't been notified yet
+			if (
+				!m.readAt &&
+				m.status === 'sent' &&
+				m.sender &&
+				String(m.sender.id) !== String(currentUserId) &&
+				!notifiedMessageIdsRef.current.has(m.id) &&
+				'Notification' in window &&
+				Notification.permission === 'granted'
+			) {
+				notifiedMessageIdsRef.current.add(m.id);
+				try {
+					new Notification('New Message', {
+						body: `Message from ${m.sender.name}: ${m.subject || '(No subject)'}`,
+						icon: '/favicon.ico',
+					});
+				} catch (err) {
+					// Ignore notification errors
+				}
+			}
+		});
+	}, [messages, messageFolder, currentUserId]);
 
 	useEffect(() => {
 		setSelectedMessageIds(new Set());
@@ -140,6 +200,40 @@ export default function MessagesPage() {
 			window.clearTimeout(handle);
 		};
 	}, [contactQuery]);
+
+	useEffect(() => {
+		let cancelled = false;
+		if (!composeOpen || (!isTeacher && !isStudent)) {
+			setComposeRecipientResults([]);
+			setComposeRecipientLoading(false);
+			return;
+		}
+
+		setComposeRecipientLoading(true);
+		const handle = window.setTimeout(async () => {
+			try {
+				const query = composeRecipientQuery.trim();
+				const role = isTeacher ? 'student' : 'teacher';
+				const res = await api.users({
+					role,
+					q: query.length ? query : undefined,
+					page: 1,
+					perPage: 15,
+				});
+				if (cancelled) return;
+				setComposeRecipientResults(res.data.filter((u) => u.role === role));
+			} catch {
+				if (!cancelled) setComposeRecipientResults([]);
+			} finally {
+				if (!cancelled) setComposeRecipientLoading(false);
+			}
+		}, 250);
+
+		return () => {
+			cancelled = true;
+			window.clearTimeout(handle);
+		};
+	}, [composeOpen, composeRecipientQuery, isTeacher, isStudent]);
 
 	const mergeUniqueMessages = (prev: ApiMessage[], incoming: ApiMessage[]) => {
 		if (!incoming.length) return prev;
@@ -207,10 +301,11 @@ export default function MessagesPage() {
 		setThreadMessages([]);
 		loadThread(chatUser.id, 'replace');
 
+		// Poll for new messages more frequently for real-time feel (1 second)
 		const interval = window.setInterval(() => {
 			if (cancelled) return;
 			loadThread(chatUser.id, 'append');
-		}, 3000);
+		}, 1000);
 
 		return () => {
 			cancelled = true;
@@ -221,7 +316,10 @@ export default function MessagesPage() {
 	useEffect(() => {
 		const el = threadScrollRef.current;
 		if (!el) return;
-		el.scrollTop = el.scrollHeight;
+		// Auto-scroll to bottom smoothly
+		setTimeout(() => {
+			el.scrollTop = el.scrollHeight;
+		}, 0);
 	}, [threadMessages.length, threadLoading]);
 
 	const handleSelectMessage = async (m: ApiMessage) => {
@@ -261,15 +359,100 @@ export default function MessagesPage() {
 		setContactResults([]);
 	};
 
+	const openCompose = () => {
+		setComposeError('');
+		setComposeSuccess('');
+		setComposeOpen(true);
+		setParam('compose', '1');
+	};
+
+	const closeCompose = () => {
+		setComposeOpen(false);
+		setParam('compose', null);
+		setComposeRecipientQuery('');
+		setComposeRecipientId(null);
+		setComposeSubject('');
+		setComposeBody('');
+		setComposeRecipientResults([]);
+		setComposeError('');
+		setComposeSuccess('');
+	};
+
+	const handleSendCompose = async () => {
+		setComposeError('');
+		setComposeSuccess('');
+		if (!composeRecipientId) {
+			setComposeError(
+				isTeacher ? 'Please select a student recipient.' : 'Please select a teacher recipient.'
+			);
+			return;
+		}
+		if (!composeBody.trim()) {
+			setComposeError('Message body is required.');
+			return;
+		}
+
+		setComposeSaving(true);
+		try {
+			const recipient = composeRecipientResults.find((u) => u.id === composeRecipientId);
+			await api.messageCreate({
+				toUserId: composeRecipientId,
+				subject: composeSubject || null,
+				body: composeBody,
+				status: 'sent',
+			});
+
+			setComposeSuccess(`✓ Message sent to ${recipient?.name || (isTeacher ? 'student' : 'teacher')}`);
+			setMessageFolder('sent');
+			setParam('folder', 'sent');
+			setMessagesRefreshKey((k) => k + 1);
+			setTimeout(() => {
+				closeCompose();
+			}, 1200);
+		} catch (e: any) {
+			setComposeError(e?.message || 'Failed to send message.');
+		} finally {
+			setComposeSaving(false);
+		}
+	};
+
 	const handleSendChat = async () => {
 		if (!chatUser?.id) return;
 		const trimmed = chatBody.trim();
 		if (!trimmed) return;
+
+		// Create optimistic message (show immediately)
+		const optimisticMessage: ApiMessage = {
+			id: `temp-${Date.now()}`,
+			subject: null,
+			body: trimmed,
+			status: 'sent',
+			sentAt: new Date().toISOString(),
+			readAt: null,
+			createdAt: new Date().toISOString(),
+			sender: user
+				? { id: String(user.id), name: user.name, email: user.email }
+				: { id: 'dev-user', name: 'You', email: 'user@dev.local' },
+			recipient: chatUser,
+		};
+
+		// Clear input immediately
+		setChatBody('');
+		setThreadMessages((prev) => mergeUniqueMessages(prev, [optimisticMessage]));
+
+		// Scroll to bottom
+		setTimeout(() => {
+			const el = threadScrollRef.current;
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 0);
+
 		setChatSending(true);
 		try {
 			const res = await api.messageCreate({ toUserId: chatUser.id, body: trimmed, status: 'sent', subject: null });
-			setThreadMessages((prev) => mergeUniqueMessages(prev, [res.data]));
-			setChatBody('');
+			// Replace optimistic message with real one
+			setThreadMessages((prev) =>
+				prev.map((m) => (m.id === optimisticMessage.id ? res.data : m))
+			);
 			const iso = res.data.sentAt || res.data.createdAt || null;
 			if (iso) threadLastIsoRef.current = iso;
 			setMessages((prev) => {
@@ -298,13 +481,88 @@ export default function MessagesPage() {
 						<Button variant="outline" onClick={handleBackToDashboard} aria-label="Back to dashboard">
 							<ArrowLeft className="w-4 h-4" />
 						</Button>
-						{user?.role === 'admin' ? (
+						{user?.role === 'teacher' ? (
+							<Button className="bg-blue-600 hover:bg-blue-700" onClick={openCompose}>
+								Compose to Student
+							</Button>
+						) : user?.role === 'student' ? (
+							<Button className="bg-blue-600 hover:bg-blue-700" onClick={openCompose}>
+								Compose to Teacher
+							</Button>
+						) : user?.role === 'admin' ? (
 							<Button className="bg-blue-600 hover:bg-blue-700" onClick={() => navigate('/admin?tab=messages&compose=1')}>
 								Compose Mail
 							</Button>
 						) : null}
 					</div>
 				</div>
+
+				{(isTeacher || isStudent) && composeOpen ? (
+					<Card className="glass-card">
+						<CardHeader>
+							<CardTitle>{isTeacher ? 'Compose to Student' : 'Compose to Teacher'}</CardTitle>
+							<CardDescription>
+								{isTeacher
+									? 'Send a message directly to one of your students'
+									: 'Send a message directly to one of your teachers'}
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							{composeError ? <Alert variant="destructive"><AlertDescription>{composeError}</AlertDescription></Alert> : null}
+							{composeSuccess ? <Alert><AlertDescription>{composeSuccess}</AlertDescription></Alert> : null}
+
+							<div className="space-y-2">
+								<div className="text-sm font-medium">{isTeacher ? 'Send to Student' : 'Send to Teacher'}</div>
+								<Input
+									value={composeRecipientQuery}
+									placeholder={isTeacher ? 'Search student by name or email…' : 'Search teacher by name or email…'}
+									onChange={(e) => {
+										setComposeRecipientQuery(e.target.value);
+										setComposeRecipientId(null);
+									}}
+									onFocus={() => setComposeRecipientQuery((v) => v)}
+								/>
+								{composeRecipientLoading ? <div className="text-xs text-muted-foreground mt-2">Loading students…</div> : null}
+								{composeRecipientResults.length ? (
+									<div className="mt-2 space-y-1 max-h-40 overflow-auto border rounded p-2 bg-slate-50">
+										{composeRecipientResults.map((u) => (
+											<button
+												type="button"
+												key={u.id}
+												onClick={() => {
+													setComposeRecipientId(u.id);
+													setComposeRecipientQuery(`${u.name} <${u.email}>`);
+												}}
+												className="w-full text-left px-3 py-2 rounded hover:bg-blue-100 transition text-sm"
+											>
+												<div className="font-medium">{u.name}</div>
+												<div className="text-xs text-gray-600">{u.email}</div>
+											</button>
+										))}
+									</div>
+								) : null}
+								{composeRecipientId ? <div className="text-xs text-green-600 mt-1">✓ Recipient selected</div> : null}
+							</div>
+
+							<div className="space-y-2">
+								<div className="text-sm font-medium">Subject (optional)</div>
+								<Input value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} placeholder="Subject" />
+							</div>
+
+							<div className="space-y-2">
+								<div className="text-sm font-medium">Message</div>
+								<Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)} placeholder="Write your message…" rows={5} />
+							</div>
+
+							<div className="flex items-center gap-2">
+								<Button className="bg-blue-600 hover:bg-blue-700" disabled={composeSaving} onClick={handleSendCompose}>
+									{composeSaving ? 'Sending…' : 'Send'}
+								</Button>
+								<Button variant="outline" onClick={closeCompose}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				) : null}
 
 				<div className="flex items-center gap-2 flex-wrap">
 					<Button
@@ -480,36 +738,69 @@ export default function MessagesPage() {
 
 									<div
 										ref={threadScrollRef}
-										className="max-h-[420px] overflow-auto space-y-2 p-1"
+										className="max-h-[420px] overflow-auto space-y-3 p-3 bg-gradient-to-b from-transparent via-transparent to-transparent"
 									>
 										{threadLoading && threadMessages.length === 0 ? (
-											<div className="text-sm text-muted-foreground">Loading chat…</div>
+											<div className="text-sm text-muted-foreground text-center py-4">Loading chat…</div>
+										) : threadMessages.length === 0 ? (
+											<div className="text-sm text-muted-foreground text-center py-4">No messages yet</div>
 										) : null}
-										{threadMessages.map((m) => {
+										{threadMessages.map((m, idx) => {
 											const mine = currentUserId && String(m.sender?.id || '') === String(currentUserId);
 											const iso = m.sentAt || m.createdAt;
 											const when = iso ? new Date(iso).toLocaleTimeString() : '';
+											const isSending = m.id.startsWith('temp-');
+											const prevMessage = idx > 0 ? threadMessages[idx - 1] : null;
+											const sameSender = prevMessage && String(prevMessage.sender?.id) === String(m.sender?.id);
+
 											return (
 												<div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-													<div className={`max-w-[80%] p-3 glass-item ${mine ? 'text-right' : ''}`}>
-														<div className="text-sm whitespace-pre-wrap">{m.body}</div>
-														<div className="text-[11px] text-gray-500 mt-1">{when}</div>
+													<div
+														className={`flex flex-col ${mine ? 'items-end' : 'items-start'} gap-1 max-w-[80%]`}
+													>
+														{!sameSender && (
+															<div className="text-[11px] text-gray-500 px-1">
+																{m.sender?.name || 'Unknown'}
+															</div>
+														)}
+														<div
+															className={`px-4 py-2 rounded-lg break-words ${
+																mine
+																	? 'bg-blue-600 text-white rounded-br-none'
+																	: 'bg-gray-700 text-gray-100 rounded-bl-none'
+															} ${isSending ? 'opacity-75 italic' : ''}`}
+														>
+															<div className="text-sm whitespace-pre-wrap">{m.body}</div>
+														</div>
+														<div className={`text-[10px] text-gray-500 px-1 ${isSending ? 'italic' : ''}`}>
+															{isSending ? 'Sending…' : when}
+														</div>
 													</div>
 												</div>
 											);
 										})}
 									</div>
 
-									<div className="space-y-2">
+									<div className="space-y-2 border-t border-gray-700 pt-3">
 										<Textarea
 											value={chatBody}
 											onChange={(e) => setChatBody(e.target.value)}
-											placeholder="Type a message…"
-											rows={3}
+											onKeyDown={(e) => {
+												// Send message on Ctrl+Enter
+												if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+													e.preventDefault();
+													if (chatBody.trim() && !chatSending) {
+														handleSendChat();
+													}
+												}
+											}}
+											placeholder="Type a message… (Ctrl+Enter to send)"
+											rows={2}
+											className="resize-none"
 										/>
 										<div className="flex items-center justify-between gap-2">
-											<Button variant="outline" onClick={() => setChatUser(null)}>
-												Change user
+											<Button variant="outline" size="sm" onClick={() => setChatUser(null)}>
+												← Back
 											</Button>
 											<Button
 												className="bg-blue-600 hover:bg-blue-700"

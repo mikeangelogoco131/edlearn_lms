@@ -243,6 +243,7 @@ export default function AdminDashboard() {
 		try {
 			const after = mode === 'append' ? chatLastIsoRef.current : undefined;
 			const res = await api.messageThread(targetUserId, { after: after || undefined, limit: 200 });
+			if (!res) return;
 			setChatThreadMessages((prev) => (mode === 'replace' ? res.data : mergeUniqueMessages(prev, res.data)));
 			const last = res.data.length ? res.data[res.data.length - 1] : null;
 			const lastIso = last ? last.sentAt || last.createdAt || null : null;
@@ -464,7 +465,7 @@ export default function AdminDashboard() {
 		if (currentUserId) {
 			const other =
 				String(m.sender?.id || '') === String(currentUserId) ? (m.recipient as any) : (m.sender as any);
-			if (other?.id) {
+			if (other?.id && other?.name && other?.email && other?.role) {
 				setChatUser({
 					id: String(other.id),
 					name: other.name,
@@ -564,8 +565,16 @@ export default function AdminDashboard() {
 	const handleSaveDraft = async () => {
 		setComposeError('');
 		setComposeSuccess('');
+		if (!composeToUserId) {
+			setComposeError('Please select a recipient to save a draft.');
+			return;
+		}
 		setComposeSaving(true);
 		try {
+			// Get teacher info for notification
+			const teacher = composeSuggestions.find((u) => u.id === composeToUserId);
+			const teacherName = teacher?.name || 'Teacher';
+
 			if (composeDraftId) {
 				await api.messageUpdate(composeDraftId, {
 					toUserId: composeToUserId,
@@ -580,7 +589,7 @@ export default function AdminDashboard() {
 					status: 'draft',
 				});
 			}
-			setComposeSuccess('Draft saved.');
+			setComposeSuccess(`✓ Draft saved for ${teacherName}`);
 			setMessageFolder('drafts');
 			setDashboardSearchParam('folder', 'drafts');
 			closeCompose();
@@ -606,6 +615,10 @@ export default function AdminDashboard() {
 
 		setComposeSaving(true);
 		try {
+			// Get teacher info for notification
+			const teacher = composeSuggestions.find((u) => u.id === composeToUserId);
+			const teacherName = teacher?.name || 'Teacher';
+
 			if (composeDraftId) {
 				await api.messageUpdate(composeDraftId, {
 					toUserId: composeToUserId,
@@ -621,11 +634,29 @@ export default function AdminDashboard() {
 					status: 'sent',
 				});
 			}
-			setComposeSuccess('Message sent.');
-			setMessageFolder('sent');
-			setDashboardSearchParam('folder', 'sent');
-			closeCompose();
-			setMessagesRefreshKey((k) => k + 1);
+
+			// Show success message with teacher name
+			setComposeSuccess(`✓ Message sent to ${teacherName}`);
+
+			// Try to send browser notification if available
+			if ('Notification' in window && Notification.permission === 'granted') {
+				try {
+					new Notification('Message Sent', {
+						body: `Your message to ${teacherName} has been sent successfully.`,
+						icon: '/favicon.ico',
+					});
+				} catch (err) {
+					// Ignore notification errors
+				}
+			}
+
+			// Close compose after short delay
+			setTimeout(() => {
+				setMessageFolder('sent');
+				setDashboardSearchParam('folder', 'sent');
+				closeCompose();
+				setMessagesRefreshKey((k) => k + 1);
+			}, 1500);
 		} catch (e: any) {
 			setComposeError(e?.message || 'Failed to send message.');
 		} finally {
@@ -682,6 +713,35 @@ export default function AdminDashboard() {
 		}
 	};
 
+	const handleSelectAll = () => {
+		const allIds = messages.map((m) => m.id);
+		setSelectedMessageIds(new Set(allIds));
+	};
+
+	const handleDeselectAll = () => {
+		setSelectedMessageIds(new Set());
+	};
+
+	const handleDeleteAll = async () => {
+		if (messageFolder === 'deleted') return;
+		if (messages.length === 0) return;
+		const confirmed = window.confirm(
+			`Are you sure you want to delete all ${messages.length} message(s) in this folder? This action cannot be undone.`,
+		);
+		if (!confirmed) return;
+
+		try {
+			await Promise.allSettled(messages.map((m) => api.messageTrash(m.id)));
+		} finally {
+			setSelectedMessageIds(new Set());
+			setSelectedMessageId(null);
+			setChatUser(null);
+			setChatThreadMessages([]);
+			chatLastIsoRef.current = null;
+			setMessagesRefreshKey((k) => k + 1);
+		}
+	};
+
 	useEffect(() => {
 		if (activeTab !== 'messages') return;
 		const rawFolder = searchParams.get('folder');
@@ -723,17 +783,36 @@ export default function AdminDashboard() {
 		let cancelled = false;
 		const query = composeTo.trim();
 		if (!messageComposeOpen) return;
-		if (query.length < 2) {
-			setComposeSuggestions([]);
+		if (query.length < 1) {
+			// Show all teachers if input is empty or just starting
+			setComposeSuggestionsLoading(true);
+			try {
+				// Try to load teachers, fallback to all users if backend doesn't support role filter
+				api.users({ role: 'teacher', page: 1, perPage: 15 })
+					.then((res) => {
+						if (cancelled || !res) return;
+						setComposeSuggestions(res.data.filter((u) => u.role === 'teacher'));
+						setComposeSuggestionsLoading(false);
+					})
+					.catch(() => {
+						if (cancelled) return;
+						setComposeSuggestions([]);
+						setComposeSuggestionsLoading(false);
+					});
+			} catch {
+				if (!cancelled) setComposeSuggestions([]);
+			}
 			return;
 		}
 
 		const handle = setTimeout(async () => {
 			setComposeSuggestionsLoading(true);
 			try {
-				const res = await api.users({ q: query, page: 1, perPage: 10 });
+				// Search for teachers matching query
+				const res = await api.users({ q: query, role: 'teacher', page: 1, perPage: 15 });
 				if (cancelled) return;
-				setComposeSuggestions(res.data);
+				// Filter for teachers only
+				setComposeSuggestions(res.data.filter((u) => u.role === 'teacher'));
 			} catch {
 				if (!cancelled) setComposeSuggestions([]);
 			} finally {
@@ -909,7 +988,7 @@ export default function AdminDashboard() {
 		setCourseSection('');
 		setCourseTerm('');
 		setCourseSchedule('');
-		setCourseTeacherId(teachers[0]?.id || '');
+		setCourseTeacherId(teachers?.length ? teachers[0].id : '');
 		setEnrollFromCourseId('');
 		setEnrollFromRoster([]);
 		setEnrollFromLoading(false);
@@ -992,7 +1071,7 @@ export default function AdminDashboard() {
 		let cancelled = false;
 		async function loadTeachers() {
 			try {
-				const res = await api.users({ role: 'teacher', limit: 1000, archived: false });
+				const res = await api.users({ role: 'teacher', perPage: 10, archived: false });
 				if (!cancelled) setTeachers(res.data);
 			} catch {
 				// Keep UI stable if API is unavailable
@@ -2293,13 +2372,38 @@ export default function AdminDashboard() {
 								<ArrowLeft className="w-4 h-4" />
 							</Button>
 							{messageFolder !== 'deleted' ? (
-								<Button
-									variant="destructive"
-									disabled={selectedMessageIds.size === 0}
-									onClick={handleBulkDeleteSelected}
-								>
-									Delete Selected
-								</Button>
+								<div className="flex items-center gap-2 flex-wrap">
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={messages.length === 0}
+										onClick={handleSelectAll}
+									>
+										Select All
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={selectedMessageIds.size === 0}
+										onClick={handleDeselectAll}
+									>
+										Deselect All
+									</Button>
+									<Button
+										variant="destructive"
+										disabled={selectedMessageIds.size === 0}
+										onClick={handleBulkDeleteSelected}
+									>
+										Delete Selected ({selectedMessageIds.size})
+									</Button>
+									<Button
+										variant="destructive"
+										disabled={messages.length === 0}
+										onClick={handleDeleteAll}
+									>
+										Delete All
+									</Button>
+								</div>
 							) : null}
 							<Button className="bg-blue-600 hover:bg-blue-700" onClick={() => openCompose()}>
 								<Plus className="w-4 h-4 mr-2" />
@@ -2369,27 +2473,36 @@ export default function AdminDashboard() {
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<div className="space-y-2">
-									<Label htmlFor="compose-to">To</Label>
+									<Label>Send to Teacher</Label>
 									<Input
-										id="compose-to"
 										value={composeTo}
-										list="compose-to-suggestions"
-										placeholder="Start typing a name or email…"
-										onChange={(e) => {
-											setComposeTo(e.target.value);
-											syncComposeRecipientFromInput(e.target.value);
-										}}
-										onBlur={(e) => syncComposeRecipientFromInput(e.target.value)}
+										placeholder="Search teacher by name or email…"
+										onChange={(e) => setComposeTo(e.target.value)}
 									/>
-									<datalist id="compose-to-suggestions">
-										{composeSuggestions.map((u) => (
-											<option key={u.id} value={`${u.name} <${u.email}>`}>
-												{u.role}
-											</option>
-										))}
-									</datalist>
 									{composeSuggestionsLoading ? (
-										<div className="text-xs text-muted-foreground">Searching users…</div>
+										<div className="text-xs text-muted-foreground mt-2">Loading teachers…</div>
+									) : composeSuggestions.length === 0 ? (
+										<div className="text-xs text-muted-foreground mt-2">No teachers found</div>
+									) : (
+										<div className="mt-2 space-y-1 max-h-40 overflow-auto border rounded p-2 bg-slate-50">
+											{composeSuggestions.map((u) => (
+												<button
+													type="button"
+													key={u.id}
+													onClick={() => {
+														setComposeToUserId(u.id);
+														setComposeTo(`${u.name} <${u.email}>`);
+													}}
+													className="w-full text-left px-3 py-2 rounded hover:bg-blue-100 transition text-sm"
+												>
+													<div className="font-medium">{u.name}</div>
+													<div className="text-xs text-gray-600">{u.email}</div>
+												</button>
+											))}
+										</div>
+									)}
+									{composeToUserId ? (
+										<div className="text-xs text-green-600 mt-1">✓ Recipient selected</div>
 									) : null}
 								</div>
 
@@ -2436,11 +2549,19 @@ export default function AdminDashboard() {
 									>
 										Cancel
 									</Button>
-									<Button variant="secondary" disabled={composeSaving} onClick={handleSaveDraft}>
+									<Button
+										variant="secondary"
+										disabled={composeSaving || !composeToUserId}
+										onClick={handleSaveDraft}
+									>
 										Save Draft
 									</Button>
-									<Button disabled={composeSaving} onClick={handleSendMessage}>
-										Send
+									<Button
+										disabled={composeSaving || !composeToUserId}
+										onClick={handleSendMessage}
+										className="bg-blue-600 hover:bg-blue-700"
+									>
+										{composeSaving ? 'Sending…' : 'Send Message'}
 									</Button>
 								</div>
 							</CardContent>
@@ -2486,15 +2607,14 @@ export default function AdminDashboard() {
 															: `From: ${m.sender?.name || '—'} • To: ${m.recipient?.name || '—'}`;
 
 												return (
-													<button
-														type="button"
-														key={m.id}
-														onClick={() => handleSelectMessage(m)}
-														className={`w-full text-left flex items-start justify-between gap-3 p-3 glass-item ${
-															selected ? 'ring-2 ring-blue-600' : ''
-														}`}
-													>
-														<div className="flex items-start gap-3 min-w-0">
+													<div key={m.id} className={`flex items-start justify-between gap-3 p-3 glass-item ${
+														selected ? 'ring-2 ring-blue-600' : ''
+													}`}>
+														<button
+															type="button"
+															onClick={() => handleSelectMessage(m)}
+															className="flex items-start gap-3 min-w-0 flex-1 text-left"
+														>
 															<Checkbox
 																checked={checked}
 																onCheckedChange={(v) => toggleSelectedMessage(m.id, v === true)}
@@ -2508,9 +2628,25 @@ export default function AdminDashboard() {
 																</div>
 																<div className="text-xs text-gray-600 truncate">{partyLine}</div>
 															</div>
+														</button>
+														<div className="flex items-center gap-2 whitespace-nowrap">
+															<div className="text-xs text-gray-500">{when}</div>
+															{messageFolder !== 'deleted' ? (
+																<Button
+																	size="sm"
+																	variant="ghost"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		setSelectedMessageId(m.id);
+																		handleTrashSelectedMessage();
+																	}}
+																	className="text-red-600 hover:text-red-700 hover:bg-red-50"
+																>
+																	Delete
+																</Button>
+															) : null}
 														</div>
-														<div className="text-xs text-gray-500 whitespace-nowrap">{when}</div>
-													</button>
+													</div>
 												);
 											})}
 										</div>

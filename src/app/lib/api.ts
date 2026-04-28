@@ -398,6 +398,14 @@ export function getApiBaseUrl() {
   return DEFAULT_BASE_URL;
 }
 
+// Feature gate for dev fallbacks. Set VITE_ENABLE_DEV_FALLBACKS=1 in .env.local
+// to enable the various getDev* fallback helpers during development.
+function isDevFallbackEnabled() {
+  const env = (import.meta as any).env as Record<string, any> | undefined;
+  if (!env) return false;
+  return !!(env?.DEV && (env?.VITE_ENABLE_DEV_FALLBACKS === '1' || env?.VITE_ENABLE_DEV_FALLBACKS === 'true'));
+}
+
 export function getToken(): string | null {
   try {
     const sessionToken = sessionStorage.getItem('edlearn_token');
@@ -509,12 +517,1367 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return payload as T;
 }
 
+function getDevCredentialLoginFallback(email: string, password: string): ApiLoginResponse | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPassword = password.trim();
+
+  function buildDevUsers() {
+    // 2 admins for testing: alice.johnson@admin.edu.ph / johnson, mike.goco@admin.edu.ph / goco
+    const adminNames = ['Alice Johnson', 'Mike Goco'];
+    const teacherAndStudentNames = [
+      // Teachers (7)
+      'Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen',
+      // Students (34 - one less since Micheal Goco is now admin)
+      'Jack Wilson', 'Karen Davis', 'Leo Garcia', 'Maya Patel', 'Nina Brown', 'Oscar Rivera', 'Paul Kim',
+      'Quinn Lopez', 'Rosa Flores', 'Samir Khan', 'Tina Ochoa', 'Uma Shah', 'Victor Santos', 'Wendy Li',
+      'Xavier Gomez', 'Yara Silva', 'Zane Wright', 'Lara Santos', 'John Doe', 'Jane Roe',
+      'Alexander Berg', 'Bella Costa', 'Carlos Diaz', 'Diana Ellis', 'Ethan Foster', 'Fiona Green',
+      'Gabriel Harris', 'Hannah Ibarra', 'Isaac Jones', 'Julia Kim', 'Kevin Lee', 'Lauren Mitchell',
+      'Marcus Nelson', 'Nicole Owen',
+    ];
+
+    const users: Array<{ email: string; password: string; user: ApiUser }> = [];
+
+    // 2 admins for testing
+    for (let i = 0; i < adminNames.length; i++) {
+      const full = adminNames[i];
+      const parts = full.split(' ');
+      const first = parts[0].toLowerCase();
+      const last = parts[parts.length - 1].toLowerCase();
+      const local = `${first}.${last}`;
+      users.push({
+        email: `${local}@admin.edu.ph`,
+        password: last,
+        user: {
+          id: `dev-admin-${i + 1}`,
+          name: full,
+          email: `${local}@admin.edu.ph`,
+          role: 'admin',
+        },
+      });
+    }
+
+    // 7 teachers
+    for (let i = 0; i < 7; i++) {
+      const full = teacherAndStudentNames[i];
+      const parts = full.split(' ');
+      const first = parts[0].toLowerCase();
+      const last = parts[parts.length - 1].toLowerCase();
+      const local = `${first}.${last}`;
+      users.push({
+        email: `${local}@teacher.edu.ph`,
+        password: last,
+        user: {
+          id: `dev-teacher-${i + 1}`,
+          name: full,
+          email: `${local}@teacher.edu.ph`,
+          role: 'teacher',
+        },
+      });
+    }
+
+    // 34 students
+    for (let i = 7; i < 41; i++) {
+      const full = teacherAndStudentNames[i];
+      const parts = full.split(' ');
+      const first = parts[0].toLowerCase();
+      const last = parts[parts.length - 1].toLowerCase();
+      const local = `${first}.${last}`;
+      users.push({
+        email: `${local}@student.edu.ph`,
+        password: last,
+        user: {
+          id: `dev-student-${i - 6}`,
+          name: full,
+          email: `${local}@student.edu.ph`,
+          role: 'student',
+        },
+      });
+    }
+
+    return users;
+  }
+
+  const all = buildDevUsers();
+  const match = all.find((u) => u.email.toLowerCase() === normalizedEmail && u.password === normalizedPassword);
+  if (!match) return null;
+
+  return {
+    token: `dev-credential-token-${match.user.role}`,
+    user: match.user,
+  };
+}
+
+function getDevUserListFallback(params?: {
+  role?: string;
+  q?: string;
+  limit?: number;
+  archived?: boolean;
+  page?: number;
+  perPage?: number;
+}): ApiListResponse<ApiUser> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  function buildDevUsersList(): ApiUser[] {
+    // Get current logged-in user if available
+    let currentUser: any = null;
+    try {
+      const stored = sessionStorage.getItem('edlearn_user');
+      if (stored) {
+        currentUser = JSON.parse(stored);
+      }
+    } catch {
+      // ignore
+    }
+
+    const users: ApiUser[] = [];
+
+    // Add current logged-in admin only (instead of hardcoded names)
+    if (currentUser && currentUser.role === 'admin') {
+      users.push({
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        role: 'admin',
+      });
+    }
+
+    // All names for teachers and students (7 teachers + 34 students - Micheal Goco is now admin)
+    const teacherAndStudentNames = [
+      // Teachers (7)
+      'Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen',
+      // Students (34 - removed Micheal Goco since they're now admin)
+      'Jack Wilson', 'Karen Davis', 'Leo Garcia', 'Maya Patel', 'Nina Brown', 'Oscar Rivera', 'Paul Kim',
+      'Quinn Lopez', 'Rosa Flores', 'Samir Khan', 'Tina Ochoa', 'Uma Shah', 'Victor Santos', 'Wendy Li',
+      'Xavier Gomez', 'Yara Silva', 'Zane Wright', 'Lara Santos', 'John Doe', 'Jane Roe',
+      'Alexander Berg', 'Bella Costa', 'Carlos Diaz', 'Diana Ellis', 'Ethan Foster', 'Fiona Green',
+      'Gabriel Harris', 'Hannah Ibarra', 'Isaac Jones', 'Julia Kim', 'Kevin Lee', 'Lauren Mitchell',
+      'Marcus Nelson', 'Nicole Owen',
+    ];
+
+    // 7 teachers
+    for (let i = 0; i < 7; i++) {
+      const full = teacherAndStudentNames[i];
+      const parts = full.split(' ');
+      const first = parts[0].toLowerCase();
+      const last = parts[parts.length - 1].toLowerCase();
+      const local = `${first}.${last}`;
+      users.push({ id: `dev-teacher-${i + 1}`, name: full, email: `${local}@teacher.edu.ph`, role: 'teacher' });
+    }
+
+    // 34 students
+    for (let i = 7; i < 41; i++) {
+      const full = teacherAndStudentNames[i];
+      const parts = full.split(' ');
+      const first = parts[0].toLowerCase();
+      const last = parts[parts.length - 1].toLowerCase();
+      const local = `${first}.${last}`;
+      users.push({ id: `dev-student-${i - 6}`, name: full, email: `${local}@student.edu.ph`, role: 'student' });
+    }
+
+    return users;
+  }
+
+  let mockUsers = buildDevUsersList();
+
+  let filtered = mockUsers.slice();
+
+  if (params?.role) {
+    filtered = filtered.filter((u) => u.role === params.role);
+  }
+
+  if (params?.q) {
+    const q = params.q.toLowerCase();
+    filtered = filtered.filter(
+      (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+    );
+  }
+
+  if (params?.archived === true) {
+    filtered = [];
+  }
+
+  const page = params?.page ?? 1;
+  const perPage = params?.perPage ?? 10;
+  const limit = params?.limit ?? perPage;
+
+  const start = (page - 1) * perPage;
+  const end = start + (limit === perPage ? perPage : limit);
+  const paged = filtered.slice(start, end);
+
+  return {
+    data: paged,
+    meta: {
+      total: filtered.length,
+      page,
+      perPage,
+      pages: Math.max(1, Math.ceil(filtered.length / perPage)),
+    },
+  };
+}
+
+function getDevAnalyticsFallback(params?: {
+  archived?: boolean;
+}): ApiAnalyticsAdmin | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const now = new Date();
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weeklyEngagement = Array.from({ length: 7 }).map((_, i) => ({
+    day: days[(now.getDay() - 6 + i) % 7],
+    hours: Math.floor(Math.random() * 8) + 2,
+  }));
+
+  const courseEnrollment = Array.from({ length: 10 }).map((_, i) => ({
+    course: `COURSE-${i + 1}`,
+    students: 10 + Math.floor(Math.random() * 30),
+  }));
+
+  // Exact counts: 2 admins + 7 teachers + 34 students = 43 total users
+  let totalAdmins = 2;
+  let totalTeachers = 7;
+  let totalStudents = 34;
+  
+  // Count newly added students from sessionStorage
+  try {
+    for (let i = 1; i <= 9; i++) {
+      const storageKey = `edlearn_added_enrollments_dev-course-${i}`;
+      const stored = sessionStorage.getItem(storageKey);
+      if (stored) {
+        const added = JSON.parse(stored) as Array<{ status: string }>;
+        const activeAdded = added.filter(e => e.status !== 'dropped').length;
+        totalStudents += activeAdded;
+      }
+    }
+  } catch (e) {
+    // Ignore storage errors
+  }
+  
+  const totalUsers = totalAdmins + totalTeachers + totalStudents;
+  const totalCourses = courseEnrollment.length;
+
+  // Calculate teachers per subject based on actual course assignments
+  // Courses: CS101, CS201, MATH101, MATH201, BIO101, CHEM101, PHYS101, ENG101, HIST101
+  // Teachers: Carol(1), David(2), Eve(3), Franklin(4), Grace(5), Hector(6), Ivy(7)
+  // Mapping: CS(Carol,David), MATH(Eve,Franklin), BIO(Grace), CHEM(Hector), PHYS(Ivy), ENG(Carol), HIST(David)
+  const subjectTeacherMap: { [key: string]: Set<number> } = {
+    'Computer Science': new Set([1, 2]), // Carol, David teach CS101, CS201, ENG101
+    'Mathematics': new Set([3, 4]), // Eve, Franklin teach MATH101, MATH201
+    'Biology': new Set([5]), // Grace teaches BIO101
+    'Chemistry': new Set([6]), // Hector teaches CHEM101
+    'Physics': new Set([7]), // Ivy teaches PHYS101
+    'History': new Set([2]), // David teaches HIST101 (already in CS)
+  };
+
+  // Add ENG to CS teacher, HIST to CS teacher
+  subjectTeacherMap['Computer Science'].add(1); // Carol for ENG101
+  subjectTeacherMap['Computer Science'].add(2); // David for HIST101
+
+  const subjectTeachers = Object.entries(subjectTeacherMap).map(([subject, teacherSet]) => ({
+    subject,
+    teachers: teacherSet.size,
+  }));
+
+  return {
+    totalUsers,
+    totalAdmins,
+    totalTeachers,
+    totalStudents,
+    totalCourses,
+    totalAssignments: 40,
+    totalEnrollments: totalStudents * 2,
+    upcomingSessions: 8,
+    activeSessions: 3,
+    weeklyEngagement,
+    courseEnrollment,
+    subjectTeachers,
+    studentsTrend: Array.from({ length: 30 }).map((_, i) => ({
+      day: `Day ${i + 1}`,
+      count: 10 + Math.floor(Math.random() * 10),
+    })),
+    teachersTrend: Array.from({ length: 30 }).map((_, i) => ({
+      day: `Day ${i + 1}`,
+      count: Math.max(1, Math.floor(Math.random() * 3)),
+    })),
+  };
+}
+
+function getDevAnalyticsTeacherFallback(): {
+  totalCourses: number;
+  totalStudents: number;
+  upcomingSessions: number;
+  assignments: number;
+} | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  // Get current teacher from sessionStorage
+  let currentTeacherId: string | null = null;
+  try {
+    const userStr = sessionStorage.getItem('edlearn_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      if (user.role === 'teacher') {
+        currentTeacherId = user.id;
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  if (!currentTeacherId) {
+    return { totalCourses: 0, totalStudents: 0, upcomingSessions: 8, assignments: 0 };
+  }
+
+  // Get courses for this teacher
+  const catalog = getDevCourseCatalog();
+  const teacherCourses = catalog.filter((c) => c.teacherId === currentTeacherId);
+
+  // Count students across all teacher's courses
+  let totalStudents = 0;
+  const teacherNames = ['Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen'];
+  const teacherIdx = parseInt(currentTeacherId.split('-').pop() || '0', 10) - 1;
+
+  for (const course of teacherCourses) {
+    const courseNum = parseInt(course.id.split('-').pop() || '0', 10) - 1;
+    const studentsPerCourse = [4, 4, 4, 4, 4, 4, 3, 2, 1];
+    const numStudents = studentsPerCourse[courseNum] || 3;
+    totalStudents += numStudents;
+
+    // Add any manually enrolled students from sessionStorage
+    try {
+      const storageKey = `edlearn_added_enrollments_${course.id}`;
+      const stored = sessionStorage.getItem(storageKey);
+      if (stored) {
+        const added = JSON.parse(stored) as Array<{ status: string }>;
+        const activeAdded = added.filter(e => e.status !== 'dropped').length;
+        totalStudents += activeAdded;
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  return {
+    totalCourses: teacherCourses.length,
+    totalStudents,
+    upcomingSessions: 8,
+    assignments: teacherCourses.length * 3,
+  };
+}
+
+function getDevCourseCatalog(): ApiCourse[] {
+  const courses = [
+    {
+      title: 'Introduction to Computer Science',
+      code: 'CS101',
+      description: 'Fundamentals of programming, algorithms, and computer science principles. Learn how computers work and solve problems using code.',
+      schedule: 'MWF 10:00 AM',
+    },
+    {
+      title: 'Data Structures and Algorithms',
+      code: 'CS201',
+      description: 'Advanced programming concepts including trees, graphs, sorting, and searching algorithms. Build efficient and scalable software.',
+      schedule: 'TTh 2:00 PM',
+    },
+    {
+      title: 'Calculus I',
+      code: 'MATH101',
+      description: 'Limits, derivatives, and integrals. Foundation for advanced mathematics and scientific applications.',
+      schedule: 'MWF 9:00 AM',
+    },
+    {
+      title: 'Linear Algebra',
+      code: 'MATH201',
+      description: 'Vectors, matrices, and linear transformations. Essential for data science, physics, and engineering.',
+      schedule: 'TTh 1:00 PM',
+    },
+    {
+      title: 'Biology I: Cell and Molecular',
+      code: 'BIO101',
+      description: 'Study of cellular structure, genetics, and molecular biology. Understanding life at the molecular level.',
+      schedule: 'MWF 1:00 PM',
+    },
+    {
+      title: 'Chemistry: Fundamentals',
+      code: 'CHEM101',
+      description: 'Basic chemistry principles, atomic structure, bonding, and chemical reactions for scientific foundation.',
+      schedule: 'TTh 10:00 AM',
+    },
+    {
+      title: 'Physics I: Mechanics',
+      code: 'PHYS101',
+      description: 'Motion, forces, energy, and waves. Classical mechanics and foundational physics concepts.',
+      schedule: 'MWF 2:00 PM',
+    },
+    {
+      title: 'English Composition',
+      code: 'ENG101',
+      description: 'Develop critical writing and communication skills. Rhetoric, argumentation, and academic writing.',
+      schedule: 'TTh 3:00 PM',
+    },
+    {
+      title: 'World History',
+      code: 'HIST101',
+      description: 'Survey of major world events, civilizations, and cultural developments from ancient to modern times.',
+      schedule: 'MWF 11:00 AM',
+    },
+    {
+      title: 'Introduction to Psychology',
+      code: 'PSY101',
+      description: 'Human behavior, cognition, and mental processes. Principles and applications of psychological science.',
+      schedule: 'TTh 11:00 AM',
+    },
+    {
+      title: 'Principles of Economics',
+      code: 'ECON101',
+      description: 'Microeconomics and macroeconomics fundamentals. Supply, demand, and market systems.',
+      schedule: 'MWF 3:00 PM',
+    },
+    {
+      title: 'Art History',
+      code: 'ART101',
+      description: 'Visual arts across cultures and time periods. Understanding aesthetics, movements, and artistic expression.',
+      schedule: 'TTh 2:00 PM',
+    },
+  ];
+
+  // Actual teacher names from the dev user list
+  const teacherNames = ['Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen'];
+
+  // Distribute all 34 students across 9 courses (approximately 3-4 per course)
+  const studentDistribution = [4, 4, 4, 4, 4, 4, 3, 2, 1]; // Total = 34
+
+  return courses.map((course, i) => {
+    const idx = i + 1;
+    const teacherIdx = (idx - 1) % teacherNames.length;
+    const teacherName = teacherNames[teacherIdx];
+    return {
+      id: `dev-course-${idx}`,
+      title: course.title,
+      code: course.code,
+      description: course.description,
+      teacher: teacherName,
+      teacherId: `dev-teacher-${teacherIdx + 1}`,
+      students: studentDistribution[i] || 3, // Deterministic student count
+      term: 'Spring 2026',
+      section: String.fromCharCode(64 + ((idx % 4) + 1)),
+      schedule: course.schedule,
+      status: 'active',
+      materials: 1 + (idx % 3), // 1-3 materials per course
+      assignments: 1 + (idx % 3), // 1-3 assignments per course
+    } as ApiCourse;
+  });
+}
+
+function getDevCoursesFallback(params?: {
+  archived?: boolean;
+  available?: boolean;
+}): ApiListResponse<ApiCourse> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const mockCourses = getDevCourseCatalog();
+
+  let filtered = mockCourses.slice();
+
+  if (params?.archived === true) {
+    filtered = [];
+  }
+
+  return {
+    data: filtered,
+    meta: {
+      total: filtered.length,
+      page: 1,
+      perPage: 10,
+      pages: Math.max(1, Math.ceil(filtered.length / 10)),
+    },
+  };
+}
+
+function getDevCourseFallback(courseId: string): ApiItemResponse<ApiCourse> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const course = getDevCourseCatalog().find((item) => item.id === courseId);
+  if (!course) return null;
+
+  return { data: course };
+}
+
+function getDevCourseLessonsFallback(courseId: string): ApiListResponse<ApiLesson> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  const catalog = getDevCourseCatalog();
+  const course = catalog.find((c) => c.id === courseId);
+  if (!course) return null;
+
+  const lessons: ApiLesson[] = Array.from({ length: 4 }).map((_, i) => ({
+    id: `dev-lesson-${courseId}-${i + 1}`,
+    title: `${course.title} - Lesson ${i + 1}`,
+    description: `Lesson ${i + 1} for ${course.title}`,
+    duration: '45',
+    period: 'prelim',
+    weekInPeriod: ((i % 4) + 1),
+    createdAt: new Date().toISOString(),
+  } as ApiLesson));
+
+  return {
+    data: lessons,
+    meta: { total: lessons.length, page: 1, perPage: lessons.length, pages: 1 },
+  };
+}
+
+function getDevCourseSessionsFallback(courseId: string): ApiListResponse<ApiClassSession> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  const catalog = getDevCourseCatalog();
+  const course = catalog.find((c) => c.id === courseId);
+  if (!course) return null;
+
+  const now = Date.now();
+  const sessions: ApiClassSession[] = Array.from({ length: 3 }).map((_, i) => ({
+    id: `dev-session-${courseId}-${i + 1}`,
+    courseId: courseId,
+    title: `${course.title} Session ${i + 1}`,
+    date: new Date(now + i * 86400000).toISOString(),
+    time: '10:00 AM',
+    duration: '60',
+    status: 'scheduled',
+  } as ApiClassSession));
+
+  return {
+    data: sessions,
+    meta: { total: sessions.length, page: 1, perPage: sessions.length, pages: 1 },
+  };
+}
+
+function getDevCourseAssignmentsFallback(courseId: string): ApiListResponse<ApiAssignment> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  const catalog = getDevCourseCatalog();
+  const course = catalog.find((c) => c.id === courseId);
+  if (!course) return null;
+
+  const assignments: ApiAssignment[] = Array.from({ length: course.assignments }).map((_, i) => ({
+    id: `dev-assignment-${courseId}-${i + 1}`,
+    courseId,
+    title: `${course.title} Assignment ${i + 1}`,
+    description: `Auto-generated assignment ${i + 1}`,
+    dueDate: new Date(Date.now() + (i + 3) * 86400000).toISOString(),
+    points: 100,
+    status: 'published',
+  } as ApiAssignment));
+
+  return { data: assignments, meta: { total: assignments.length, page: 1, perPage: assignments.length, pages: 1 } };
+}
+
+function getDevCourseMaterialsFallback(courseId: string): ApiListResponse<ApiMaterial> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  const catalog = getDevCourseCatalog();
+  const course = catalog.find((c) => c.id === courseId);
+  if (!course) return null;
+
+  const materials: ApiMaterial[] = Array.from({ length: course.materials }).map((_, i) => ({
+    id: `dev-material-${courseId}-${i + 1}`,
+    title: `${course.title} Material ${i + 1}`,
+    originalName: `${course.code}-material-${i + 1}.pdf`,
+    downloadPath: `/storage/dev/${courseId}/material-${i + 1}.pdf`,
+    uploadedAt: new Date().toISOString(),
+  } as ApiMaterial));
+
+  return { data: materials, meta: { total: materials.length, page: 1, perPage: materials.length, pages: 1 } };
+}
+
+function getDevAllUsers(): ApiUser[] {
+  // Build a deterministic dev user list matching other helpers
+  const adminNames = ['Alice Johnson', 'Mike Goco'];
+  const teacherAndStudentNames = [
+    // Teachers (7)
+    'Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen',
+    // Students (34)
+    'Jack Wilson', 'Karen Davis', 'Leo Garcia', 'Maya Patel', 'Nina Brown', 'Oscar Rivera', 'Paul Kim',
+    'Quinn Lopez', 'Rosa Flores', 'Samir Khan', 'Tina Ochoa', 'Uma Shah', 'Victor Santos', 'Wendy Li',
+    'Xavier Gomez', 'Yara Silva', 'Zane Wright', 'Lara Santos', 'John Doe', 'Jane Roe',
+    'Alexander Berg', 'Bella Costa', 'Carlos Diaz', 'Diana Ellis', 'Ethan Foster', 'Fiona Green',
+    'Gabriel Harris', 'Hannah Ibarra', 'Isaac Jones', 'Julia Kim', 'Kevin Lee', 'Lauren Mitchell',
+    'Marcus Nelson', 'Nicole Owen',
+  ];
+
+  const users: ApiUser[] = [];
+
+  for (let i = 0; i < adminNames.length; i++) {
+    const full = adminNames[i];
+    const parts = full.split(' ');
+    const first = parts[0].toLowerCase();
+    const last = parts[parts.length - 1].toLowerCase();
+    const local = `${first}.${last}`;
+    users.push({ id: `dev-admin-${i + 1}`, name: full, email: `${local}@admin.edu.ph`, role: 'admin' });
+  }
+
+  for (let i = 0; i < 7; i++) {
+    const full = teacherAndStudentNames[i];
+    const parts = full.split(' ');
+    const first = parts[0].toLowerCase();
+    const last = parts[parts.length - 1].toLowerCase();
+    const local = `${first}.${last}`;
+    users.push({ id: `dev-teacher-${i + 1}`, name: full, email: `${local}@teacher.edu.ph`, role: 'teacher' });
+  }
+
+  for (let i = 7; i < teacherAndStudentNames.length; i++) {
+    const full = teacherAndStudentNames[i];
+    const parts = full.split(' ');
+    const first = parts[0].toLowerCase();
+    const last = parts[parts.length - 1].toLowerCase();
+    const local = `${first}.${last}`;
+    users.push({ id: `dev-student-${i - 6}`, name: full, email: `${local}@student.edu.ph`, role: 'student' });
+  }
+
+  return users;
+}
+
+function getDevCourseEnrollmentsFallback(courseId: string): ApiListResponse<ApiEnrollment> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  const catalog = getDevCourseCatalog();
+  const course = catalog.find((c) => c.id === courseId);
+  if (!course) return null;
+
+  const all = getDevAllUsers();
+  const studentUsers = all.filter((u) => u.role === 'student');
+  
+  // Extract course number from courseId (e.g., 'dev-course-1' -> 0)
+  const courseNum = parseInt(courseId.split('-').pop() || '0', 10) - 1;
+  const studentsPerCourse = [4, 4, 4, 4, 4, 4, 3, 2, 1]; // Matches distribution in catalog
+  const numStudents = studentsPerCourse[courseNum] || 3;
+  
+  // Distribute students: course 0 gets students 0-3, course 1 gets 4-7, etc.
+  let startIdx = 0;
+  for (let i = 0; i < courseNum; i++) {
+    startIdx += studentsPerCourse[i] || 3;
+  }
+  
+  const courseStudents = studentUsers.slice(startIdx, startIdx + numStudents);
+  const enrollments: ApiEnrollment[] = courseStudents.map((s, idx) => ({
+    id: `${courseId}-enroll-${idx + 1}`,
+    student: s,
+    status: 'active',
+    enrolledAt: new Date(Date.now() - idx * 86400000).toISOString(),
+  } as ApiEnrollment));
+
+  // Add any manually enrolled students (stored in session)
+  try {
+    const storageKey = `edlearn_added_enrollments_${courseId}`;
+    const stored = sessionStorage.getItem(storageKey);
+    if (stored) {
+      const added = JSON.parse(stored) as ApiEnrollment[];
+      enrollments.push(...added.filter(a => a.status !== 'dropped'));
+    }
+  } catch (e) {
+    // Ignore storage errors
+  }
+
+  return { data: enrollments, meta: { total: enrollments.length, page: 1, perPage: enrollments.length, pages: 1 } };
+}
+
+function getDevEnrollStudentFallback(courseId: string, studentId: string): ApiItemResponse<ApiEnrollment> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  const all = getDevAllUsers();
+  const student = all.find((u) => u.id === studentId);
+  if (!student) return null;
+
+  const enrollment: ApiEnrollment = {
+    id: `${courseId}-enroll-${Date.now()}`,
+    student,
+    status: 'active',
+    enrolledAt: new Date().toISOString(),
+  };
+
+  // Store the new enrollment in session so it persists in fallback calls
+  try {
+    const storageKey = `edlearn_added_enrollments_${courseId}`;
+    const stored = sessionStorage.getItem(storageKey);
+    const added = stored ? JSON.parse(stored) : [];
+    added.push(enrollment);
+    sessionStorage.setItem(storageKey, JSON.stringify(added));
+  } catch (e) {
+    // Ignore storage errors
+  }
+
+  return { data: enrollment };
+}
+
+function getDevDropEnrollmentFallback(courseId: string, enrollmentId: string): ApiMessageResponse | null {
+  if (!(import.meta as any).env?.DEV) return null;
+  
+  // Mark as dropped in session storage
+  try {
+    const storageKey = `edlearn_added_enrollments_${courseId}`;
+    const stored = sessionStorage.getItem(storageKey);
+    if (stored) {
+      const added = JSON.parse(stored) as ApiEnrollment[];
+      const idx = added.findIndex(e => e.id === enrollmentId);
+      if (idx !== -1) {
+        added[idx].status = 'dropped';
+        sessionStorage.setItem(storageKey, JSON.stringify(added));
+      }
+    }
+  } catch (e) {
+    // Ignore storage errors
+  }
+  
+  return { message: 'Enrollment removed successfully' };
+}
+
+function getDevUpdateCourseFallback(courseId: string, payload: Partial<ApiCourseUpsert>): ApiItemResponse<ApiCourse> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const course = getDevCourseCatalog().find((item) => item.id === courseId);
+  if (!course) return null;
+
+  // Get seed names for teacher lookup - only the 7 teachers
+  const teacherNames = [
+    'Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen',
+  ];
+
+  // Handle teacher_id update
+  let newTeacher = course.teacher;
+  let newTeacherId = course.teacherId;
+  if (payload.teacher_id !== undefined && payload.teacher_id !== null) {
+    const teacherId = Number(payload.teacher_id);
+    if (teacherId > 0 && teacherId <= teacherNames.length) {
+      const teacherName = teacherNames[teacherId - 1];
+      newTeacher = teacherName;
+      newTeacherId = `dev-teacher-${teacherId}`;
+    }
+  }
+
+  // Merge updates into the course
+  const updated: ApiCourse = {
+    ...course,
+    code: payload.code ?? course.code,
+    title: payload.title ?? course.title,
+    description: payload.description ?? course.description,
+    section: payload.section ?? course.section,
+    term: payload.term ?? course.term,
+    schedule: payload.schedule ?? course.schedule,
+    status: payload.status ?? course.status,
+    teacher: newTeacher,
+    teacherId: newTeacherId,
+  };
+
+  return { data: updated };
+}
+
+function getDevProgramsFallback(params?: {
+  archived?: boolean;
+}): ApiListResponse<ApiProgram> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const mockPrograms: ApiProgram[] = [
+    {
+      id: 'dev-program-1',
+      code: 'CSBS',
+      title: 'Bachelor of Science in Computer Science',
+      description: 'Four-year program in computer science with focus on software development, algorithms, and systems.',
+      status: 'active',
+    },
+    {
+      id: 'dev-program-2',
+      code: 'MATH',
+      title: 'Bachelor of Science in Mathematics',
+      description: 'Comprehensive study of pure and applied mathematics with research opportunities.',
+      status: 'active',
+    },
+    {
+      id: 'dev-program-3',
+      code: 'SCIENCE',
+      title: 'Bachelor of Science in Natural Sciences',
+      description: 'Integrated program in physics, chemistry, biology, and earth sciences.',
+      status: 'active',
+    },
+    {
+      id: 'dev-program-4',
+      code: 'LIBERAL',
+      title: 'Bachelor of Arts in Liberal Arts',
+      description: 'Interdisciplinary studies in humanities, social sciences, and sciences.',
+      status: 'active',
+    },
+    {
+      id: 'dev-program-5',
+      code: 'BUSINESS',
+      title: 'Bachelor of Business Administration',
+      description: 'Business fundamentals, economics, management, and entrepreneurship.',
+      status: 'active',
+    },
+    {
+      id: 'dev-program-6',
+      code: 'EDUCATION',
+      title: 'Bachelor of Science in Education',
+      description: 'Teacher preparation program with subject specializations and practical field work.',
+      status: 'active',
+    },
+  ];
+
+  let filtered = mockPrograms.slice();
+
+  if (params?.archived === true) {
+    filtered = [];
+  }
+
+  return {
+    data: filtered,
+    meta: {
+      total: filtered.length,
+      page: 1,
+      perPage: 10,
+      pages: Math.max(1, Math.ceil(filtered.length / 10)),
+    },
+  };
+}
+
+function getDevMessagesFallback(params?: {
+  folder?: 'inbox' | 'sent' | 'drafts' | 'deleted';
+  q?: string;
+  limit?: number;
+}): ApiListResponse<ApiMessage> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  // Get current user
+  let currentUserId: string | null = null;
+  try {
+    const userStr = sessionStorage.getItem('edlearn_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      currentUserId = user.id || null;
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  // Load message modifications (status changes, read status, etc) for mock messages
+  const mods = readDevJson<Record<string, { status?: string; readAt?: string }>>(DEV_MESSAGE_MODS_KEY, {});
+
+  // Load any locally-created or modified messages first
+  const messageUpdates = new Map<string, ApiMessage>();
+  for (const m of readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, [])) {
+    messageUpdates.set(m.id, m);
+  }
+
+  const now = new Date();
+
+  // Create mock inbox messages (from teachers to current user)
+  const inboxMessages: ApiMessage[] = Array.from({ length: 16 }).map((_, i) => {
+    const idx = i + 1;
+    const minutesAgo = idx * 30;
+    const mockId = `dev-msg-${idx}`;
+    
+    // If this message was modified/deleted, use the updated version from storage
+    if (messageUpdates.has(mockId)) {
+      return messageUpdates.get(mockId)!;
+    }
+    
+    const baseMockMessage: ApiMessage = {
+      id: mockId,
+      subject: idx % 4 === 0 ? 'Reminder' : `Message ${idx}`,
+      body: `This is a mock message body for message ${idx}`,
+      status: 'sent', // incoming messages have status 'sent'
+      sentAt: new Date(now.getTime() - minutesAgo * 60000).toISOString(),
+      readAt: idx % 3 === 0 ? new Date(now.getTime() - (minutesAgo - 10) * 60000).toISOString() : null,
+      createdAt: new Date(now.getTime() - minutesAgo * 60000).toISOString(),
+      sender: { id: `dev-teacher-${(idx % 7) + 1}`, name: `Teacher ${idx}`, email: `teacher${(idx % 7) + 1}@dev.local` },
+      recipient: currentUserId ? { id: currentUserId, name: 'You', email: 'admin@dev.local' } : null,
+    } as ApiMessage;
+
+    // Apply any modifications (status changes, readAt)
+    if (mods[mockId]) {
+      if (mods[mockId].status !== undefined) {
+        baseMockMessage.status = mods[mockId].status as any;
+      }
+      if (mods[mockId].readAt !== undefined) {
+        baseMockMessage.readAt = mods[mockId].readAt;
+      }
+    }
+
+    return baseMockMessage;
+  });
+
+  const allMessages: ApiMessage[] = [...inboxMessages];
+
+  // Add any user-created messages (not modifications of mock messages)
+  // Only add messages that aren't mock messages (don't match dev-msg-N pattern)
+  for (const m of readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, [])) {
+    if (!m.id.match(/^dev-msg-\d+$/)) {
+      allMessages.push(m);
+    }
+  }
+
+  let filtered = allMessages.slice();
+
+  // Filter by folder
+  if (params?.folder) {
+    if (params.folder === 'inbox') {
+      // Show received messages (not sent by current user and not drafts/deleted)
+      filtered = filtered.filter((m) => m.status === 'sent' && String(m.sender?.id) !== String(currentUserId));
+    } else if (params.folder === 'sent') {
+      // Show sent messages (created by current user with status 'sent')
+      filtered = filtered.filter((m) => m.status === 'sent' && String(m.sender?.id) === String(currentUserId));
+    } else if (params.folder === 'drafts') {
+      // Show draft messages
+      filtered = filtered.filter((m) => m.status === 'draft');
+    } else if (params.folder === 'deleted') {
+      // Show deleted messages
+      filtered = filtered.filter((m) => m.status === 'deleted');
+    }
+  }
+
+  // Filter by search query
+  if (params?.q) {
+    const q = params.q.toLowerCase();
+    filtered = filtered.filter(
+      (m) => m.subject?.toLowerCase().includes(q) || m.body.toLowerCase().includes(q) || m.sender?.name?.toLowerCase().includes(q),
+    );
+  }
+
+  // Apply limit
+  const limit = params?.limit ?? 10;
+  return {
+    data: filtered.slice(0, limit),
+    meta: {
+      total: filtered.length,
+      page: 1,
+      perPage: limit,
+      pages: Math.max(1, Math.ceil(filtered.length / limit)),
+    },
+  };
+}
+
+// Helper function to get teacher info by ID
+function getTeacherInfoById(teacherId: string): { name: string; email: string } | null {
+  const teacherAndStudentNames = [
+    // Teachers (7)
+    'Carol Nguyen', 'David Lee', 'Eve Martinez', 'Franklin Cruz', 'Grace Park', 'Hector Reyes', 'Ivy Chen',
+  ];
+
+  const match = teacherId.match(/dev-teacher-(\d+)/);
+  if (!match) return null;
+
+  const idx = parseInt(match[1], 10) - 1; // Convert 1-indexed to 0-indexed
+  if (idx < 0 || idx >= teacherAndStudentNames.length) return null;
+
+  const full = teacherAndStudentNames[idx];
+  const parts = full.split(' ');
+  const first = parts[0].toLowerCase();
+  const last = parts[parts.length - 1].toLowerCase();
+  const email = `${first}.${last}@teacher.edu.ph`;
+
+  return { name: full, email };
+}
+
+const DEV_MESSAGE_STORAGE_KEY = 'edlearn_dev_messages';
+const DEV_MESSAGE_MODS_KEY = 'edlearn_message_mods';
+
+function readDevJson<T>(key: string, fallback: T): T {
+  let localValue: any = undefined;
+  let sessionValue: any = undefined;
+
+  try {
+    const shared = localStorage.getItem(key);
+    if (shared) localValue = JSON.parse(shared);
+  } catch {
+    // Ignore
+  }
+
+  try {
+    const session = sessionStorage.getItem(key);
+    if (session) sessionValue = JSON.parse(session);
+  } catch {
+    // Ignore
+  }
+
+  if (Array.isArray(localValue) || Array.isArray(sessionValue)) {
+    const merged: any[] = [];
+    const seen = new Set<string>();
+    for (const item of [...(Array.isArray(sessionValue) ? sessionValue : []), ...(Array.isArray(localValue) ? localValue : [])]) {
+      const keyValue = item && typeof item === 'object' && 'id' in item ? String((item as any).id) : JSON.stringify(item);
+      if (!seen.has(keyValue)) {
+        seen.add(keyValue);
+        merged.push(item);
+      }
+    }
+    return merged as T;
+  }
+
+  if (
+    localValue && typeof localValue === 'object' && !Array.isArray(localValue) ||
+    sessionValue && typeof sessionValue === 'object' && !Array.isArray(sessionValue)
+  ) {
+    return { ...(sessionValue || {}), ...(localValue || {}) } as T;
+  }
+
+  if (localValue !== undefined) return localValue as T;
+  if (sessionValue !== undefined) return sessionValue as T;
+
+  return fallback;
+}
+
+function writeDevJson(key: string, value: unknown) {
+  const serialized = JSON.stringify(value);
+  try {
+    localStorage.setItem(key, serialized);
+  } catch {
+    // Ignore
+  }
+  try {
+    sessionStorage.setItem(key, serialized);
+  } catch {
+    // Ignore
+  }
+}
+
+function getDevMessageCreateFallback(payload: {
+  toUserId?: string | null;
+  subject?: string | null;
+  body: string;
+  status?: 'draft' | 'sent';
+}): ApiItemResponse<ApiMessage> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  // Get current user from sessionStorage
+  let currentUser: any = null;
+  try {
+    const userStr = sessionStorage.getItem('edlearn_user');
+    if (userStr) {
+      currentUser = JSON.parse(userStr);
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  // Get recipient info
+  let recipient = null;
+  if (payload.toUserId) {
+    // Look up teacher info by ID
+    const teacherInfo = getTeacherInfoById(payload.toUserId);
+    recipient = teacherInfo
+      ? {
+          id: payload.toUserId,
+          name: teacherInfo.name,
+          email: teacherInfo.email,
+        }
+      : {
+          id: payload.toUserId,
+          name: 'Recipient',
+          email: `user-${payload.toUserId}@dev.local`,
+        };
+  }
+
+  const message: ApiMessage = {
+    id: `dev-msg-local-${Date.now()}`,
+    subject: payload.subject || '(No subject)',
+    body: payload.body,
+    status: payload.status || 'sent',
+    sentAt: payload.status === 'sent' ? new Date().toISOString() : null,
+    readAt: null,
+    createdAt: new Date().toISOString(),
+    sender: currentUser ? { id: currentUser.id, name: currentUser.name, email: currentUser.email } : { id: 'dev-user', name: 'Current User', email: 'user@dev.local' },
+    recipient,
+  };
+
+  // Store in sessionStorage
+  try {
+    const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
+    messages.push(message);
+    writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
+  } catch (e) {
+    // Ignore
+  }
+
+  return { data: message };
+}
+
+function getDevMessageUpdateFallback(
+  id: string,
+  payload: { toUserId?: string | null; subject?: string | null; body?: string; send?: boolean }
+): ApiItemResponse<ApiMessage> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  try {
+    const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
+    const idx = messages.findIndex((m) => m.id === id);
+    if (idx !== -1) {
+      messages[idx] = {
+        ...messages[idx],
+        subject: payload.subject !== undefined ? payload.subject : messages[idx].subject,
+        body: payload.body !== undefined ? payload.body : messages[idx].body,
+        status: payload.send ? 'sent' : messages[idx].status,
+        sentAt: payload.send && !messages[idx].sentAt ? new Date().toISOString() : messages[idx].sentAt,
+      };
+      writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
+      return { data: messages[idx] };
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  return null;
+}
+
+function getDevMessageTrashFallback(id: string): ApiMessageResponse | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  try {
+    // Track modifications to mock messages separately
+    const mods = readDevJson<Record<string, { status: string }>>(DEV_MESSAGE_MODS_KEY, {});
+    mods[id] = { status: 'deleted' };
+    writeDevJson(DEV_MESSAGE_MODS_KEY, mods);
+
+    // Also update if it's in edlearn_dev_messages
+    const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
+    if (messages.length) {
+      const idx = messages.findIndex((m) => m.id === id);
+      if (idx !== -1) {
+        messages[idx].status = 'deleted';
+        writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
+      }
+    }
+
+    return { message: 'Message moved to trash' };
+  } catch (e) {
+    // Ignore
+  }
+
+  return null;
+}
+
+function getDevMessageRestoreFallback(id: string): ApiMessageResponse | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  try {
+    // Track modifications to mock messages separately
+    const mods = readDevJson<Record<string, { status: string }>>(DEV_MESSAGE_MODS_KEY, {});
+    mods[id] = { status: 'sent' };
+    writeDevJson(DEV_MESSAGE_MODS_KEY, mods);
+
+    // Also update if it's in edlearn_dev_messages
+    const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
+    if (messages.length) {
+      const idx = messages.findIndex((m) => m.id === id);
+      if (idx !== -1) {
+        messages[idx].status = 'sent';
+        writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
+      }
+    }
+
+    return { message: 'Message restored' };
+  } catch (e) {
+    // Ignore
+  }
+
+  return null;
+}
+
+function getDevMessageReadFallback(id: string): ApiItemResponse<ApiMessage> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  try {
+    // Track modifications to mock messages separately
+    const mods = readDevJson<Record<string, { status?: string; readAt?: string }>>(DEV_MESSAGE_MODS_KEY, {});
+    if (!mods[id]) mods[id] = {};
+    mods[id].readAt = new Date().toISOString();
+    writeDevJson(DEV_MESSAGE_MODS_KEY, mods);
+
+    // Also update if it's in edlearn_dev_messages
+    const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
+    if (messages.length) {
+      const idx = messages.findIndex((m) => m.id === id);
+      if (idx !== -1) {
+        messages[idx].readAt = new Date().toISOString();
+        writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
+        return { data: messages[idx] };
+      }
+    }
+
+    // Return a mock message with readAt set
+    return {
+      data: {
+        id,
+        subject: 'Message',
+        body: 'Message body',
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+        readAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        sender: { id: 'dev-user', name: 'User', email: 'user@dev.local' },
+        recipient: null,
+      } as ApiMessage,
+    };
+  } catch (e) {
+    // Ignore
+  }
+
+  return null;
+}
+
+
+async function getDevMessageThreadFallback(otherUserId: string) {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  // Get current user
+  let currentUserId: string | null = null;
+  let currentUser: any = null;
+  try {
+    const userStr = sessionStorage.getItem('edlearn_user');
+    if (userStr) {
+      currentUser = JSON.parse(userStr);
+      currentUserId = currentUser.id || null;
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  // Load all messages and filter for conversation between current user and other user
+  const allMessages: ApiMessage[] = [];
+  
+  try {
+    allMessages.push(...readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []));
+  } catch (e) {
+    // Ignore
+  }
+
+  // Filter for messages between current user and other user (in both directions)
+  const threadMessages = allMessages.filter((m) => {
+    const isFromCurrentToOther = String(m.sender?.id) === String(currentUserId) && String(m.recipient?.id) === String(otherUserId);
+    const isFromOtherToCurrent = String(m.sender?.id) === String(otherUserId) && String(m.recipient?.id) === String(currentUserId);
+    return (isFromCurrentToOther || isFromOtherToCurrent) && m.status !== 'draft';
+  });
+
+  return {
+    data: threadMessages,
+    meta: {
+      total: threadMessages.length,
+      limit: 20,
+      pages: Math.max(1, Math.ceil(threadMessages.length / 20)),
+    },
+  };
+}
+
+async function getDevChatUsersFallback() {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  // Get current user
+  let currentUserId: string | null = null;
+  try {
+    const userStr = sessionStorage.getItem('edlearn_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      currentUserId = user.id || null;
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  // Load all user-created messages and find unique users
+  const userSet = new Set<string>();
+  const userMap = new Map<string, { id: string; name: string; email: string; role: string }>();
+
+  try {
+    const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
+    for (const msg of messages) {
+      // Add recipient if different from current user
+      if (msg.recipient && String(msg.recipient.id) !== String(currentUserId) && String(msg.sender?.id) === String(currentUserId)) {
+        userSet.add(String(msg.recipient.id));
+        userMap.set(String(msg.recipient.id), {
+          id: String(msg.recipient.id),
+          name: msg.recipient.name || 'Unknown',
+          email: msg.recipient.email || '',
+          role: msg.recipient.role || 'unknown',
+        });
+      }
+      // Add sender if different from current user
+      if (msg.sender && String(msg.sender.id) !== String(currentUserId)) {
+        userSet.add(String(msg.sender.id));
+        userMap.set(String(msg.sender.id), {
+          id: String(msg.sender.id),
+          name: msg.sender.name || 'Unknown',
+          email: msg.sender.email || '',
+          role: msg.sender.role || 'unknown',
+        });
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  const users = Array.from(userMap.values());
+
+  return {
+    data: users,
+    meta: {
+      total: users.length,
+      limit: 20,
+      pages: Math.max(1, Math.ceil(users.length / 20)),
+    },
+  };
+}
+
+function getDevNotificationsFallback(): ApiListResponse<ApiNotification> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const now = new Date();
+  const types: ApiNotificationType[] = [
+    'announcement',
+    'teacher_message',
+    'announcement_expiring',
+    'user_added',
+    'course_added',
+    'class_session_added',
+    'event_added',
+    'assignment_added',
+  ];
+
+  const catalog = getDevCourseCatalog();
+
+  const items: ApiNotification[] = Array.from({ length: 20 }).map((_, i) => {
+    const idx = i + 1;
+    const t = types[i % types.length];
+    const courseIdx = (idx % 12);
+    const course = catalog[courseIdx];
+    return {
+      id: `dev-notif-${idx}`,
+      type: t,
+      title: `${t.replace(/_/g, ' ')} notification ${idx}`,
+      publishedAt: new Date(now.getTime() - idx * 3600000).toISOString(),
+      isPinned: false,
+      course: { id: course.id, code: course.code, title: course.title },
+      author: { id: `dev-user-${(idx % 10) + 1}`, name: `User ${(idx % 10) + 1}`, role: 'teacher' },
+      user: null,
+      event: undefined,
+    } as ApiNotification;
+  });
+
+  return {
+    data: items,
+    meta: {
+      total: items.length,
+      page: 1,
+      perPage: 20,
+      pages: 1,
+    },
+  };
+}
+
 export const api = {
   async login(email: string, password: string) {
-    return apiFetch<ApiLoginResponse>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      return await apiFetch<ApiLoginResponse>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (err) {
+      const fallback = getDevCredentialLoginFallback(email, password);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+
+      throw err;
+    }
   },
 
   async loginWithGoogle(credential: string) {
@@ -608,20 +1971,36 @@ export const api = {
   },
 
   async courses(params?: { archived?: boolean; available?: boolean }) {
-    const qs = new URLSearchParams();
-    if (params?.archived === true) qs.set('archived', '1');
-    if (params?.archived === false) qs.set('archived', '0');
-    if (params?.available === true) qs.set('available', '1');
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiCourse>>(`/api/courses${suffix}`);
+    try {
+      const qs = new URLSearchParams();
+      if (params?.archived === true) qs.set('archived', '1');
+      if (params?.archived === false) qs.set('archived', '0');
+      if (params?.available === true) qs.set('available', '1');
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      return await apiFetch<ApiListResponse<ApiCourse>>(`/api/courses${suffix}`);
+    } catch (err) {
+      const fallback = getDevCoursesFallback(params);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async programs(params?: { archived?: boolean }) {
-    const qs = new URLSearchParams();
-    if (params?.archived === true) qs.set('archived', '1');
-    if (params?.archived === false) qs.set('archived', '0');
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiProgram>>(`/api/programs${suffix}`);
+    try {
+      const qs = new URLSearchParams();
+      if (params?.archived === true) qs.set('archived', '1');
+      if (params?.archived === false) qs.set('archived', '0');
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      return await apiFetch<ApiListResponse<ApiProgram>>(`/api/programs${suffix}`);
+    } catch (err) {
+      const fallback = getDevProgramsFallback(params);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async createProgram(payload: ApiProgramUpsert) {
@@ -652,26 +2031,55 @@ export const api = {
   },
 
   async course(courseId: string) {
-    return apiFetch<ApiItemResponse<ApiCourse>>(`/api/courses/${encodeURIComponent(courseId)}`);
+    try {
+      return await apiFetch<ApiItemResponse<ApiCourse>>(`/api/courses/${encodeURIComponent(courseId)}`);
+    } catch (err) {
+      const fallback = getDevCourseFallback(courseId);
+      if (fallback) {
+        // In DEV, prefer returning the fallback course to keep the UI usable
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async updateCourse(courseId: string, payload: Partial<ApiCourseUpsert>) {
-    return apiFetch<ApiItemResponse<ApiCourse>>(`/api/courses/${encodeURIComponent(courseId)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ApiItemResponse<ApiCourse>>(`/api/courses/${encodeURIComponent(courseId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevUpdateCourseFallback(courseId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async courseSessions(courseId: string) {
-    return apiFetch<ApiListResponse<ApiClassSession>>(
-      `/api/courses/${encodeURIComponent(courseId)}/sessions`
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiClassSession>>(
+        `/api/courses/${encodeURIComponent(courseId)}/sessions`
+      );
+    } catch (err) {
+      const fallback = getDevCourseSessionsFallback(courseId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async courseAssignments(courseId: string) {
-    return apiFetch<ApiListResponse<ApiAssignment>>(
-      `/api/courses/${encodeURIComponent(courseId)}/assignments`
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiAssignment>>(
+        `/api/courses/${encodeURIComponent(courseId)}/assignments`
+      );
+    } catch (err) {
+      const fallback = getDevCourseAssignmentsFallback(courseId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async createCourseAssignment(courseId: string, payload: {
@@ -775,9 +2183,15 @@ export const api = {
   },
 
   async courseLessons(courseId: string) {
-    return apiFetch<ApiListResponse<ApiLesson>>(
-      `/api/courses/${encodeURIComponent(courseId)}/lessons`,
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiLesson>>(
+        `/api/courses/${encodeURIComponent(courseId)}/lessons`
+      );
+    } catch (err) {
+      const fallback = getDevCourseLessonsFallback(courseId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async createCourseLesson(courseId: string, payload: {
@@ -833,9 +2247,15 @@ export const api = {
   },
 
   async courseMaterials(courseId: string) {
-    return apiFetch<ApiListResponse<ApiMaterial>>(
-      `/api/courses/${encodeURIComponent(courseId)}/materials`,
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiMaterial>>(
+        `/api/courses/${encodeURIComponent(courseId)}/materials`
+      );
+    } catch (err) {
+      const fallback = getDevCourseMaterialsFallback(courseId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async uploadCourseMaterial(courseId: string, payload: { title?: string; description?: string; file: File; period?: string; week_in_period?: number }) {
@@ -893,9 +2313,15 @@ export const api = {
   },
 
   async courseEnrollments(courseId: string) {
-    return apiFetch<ApiListResponse<ApiEnrollment>>(
-      `/api/courses/${encodeURIComponent(courseId)}/enrollments`,
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiEnrollment>>(
+        `/api/courses/${encodeURIComponent(courseId)}/enrollments`,
+      );
+    } catch (err) {
+      const fallback = getDevCourseEnrollmentsFallback(courseId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async allEnrollments() {
@@ -903,13 +2329,19 @@ export const api = {
   },
 
   async enrollStudent(courseId: string, studentId: string) {
-    return apiFetch<ApiItemResponse<ApiEnrollment>>(
-      `/api/courses/${encodeURIComponent(courseId)}/enrollments`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ student_id: Number(studentId) }),
-      },
-    );
+    try {
+      return await apiFetch<ApiItemResponse<ApiEnrollment>>(
+        `/api/courses/${encodeURIComponent(courseId)}/enrollments`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ student_id: Number(studentId) }),
+        },
+      );
+    } catch (err) {
+      const fallback = getDevEnrollStudentFallback(courseId, studentId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async selfEnroll(courseId: string) {
@@ -922,12 +2354,18 @@ export const api = {
   },
 
   async dropEnrollment(courseId: string, enrollmentId: string) {
-    return apiFetch<ApiMessageResponse>(
-      `/api/courses/${encodeURIComponent(courseId)}/enrollments/${encodeURIComponent(enrollmentId)}`,
-      {
-        method: 'DELETE',
-      },
-    );
+    try {
+      return await apiFetch<ApiMessageResponse>(
+        `/api/courses/${encodeURIComponent(courseId)}/enrollments/${encodeURIComponent(enrollmentId)}`,
+        {
+          method: 'DELETE',
+        },
+      );
+    } catch (err) {
+      const fallback = getDevDropEnrollmentFallback(courseId, enrollmentId);
+      if (fallback) return fallback;
+      throw err;
+    }
   },
 
   async deleteCourse(courseId: string) {
@@ -947,74 +2385,148 @@ export const api = {
   },
 
   async notifications() {
-    return apiFetch<ApiListResponse<ApiNotification>>('/api/notifications');
+    try {
+      return await apiFetch<ApiListResponse<ApiNotification>>('/api/notifications');
+    } catch (err) {
+      const fallback = getDevNotificationsFallback();
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async messages(params?: { folder?: 'inbox' | 'sent' | 'drafts' | 'deleted'; q?: string; limit?: number }) {
-    const qs = new URLSearchParams();
-    if (params?.folder) qs.set('folder', params.folder);
-    if (params?.q) qs.set('q', params.q);
-    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiMessage>>(`/api/messages${suffix}`);
+    try {
+      const qs = new URLSearchParams();
+      if (params?.folder) qs.set('folder', params.folder);
+      if (params?.q) qs.set('q', params.q);
+      if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      return await apiFetch<ApiListResponse<ApiMessage>>(`/api/messages${suffix}`);
+    } catch (err) {
+      const fallback = getDevMessagesFallback(params);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async messageThread(otherUserId: string, params?: { after?: string; limit?: number }) {
-    const qs = new URLSearchParams();
-    if (params?.after) qs.set('after', params.after);
-    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiMessage>>(
-      `/api/messages/thread/${encodeURIComponent(otherUserId)}${suffix}`,
-    );
-  },
+      try {
+        const qs = new URLSearchParams();
+        if (params?.after) qs.set('after', params.after);
+        if (typeof params?.limit === "number") qs.set('limit', String(params.limit));
+        const suffix = qs.toString() ? `?${qs.toString()}` : '';
+        return await apiFetch<ApiListResponse<ApiMessage>>(
+          `/api/messages/thread/${encodeURIComponent(otherUserId)}${suffix}`,
+        );
+      } catch (error) {
+        console.error('Failed to fetch message thread, using fallback:', error);
+        return getDevMessageThreadFallback(otherUserId);
+      }
+    },
 
-  async chatUsers(params?: { q?: string; limit?: number }) {
-    const qs = new URLSearchParams();
-    if (params?.q) qs.set('q', params.q);
-    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiUser>>(`/api/chat/users${suffix}`);
-  },
+    async chatUsers(params?: { q?: string; limit?: number }) {
+      try {
+        const qs = new URLSearchParams();
+        if (params?.q) qs.set('q', params.q);
+        if (typeof params?.limit === "number") qs.set('limit', String(params.limit));
+        const suffix = qs.toString() ? `?${qs.toString()}` : '';
+        return await apiFetch<ApiListResponse<ApiUser>>(`/api/chat/users${suffix}`);
+      } catch (error) {
+        console.error('Failed to fetch chat users, using fallback:', error);
+        return getDevChatUsersFallback();
+      }
+    },
 
-  async messageCreate(payload: { toUserId?: string | null; subject?: string | null; body: string; status?: 'draft' | 'sent' }) {
-    return apiFetch<ApiItemResponse<ApiMessage>>('/api/messages', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    async messageCreate(payload: { toUserId?: string | null; subject?: string | null; body: string; status?: 'draft' | 'sent' }) {
+    try {
+      return await apiFetch<ApiItemResponse<ApiMessage>>('/api/messages', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevMessageCreateFallback(payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async messageUpdate(id: string, payload: { toUserId?: string | null; subject?: string | null; body?: string; send?: boolean }) {
-    return apiFetch<ApiItemResponse<ApiMessage>>(`/api/messages/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ApiItemResponse<ApiMessage>>(`/api/messages/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevMessageUpdateFallback(id, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async messageTrash(id: string) {
-    return apiFetch<ApiMessageResponse>(`/api/messages/${encodeURIComponent(id)}/trash`, {
-      method: 'POST',
-    });
+    try {
+      return await apiFetch<ApiMessageResponse>(`/api/messages/${encodeURIComponent(id)}/trash`, {
+        method: 'POST',
+      });
+    } catch (err) {
+      const fallback = getDevMessageTrashFallback(id);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async messageRestore(id: string) {
-    return apiFetch<ApiMessageResponse>(`/api/messages/${encodeURIComponent(id)}/restore`, {
-      method: 'POST',
-    });
+    try {
+      return await apiFetch<ApiMessageResponse>(`/api/messages/${encodeURIComponent(id)}/restore`, {
+        method: 'POST',
+      });
+    } catch (err) {
+      const fallback = getDevMessageRestoreFallback(id);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async messageRead(id: string) {
-    return apiFetch<ApiItemResponse<ApiMessage>>(`/api/messages/${encodeURIComponent(id)}/read`, {
-      method: 'POST',
-    });
+    try {
+      return await apiFetch<ApiItemResponse<ApiMessage>>(`/api/messages/${encodeURIComponent(id)}/read`, {
+        method: 'POST',
+      });
+    } catch (err) {
+      const fallback = getDevMessageReadFallback(id);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async analyticsAdmin(params?: { archived?: boolean }) {
-    const qs = new URLSearchParams();
-    if (params?.archived === true) qs.set('archived', '1');
-    if (params?.archived === false) qs.set('archived', '0');
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiItemResponse<ApiAnalyticsAdmin>>(`/api/analytics/admin${suffix}`);
+    try {
+      const qs = new URLSearchParams();
+      if (params?.archived === true) qs.set('archived', '1');
+      if (params?.archived === false) qs.set('archived', '0');
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      return await apiFetch<ApiItemResponse<ApiAnalyticsAdmin>>(`/api/analytics/admin${suffix}`);
+    } catch (err) {
+      const fallback = getDevAnalyticsFallback(params);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return { data: fallback };
+      }
+      throw err;
+    }
   },
 
   async events(params?: { start?: string; end?: string }) {
@@ -1066,16 +2578,25 @@ export const api = {
     page?: number;
     perPage?: number;
   }) {
-    const qs = new URLSearchParams();
-    if (params?.role) qs.set('role', params.role);
-    if (params?.q) qs.set('q', params.q);
-    if (params?.limit) qs.set('limit', String(params.limit));
-    if (typeof params?.page === 'number') qs.set('page', String(params.page));
-    if (typeof params?.perPage === 'number') qs.set('per_page', String(params.perPage));
-    if (params?.archived === true) qs.set('archived', '1');
-    if (params?.archived === false) qs.set('archived', '0');
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiUser>>(`/api/users${suffix}`);
+    try {
+      const qs = new URLSearchParams();
+      if (params?.role) qs.set('role', params.role);
+      if (params?.q) qs.set('q', params.q);
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (typeof params?.page === 'number') qs.set('page', String(params.page));
+      if (typeof params?.perPage === 'number') qs.set('per_page', String(params.perPage));
+      if (params?.archived === true) qs.set('archived', '1');
+      if (params?.archived === false) qs.set('archived', '0');
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      return await apiFetch<ApiListResponse<ApiUser>>(`/api/users${suffix}`);
+    } catch (err) {
+      const fallback = getDevUserListFallback(params);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+
+      throw err;
+    }
   },
 
   async createUser(payload: { name: string; email: string; role: 'admin' | 'teacher' | 'student' }) {
@@ -1139,12 +2660,20 @@ export const api = {
   },
 
   async analyticsTeacher() {
-    return apiFetch<ApiItemResponse<{
-      totalCourses: number;
-      totalStudents: number;
-      upcomingSessions: number;
-      assignments: number;
-    }>>('/api/analytics/teacher');
+    try {
+      return await apiFetch<ApiItemResponse<{
+        totalCourses: number;
+        totalStudents: number;
+        upcomingSessions: number;
+        assignments: number;
+      }>>('/api/analytics/teacher');
+    } catch (err) {
+      const fallback = getDevAnalyticsTeacherFallback();
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return { data: fallback };
+      }
+      throw err;
+    }
   },
 
   async analyticsStudent() {
