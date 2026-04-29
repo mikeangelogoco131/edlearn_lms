@@ -1472,6 +1472,8 @@ function getTeacherInfoById(teacherId: string): { name: string; email: string } 
 
 const DEV_MESSAGE_STORAGE_KEY = 'edlearn_dev_messages';
 const DEV_MESSAGE_MODS_KEY = 'edlearn_message_mods';
+const DEV_EVENTS_STORAGE_KEY = 'edlearn_dev_events';
+const DEV_ANNOUNCEMENTS_STORAGE_KEY = 'edlearn_dev_announcements';
 
 function readDevJson<T>(key: string, fallback: T): T {
   let localValue: any = undefined;
@@ -1861,6 +1863,242 @@ function getDevNotificationsFallback(): ApiListResponse<ApiNotification> | null 
       pages: 1,
     },
   };
+}
+
+function getDevEventsFallback(params?: { start?: string; end?: string }): ApiListResponse<ApiEvent> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const now = new Date();
+  const defaultEvents: ApiEvent[] = [
+    {
+      id: 'dev-event-1',
+      title: 'Spring Semester Starts',
+      description: 'Beginning of spring semester 2026',
+      startsAt: new Date(now.getFullYear(), now.getMonth(), 15, 9, 0).toISOString(),
+      endsAt: new Date(now.getFullYear(), now.getMonth(), 15, 17, 0).toISOString(),
+    },
+    {
+      id: 'dev-event-2',
+      title: 'Mid-Term Exams',
+      description: 'Mid-term examination week for all courses',
+      startsAt: new Date(now.getFullYear(), now.getMonth() + 1, 10, 8, 0).toISOString(),
+      endsAt: new Date(now.getFullYear(), now.getMonth() + 1, 14, 17, 0).toISOString(),
+    },
+    {
+      id: 'dev-event-3',
+      title: 'Faculty Meeting',
+      description: 'Monthly faculty meeting',
+      startsAt: new Date(now.getFullYear(), now.getMonth(), 20, 14, 0).toISOString(),
+      endsAt: new Date(now.getFullYear(), now.getMonth(), 20, 15, 30).toISOString(),
+    },
+    {
+      id: 'dev-event-4',
+      title: 'Parent-Teacher Conference',
+      description: 'Individual parent-teacher meetings',
+      startsAt: new Date(now.getFullYear(), now.getMonth() + 1, 5, 15, 0).toISOString(),
+      endsAt: new Date(now.getFullYear(), now.getMonth() + 1, 5, 19, 0).toISOString(),
+    },
+  ];
+
+  // Load persisted events from localStorage
+  const events: ApiEvent[] = readDevJson<ApiEvent[]>(DEV_EVENTS_STORAGE_KEY, defaultEvents);
+
+  // Filter by date range if provided
+  let filtered = events;
+  if (params?.start || params?.end) {
+    const startDate = params?.start ? new Date(params.start) : new Date(0);
+    const endDate = params?.end ? new Date(params.end) : new Date(8640000000000000);
+    filtered = events.filter((e) => {
+      const eventStart = new Date(e.startsAt);
+      return eventStart >= startDate && eventStart <= endDate;
+    });
+  }
+
+  return {
+    data: filtered,
+    meta: { total: filtered.length, page: 1, perPage: filtered.length, pages: 1 },
+  };
+}
+
+function getDevCreateEventFallback(payload: {
+  title: string;
+  description?: string | null;
+  starts_at: string;
+  ends_at?: string | null;
+}): ApiItemResponse<ApiEvent> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const id = `dev-event-${Date.now()}`;
+  const event: ApiEvent = {
+    id,
+    title: payload.title,
+    description: payload.description || null,
+    startsAt: payload.starts_at,
+    endsAt: payload.ends_at || null,
+  };
+
+  // Persist event to localStorage
+  try {
+    const events = readDevJson<ApiEvent[]>(DEV_EVENTS_STORAGE_KEY, []);
+    events.push(event);
+    writeDevJson(DEV_EVENTS_STORAGE_KEY, events);
+  } catch (e) {
+    // Ignore persistence errors
+  }
+
+  return { data: event };
+}
+
+function getDevUpdateEventFallback(
+  eventId: string,
+  payload: {
+    title?: string;
+    description?: string | null;
+    starts_at?: string;
+    ends_at?: string | null;
+  },
+): ApiItemResponse<ApiEvent> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  try {
+    const events = readDevJson<ApiEvent[]>(DEV_EVENTS_STORAGE_KEY, []);
+    const idx = events.findIndex((e) => e.id === eventId);
+    
+    if (idx !== -1) {
+      events[idx] = {
+        ...events[idx],
+        title: payload.title !== undefined ? payload.title : events[idx].title,
+        description: payload.description !== undefined ? payload.description : events[idx].description,
+        startsAt: payload.starts_at !== undefined ? payload.starts_at : events[idx].startsAt,
+        endsAt: payload.ends_at !== undefined ? payload.ends_at : events[idx].endsAt,
+      };
+      writeDevJson(DEV_EVENTS_STORAGE_KEY, events);
+      return { data: events[idx] };
+    }
+  } catch (e) {
+    // Ignore persistence errors
+  }
+
+  const event: ApiEvent = {
+    id: eventId,
+    title: payload.title || 'Event',
+    description: payload.description || null,
+    startsAt: payload.starts_at || new Date().toISOString(),
+    endsAt: payload.ends_at || null,
+  };
+
+  return { data: event };
+}
+
+function getDevDeleteEventFallback(eventId: string): ApiMessageResponse | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  try {
+    const events = readDevJson<ApiEvent[]>(DEV_EVENTS_STORAGE_KEY, []);
+    const idx = events.findIndex((e) => e.id === eventId);
+    if (idx !== -1) {
+      events.splice(idx, 1);
+      writeDevJson(DEV_EVENTS_STORAGE_KEY, events);
+    }
+  } catch (e) {
+    // Ignore persistence errors
+  }
+
+  return { message: `Event ${eventId} deleted` };
+}
+
+function getDevCourseAnnouncementsFallback(courseId: string): ApiListResponse<ApiAnnouncement> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const catalog = getDevCourseCatalog();
+  const course = catalog.find((c) => c.id === courseId);
+  if (!course) return null;
+
+  const now = new Date();
+  const globalAnnouncements: ApiAnnouncement[] = [
+    {
+      id: 'dev-announce-global-1',
+      courseId: null,
+      title: 'Admin Announcement',
+      body: 'This is a global announcement from the admin. Teachers and students can view it in their announcements tab.',
+      isPinned: true,
+      publishedAt: new Date(now.getTime() - 2 * 24 * 3600000).toISOString(),
+      author: { id: '1', name: 'Admin User', email: 'mike.goco@admin.edu.ph', role: 'admin' },
+    },
+  ];
+
+  const defaultAnnouncements: ApiAnnouncement[] = [
+    {
+      id: 'dev-announce-1',
+      courseId: courseId,
+      title: 'Welcome to the Course',
+      body: 'Welcome to ' + course.title + '. We are excited to have you in this course. Please review the course syllabus and let me know if you have any questions.',
+      isPinned: true,
+      publishedAt: new Date(now.getTime() - 7 * 24 * 3600000).toISOString(),
+      author: { id: '2', name: course.teacher, email: 'teacher@school.edu', role: 'teacher' },
+    },
+    {
+      id: 'dev-announce-2',
+      courseId: courseId,
+      title: 'Assignment 1 Due Next Week',
+      body: 'Please complete the first assignment by next Friday. Instructions are available in the course materials section.',
+      isPinned: false,
+      publishedAt: new Date(now.getTime() - 3 * 24 * 3600000).toISOString(),
+      author: { id: '2', name: course.teacher, email: 'teacher@school.edu', role: 'teacher' },
+    },
+    {
+      id: 'dev-announce-3',
+      courseId: courseId,
+      title: 'Exam Schedule Announced',
+      body: 'The mid-term exam will be held on March 15, 2026 from 10:00 AM to 12:00 PM. Please review all materials covered in the first half of the semester.',
+      isPinned: false,
+      publishedAt: new Date(now.getTime() - 1 * 24 * 3600000).toISOString(),
+      author: { id: '2', name: course.teacher, email: 'teacher@school.edu', role: 'teacher' },
+    },
+  ];
+
+  // Load persisted announcements from localStorage, keyed by courseId
+  const allAnnouncements = readDevJson<Record<string, ApiAnnouncement[]>>(DEV_ANNOUNCEMENTS_STORAGE_KEY, {});
+  const announcements = [
+    ...(allAnnouncements.__global__ || globalAnnouncements),
+    ...(allAnnouncements[courseId] || defaultAnnouncements),
+  ];
+
+  return {
+    data: announcements,
+    meta: { total: announcements.length, page: 1, perPage: announcements.length, pages: 1 },
+  };
+}
+
+function getDevCreateCourseAnnouncementFallback(
+  courseId: string,
+  payload: { title: string; body: string },
+): ApiItemResponse<ApiAnnouncement> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const announcement: ApiAnnouncement = {
+    id: `dev-announce-${Date.now()}`,
+    courseId: courseId,
+    title: payload.title,
+    body: payload.body,
+    isPinned: false,
+    publishedAt: new Date().toISOString(),
+    author: { id: 'dev-user-1', name: 'Current User', email: 'user@school.edu', role: 'teacher' },
+  };
+
+  // Persist announcement to localStorage
+  try {
+    const allAnnouncements = readDevJson<Record<string, ApiAnnouncement[]>>(DEV_ANNOUNCEMENTS_STORAGE_KEY, {});
+    if (!allAnnouncements[courseId]) {
+      allAnnouncements[courseId] = [];
+    }
+    allAnnouncements[courseId].push(announcement);
+    writeDevJson(DEV_ANNOUNCEMENTS_STORAGE_KEY, allAnnouncements);
+  } catch (e) {
+    // Ignore persistence errors
+  }
+
+  return { data: announcement };
 }
 
 export const api = {
@@ -2307,9 +2545,17 @@ export const api = {
   },
 
   async courseAnnouncements(courseId: string) {
-    return apiFetch<ApiListResponse<ApiAnnouncement>>(
-      `/api/courses/${encodeURIComponent(courseId)}/announcements`
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiAnnouncement>>(
+        `/api/courses/${encodeURIComponent(courseId)}/announcements`
+      );
+    } catch (err) {
+      const fallback = getDevCourseAnnouncementsFallback(courseId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async courseEnrollments(courseId: string) {
@@ -2375,13 +2621,21 @@ export const api = {
   },
 
   async createCourseAnnouncement(courseId: string, payload: { title: string; body: string }) {
-    return apiFetch<ApiItemResponse<ApiAnnouncement>>(
-      `/api/courses/${encodeURIComponent(courseId)}/announcements`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      },
-    );
+    try {
+      return await apiFetch<ApiItemResponse<ApiAnnouncement>>(
+        `/api/courses/${encodeURIComponent(courseId)}/announcements`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      const fallback = getDevCreateCourseAnnouncementFallback(courseId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async notifications() {
@@ -2530,11 +2784,19 @@ export const api = {
   },
 
   async events(params?: { start?: string; end?: string }) {
-    const qs = new URLSearchParams();
-    if (params?.start) qs.set('start', params.start);
-    if (params?.end) qs.set('end', params.end);
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiFetch<ApiListResponse<ApiEvent>>(`/api/events${suffix}`);
+    try {
+      const qs = new URLSearchParams();
+      if (params?.start) qs.set('start', params.start);
+      if (params?.end) qs.set('end', params.end);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      return await apiFetch<ApiListResponse<ApiEvent>>(`/api/events${suffix}`);
+    } catch (err) {
+      const fallback = getDevEventsFallback(params);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async createEvent(payload: {
@@ -2543,10 +2805,18 @@ export const api = {
     starts_at: string;
     ends_at?: string | null;
   }) {
-    return apiFetch<ApiItemResponse<ApiEvent>>('/api/events', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ApiItemResponse<ApiEvent>>('/api/events', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevCreateEventFallback(payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async updateEvent(
@@ -2558,16 +2828,32 @@ export const api = {
       ends_at?: string | null;
     },
   ) {
-    return apiFetch<ApiItemResponse<ApiEvent>>(`/api/events/${encodeURIComponent(eventId)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ApiItemResponse<ApiEvent>>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevUpdateEventFallback(eventId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async deleteEvent(eventId: string) {
-    return apiFetch<ApiMessageResponse>(`/api/events/${encodeURIComponent(eventId)}`, {
-      method: 'DELETE',
-    });
+    try {
+      return await apiFetch<ApiMessageResponse>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      const fallback = getDevDeleteEventFallback(eventId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async users(params?: {
