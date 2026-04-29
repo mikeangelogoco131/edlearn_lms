@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -28,6 +28,7 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 export default function TeacherDashboard() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [teacherCourses, setTeacherCourses] = useState<ApiCourse[]>([]);
   const [sessions, setSessions] = useState<ApiClassSession[]>([]);
   const [coursesView, setCoursesView] = useState<'enrolled' | 'completed'>('enrolled');
@@ -40,6 +41,7 @@ export default function TeacherDashboard() {
   });
   const [pagedStudents, setPagedStudents] = useState<ApiUser[]>([]);
   const [teacherAssignments, setTeacherAssignments] = useState<ApiAssignment[]>([]);
+  const [startingLiveCourseId, setStartingLiveCourseId] = useState<string | null>(null);
   const coursesScrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -117,6 +119,31 @@ export default function TeacherDashboard() {
     el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' });
   }
 
+  async function handleStartLiveClass(course: ApiCourse) {
+    setStartingLiveCourseId(course.id);
+    try {
+      const sessionsRes = await api.courseSessions(course.id);
+      const liveSession = sessionsRes.data.find((session) => session.status === 'live');
+      if (!liveSession) {
+        const now = new Date();
+        await api.createCourseSession(course.id, {
+          title: `${course.code} Live Class`,
+          starts_at: now.toISOString(),
+          ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
+          meeting_url: `/classroom/${course.id}`,
+          status: 'live',
+          notes: `Live class started from ${course.code}.`,
+        });
+      }
+
+      navigate(`/classroom/${course.id}`);
+    } catch {
+      // Keep the dashboard stable if session creation is unavailable.
+    } finally {
+      setStartingLiveCourseId(null);
+    }
+  }
+
 
   return (
     <DashboardLayout title="Teacher Dashboard" layout="full" showTitle={false}>
@@ -186,6 +213,11 @@ export default function TeacherDashboard() {
                     key={action.label}
                     type="button"
                     className={`h-auto py-6 rounded-2xl flex flex-col gap-3 items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 active:scale-100 ${action.className}`}
+                    onClick={() => {
+                      if (action.label === 'Start Live Class' && visibleCourses[0]) {
+                        void handleStartLiveClass(visibleCourses[0]);
+                      }
+                    }}
                   >
                     {action.icon}
                     <span>{action.label}</span>
@@ -313,12 +345,22 @@ export default function TeacherDashboard() {
                               <div className="text-sm font-semibold whitespace-nowrap">{pct}%</div>
                               <Progress value={pct} className="h-2 flex-1" />
                             </div>
-                            <Link to={`/course/${course.id}`}>
-                              <Button variant="outline" className="rounded-full">
-                                {actionLabel}
-                                <Play className="w-4 h-4 ml-2" />
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Link to={`/course/${course.id}`}>
+                                <Button variant="outline" className="rounded-full">
+                                  {actionLabel}
+                                  <Play className="w-4 h-4 ml-2" />
+                                </Button>
+                              </Link>
+                              <Button
+                                className="rounded-full bg-blue-600 hover:bg-blue-700"
+                                onClick={() => void handleStartLiveClass(course)}
+                                disabled={startingLiveCourseId === course.id}
+                              >
+                                <Video className="w-4 h-4 mr-2" />
+                                {startingLiveCourseId === course.id ? 'Starting' : 'Live'}
                               </Button>
-                            </Link>
+                            </div>
                           </div>
 
                           <div className="flex items-center justify-between text-sm text-muted-foreground">
