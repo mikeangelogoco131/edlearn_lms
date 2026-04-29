@@ -1178,8 +1178,13 @@ function getDevCourseEnrollmentsFallback(courseId: string): ApiListResponse<ApiE
 
 function getDevEnrollStudentFallback(courseId: string, studentId: string): ApiItemResponse<ApiEnrollment> | null {
   if (!(import.meta as any).env?.DEV) return null;
-  const all = getDevAllUsers();
-  const student = all.find((u) => u.id === studentId);
+  
+  // Check both built-in dev users and newly created dev users from storage
+  let student: ApiUser | undefined = getDevAllUsers().find((u) => u.id === studentId);
+  if (!student) {
+    const createdUsers = readDevJson<ApiUser[]>(DEV_USERS_STORAGE_KEY, []);
+    student = createdUsers.find((u) => u.id === studentId);
+  }
   if (!student) return null;
 
   const enrollment: ApiEnrollment = {
