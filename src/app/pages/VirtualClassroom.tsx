@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router';
+import { useParams, Link, useNavigate } from 'react-router';
 import { 
   Mic, MicOff, Video, VideoOff, Monitor, Hand, MessageSquare, Users, 
   Settings, LogOut, MoreVertical, Grid, Maximize, PenTool, X, Send, Phone
@@ -32,6 +32,7 @@ interface ChatMessage {
 export default function VirtualClassroom() {
   const { classId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [course, setCourse] = useState<ApiCourse | null>(null);
   const [session, setSession] = useState<ApiClassSession | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -49,7 +50,20 @@ export default function VirtualClassroom() {
           // If we found a course, also try to find the "live" session for it
           const sessionsRes = await api.courseSessions(res.data.id);
           const live = sessionsRes.data.find(s => s.status === 'live') || sessionsRes.data[0];
-          if (live) setSession(live);
+          if (live) {
+            setSession(live);
+          } else if (user && (user.role === 'teacher' || user.role === 'admin')) {
+            const now = new Date();
+            const created = await api.createCourseSession(res.data.id, {
+              title: `${res.data.code} Live Class`,
+              starts_at: now.toISOString(),
+              ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
+              meeting_url: `/classroom/${res.data.id}`,
+              status: 'live',
+              notes: `Auto-created live session for ${res.data.code}.`,
+            });
+            if (!cancelled) setSession(created.data);
+          }
         }
       } catch {
         if (!cancelled) setCourse(null);
@@ -60,7 +74,7 @@ export default function VirtualClassroom() {
     return () => {
       cancelled = true;
     };
-  }, [classId]);
+  }, [classId, user]);
 
   useEffect(() => {
     if (!session?.id) return;
@@ -88,6 +102,10 @@ export default function VirtualClassroom() {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'speaker'>('grid');
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [endingClass, setEndingClass] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [sidebarTab, setSidebarTab] = useState('chat');
   const [chatMessage, setChatMessage] = useState('');
@@ -129,6 +147,30 @@ export default function VirtualClassroom() {
     }
   };
 
+  const handleEndClass = async () => {
+    if (!course?.id || !session?.id) {
+      navigate('/teacher');
+      return;
+    }
+
+    setEndingClass(true);
+    try {
+      await api.updateCourseSession(course.id, session.id, {
+        status: 'completed',
+        notes: `Ended from live classroom by ${user?.name || 'teacher'}.`,
+      });
+    } catch {
+      // keep navigation even if backend is unavailable
+    } finally {
+      setEndingClass(false);
+      navigate('/teacher');
+    }
+  };
+
+  const handleToggleView = () => {
+    setLayoutMode((mode) => (mode === 'grid' ? 'speaker' : 'grid'));
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Top Bar */}
@@ -154,6 +196,9 @@ export default function VirtualClassroom() {
           <div className="text-sm px-3 py-1.5 bg-muted rounded-lg">
             {participants.length} Participants
           </div>
+          <div className={`text-sm px-3 py-1.5 rounded-lg ${session?.status === 'live' ? 'bg-emerald-600 text-white' : 'bg-muted text-foreground'}`}>
+            {session?.status === 'live' ? 'Live' : session?.status || 'Session'}
+          </div>
         </div>
       </div>
 
@@ -161,8 +206,45 @@ export default function VirtualClassroom() {
       <div className="flex-1 flex overflow-hidden">
         {/* Video Grid */}
         <div className="flex-1 p-4 overflow-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 h-full">
-            {participants.map((participant) => (
+          {showWhiteboard ? (
+            <Card className="h-full bg-card border-border overflow-hidden">
+              <CardContent className="p-6 h-full flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="text-lg font-semibold">Whiteboard</div>
+                    <div className="text-sm text-muted-foreground">Live class notes and prompts</div>
+                  </div>
+                  <Button variant="outline" onClick={() => setShowWhiteboard(false)}>
+                    Close Whiteboard
+                  </Button>
+                </div>
+                <div className="flex-1 rounded-2xl border border-border bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white overflow-auto">
+                  <div className="space-y-4 max-w-2xl">
+                    <div className="text-2xl font-semibold">Class Focus</div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-white/10 p-4">
+                        <div className="text-sm text-white/70">Topic</div>
+                        <div className="font-medium">{course?.title || 'Live class topic'}</div>
+                      </div>
+                      <div className="rounded-xl bg-white/10 p-4">
+                        <div className="text-sm text-white/70">Participants</div>
+                        <div className="font-medium">{participants.length} active learners</div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-4 min-h-52">
+                      <div className="text-sm text-white/70 mb-3">Notes</div>
+                      <div className="space-y-2 text-white/90">
+                        <p>Use this space to guide discussion, sketch solutions, or post quick reminders during the live class.</p>
+                        <p>Screen share, chat, and participant controls remain available while the whiteboard is open.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className={`grid gap-4 h-full ${layoutMode === 'speaker' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-2 lg:grid-cols-3'}`}>
+              {participants.map((participant, index) => (
               <Card key={participant.id} className="relative bg-card border-border overflow-hidden">
                 <CardContent className="p-0 h-full min-h-[200px] flex items-center justify-center">
                   {participant.isVideoOn ? (
@@ -223,8 +305,9 @@ export default function VirtualClassroom() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -371,10 +454,11 @@ export default function VirtualClassroom() {
             <Button
               variant="secondary"
               size="lg"
+              onClick={() => setShowWhiteboard((prev) => !prev)}
               className="gap-2"
             >
               <PenTool className="w-5 h-5" />
-              Whiteboard
+              {showWhiteboard ? 'Close Whiteboard' : 'Whiteboard'}
             </Button>
 
             <Button
@@ -390,33 +474,57 @@ export default function VirtualClassroom() {
             <Button
               variant="secondary"
               size="lg"
+              onClick={handleToggleView}
               className="gap-2"
             >
-              <Grid className="w-5 h-5" />
-              View
+              {layoutMode === 'grid' ? <Grid className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              {layoutMode === 'grid' ? 'Grid View' : 'Speaker View'}
             </Button>
 
             <Button
               variant="secondary"
               size="icon"
               className="w-12 h-12"
+              onClick={() => setShowSettingsPanel((prev) => !prev)}
             >
               <Settings className="w-5 h-5" />
             </Button>
           </div>
 
-          <Link to="/teacher">
-            <Button
-              variant="destructive"
-              size="lg"
-              className="gap-2"
-            >
-              <Phone className="w-5 h-5" />
-              End Class
-            </Button>
-          </Link>
+          <Button
+            variant="destructive"
+            size="lg"
+            className="gap-2"
+            onClick={() => void handleEndClass()}
+            disabled={endingClass}
+          >
+            <Phone className="w-5 h-5" />
+            {endingClass ? 'Ending...' : 'End Class'}
+          </Button>
         </div>
       </div>
+
+      {showSettingsPanel && (
+        <div className="absolute right-4 bottom-24 z-20 w-80 rounded-2xl border border-border bg-card shadow-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold">Live Class Settings</div>
+            <Button variant="ghost" size="icon" onClick={() => setShowSettingsPanel(false)}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div><span className="font-medium text-foreground">Course:</span> {course?.code} - {course?.title}</div>
+            <div><span className="font-medium text-foreground">Session:</span> {session?.status || 'unknown'}</div>
+            <div><span className="font-medium text-foreground">Screen sharing:</span> {isScreenSharing ? 'On' : 'Off'}</div>
+            <div><span className="font-medium text-foreground">Mic:</span> {isMuted ? 'Muted' : 'Live'}</div>
+            <div><span className="font-medium text-foreground">Camera:</span> {isVideoOn ? 'On' : 'Off'}</div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowSidebar(true)}>Show Chat</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setShowWhiteboard((prev) => !prev)}>Whiteboard</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

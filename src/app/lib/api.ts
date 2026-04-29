@@ -124,7 +124,7 @@ export interface ApiAssignment {
   } | null;
 }
 
-export interface ApiNotification {
+export interface ApiInboxNotification {
   id: string;
   type: string;
   title: string;
@@ -342,7 +342,7 @@ export interface ApiMessage {
   id: string;
   subject: string | null;
   body: string;
-  status: 'draft' | 'sent';
+  status: 'draft' | 'sent' | 'deleted';
   sentAt: string | null;
   readAt: string | null;
   createdAt: string | null;
@@ -686,6 +686,12 @@ function getDevUserListFallback(params?: {
   const createdUsers = readDevJson<ApiUser[]>(DEV_USERS_STORAGE_KEY, []);
   let allUsers = [...mockUsers, ...createdUsers];
 
+  const editedUsers = readDevJson<Record<string, Partial<ApiUser>>>(DEV_USER_EDITS_STORAGE_KEY, {});
+  allUsers = allUsers.map((user) => {
+    const edited = editedUsers[String(user.id)];
+    return edited ? { ...user, ...edited } : user;
+  });
+
   let filtered = allUsers.slice();
 
   if (params?.role) {
@@ -999,7 +1005,13 @@ function getDevCoursesFallback(params?: {
 
   const mockCourses = getDevCourseCatalog();
 
-  let filtered = mockCourses.slice();
+  let filtered = mockCourses.map((course) => {
+    const enrollments = getDevCourseEnrollmentsFallback(course.id);
+    if (!enrollments) return course;
+
+    const activeCount = enrollments.data.filter((enrollment) => enrollment.status !== 'dropped').length;
+    return { ...course, students: activeCount };
+  });
 
   if (params?.archived === true) {
     filtered = [];
@@ -1022,7 +1034,12 @@ function getDevCourseFallback(courseId: string): ApiItemResponse<ApiCourse> | nu
   const course = getDevCourseCatalog().find((item) => item.id === courseId);
   if (!course) return null;
 
-  return { data: course };
+  const enrollments = getDevCourseEnrollmentsFallback(course.id);
+  const activeCount = enrollments
+    ? enrollments.data.filter((enrollment) => enrollment.status !== 'dropped').length
+    : course.students;
+
+  return { data: { ...course, students: activeCount } };
 }
 
 function getDevCourseLessonsFallback(courseId: string): ApiListResponse<ApiLesson> | null {
@@ -1031,20 +1048,129 @@ function getDevCourseLessonsFallback(courseId: string): ApiListResponse<ApiLesso
   const course = catalog.find((c) => c.id === courseId);
   if (!course) return null;
 
-  const lessons: ApiLesson[] = Array.from({ length: 4 }).map((_, i) => ({
+  const defaultLessons: ApiLesson[] = Array.from({ length: 4 }).map((_, i) => ({
     id: `dev-lesson-${courseId}-${i + 1}`,
+    courseId,
     title: `${course.title} - Lesson ${i + 1}`,
     description: `Lesson ${i + 1} for ${course.title}`,
+    content: '',
+    order: i + 1,
     duration: '45',
+    status: 'published',
     period: 'prelim',
     weekInPeriod: ((i % 4) + 1),
+    publishedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
-  } as ApiLesson));
+  }));
+
+  const storageKey = `${DEV_LESSONS_STORAGE_PREFIX}${courseId}`;
+  const lessons = readDevJson<ApiLesson[]>(storageKey, defaultLessons)
+    .map((lesson, index) => ({
+      ...lesson,
+      courseId,
+      content: lesson.content ?? '',
+      order: lesson.order ?? index + 1,
+      status: lesson.status ?? 'published',
+      publishedAt: lesson.publishedAt ?? null,
+      createdAt: lesson.createdAt ?? new Date().toISOString(),
+    }))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return {
     data: lessons,
     meta: { total: lessons.length, page: 1, perPage: lessons.length, pages: 1 },
   };
+}
+
+function getDevCreateCourseLessonFallback(
+  courseId: string,
+  payload: {
+    title: string;
+    description?: string | null;
+    content?: string | null;
+    lesson_order?: number;
+    duration?: string | null;
+    status?: string;
+    period?: string | null;
+    week_in_period?: number | null;
+  },
+): ApiItemResponse<ApiLesson> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const existing = getDevCourseLessonsFallback(courseId);
+  if (!existing) return null;
+
+  const storageKey = `${DEV_LESSONS_STORAGE_PREFIX}${courseId}`;
+  const nextOrder = payload.lesson_order ?? (Math.max(0, ...existing.data.map((lesson) => lesson.order ?? 0)) + 1);
+
+  const lesson: ApiLesson = {
+    id: `dev-lesson-${courseId}-${Date.now()}`,
+    courseId,
+    title: payload.title,
+    description: payload.description ?? '',
+    content: payload.content ?? '',
+    order: nextOrder,
+    duration: payload.duration ?? null,
+    status: payload.status ?? 'published',
+    period: payload.period ?? 'prelim',
+    weekInPeriod: payload.week_in_period ?? 1,
+    publishedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  writeDevJson(storageKey, [...existing.data, lesson]);
+  return { data: lesson };
+}
+
+function getDevUpdateCourseLessonFallback(
+  courseId: string,
+  lessonId: string,
+  payload: Partial<{
+    title: string;
+    description: string | null;
+    content: string | null;
+    lesson_order: number;
+    duration: string | null;
+    status: string;
+  }>,
+): ApiItemResponse<ApiLesson> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const existing = getDevCourseLessonsFallback(courseId);
+  if (!existing) return null;
+
+  const index = existing.data.findIndex((lesson) => String(lesson.id) === String(lessonId));
+  if (index === -1) return null;
+
+  const updated: ApiLesson = {
+    ...existing.data[index],
+    title: payload.title ?? existing.data[index].title,
+    description: payload.description ?? existing.data[index].description,
+    content: payload.content ?? existing.data[index].content,
+    order: payload.lesson_order ?? existing.data[index].order,
+    duration: payload.duration ?? existing.data[index].duration,
+    status: payload.status ?? existing.data[index].status,
+  };
+
+  const next = existing.data.slice();
+  next[index] = updated;
+  const storageKey = `${DEV_LESSONS_STORAGE_PREFIX}${courseId}`;
+  writeDevJson(storageKey, next);
+
+  return { data: updated };
+}
+
+function getDevDeleteCourseLessonFallback(courseId: string, lessonId: string): ApiMessageResponse | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const existing = getDevCourseLessonsFallback(courseId);
+  if (!existing) return null;
+
+  const next = existing.data.filter((lesson) => String(lesson.id) !== String(lessonId));
+  const storageKey = `${DEV_LESSONS_STORAGE_PREFIX}${courseId}`;
+  writeDevJson(storageKey, next);
+
+  return { message: 'Lesson deleted successfully' };
 }
 
 function getDevCourseSessionsFallback(courseId: string): ApiListResponse<ApiClassSession> | null {
@@ -1053,21 +1179,283 @@ function getDevCourseSessionsFallback(courseId: string): ApiListResponse<ApiClas
   const course = catalog.find((c) => c.id === courseId);
   if (!course) return null;
 
+  const storageKey = `${DEV_CLASS_SESSIONS_STORAGE_PREFIX}${courseId}`;
+
   const now = Date.now();
-  const sessions: ApiClassSession[] = Array.from({ length: 3 }).map((_, i) => ({
+  const defaultSessions: ApiClassSession[] = Array.from({ length: 3 }).map((_, i) => ({
     id: `dev-session-${courseId}-${i + 1}`,
-    courseId: courseId,
+    courseId,
     title: `${course.title} Session ${i + 1}`,
     date: new Date(now + i * 86400000).toISOString(),
     time: '10:00 AM',
     duration: '60',
-    status: 'scheduled',
-  } as ApiClassSession));
+    status: i === 0 ? 'live' : 'scheduled',
+    startsAt: new Date(now + i * 86400000).toISOString(),
+    endsAt: new Date(now + i * 86400000 + 60 * 60000).toISOString(),
+    attendees: null,
+  }));
+
+  const sessions = readDevJson<ApiClassSession[]>(storageKey, defaultSessions)
+    .map((session) => ({
+      ...session,
+      courseId,
+      status: session.status || 'scheduled',
+      startsAt: session.startsAt || null,
+      endsAt: session.endsAt || null,
+      date: session.date || (session.startsAt ? new Date(session.startsAt).toISOString() : null),
+      time: session.time || (session.startsAt ? new Date(session.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null),
+      duration: session.duration || null,
+    }))
+    .sort((a, b) => {
+      const aStart = a.startsAt ? new Date(a.startsAt).getTime() : 0;
+      const bStart = b.startsAt ? new Date(b.startsAt).getTime() : 0;
+      return aStart - bStart;
+    });
 
   return {
     data: sessions,
     meta: { total: sessions.length, page: 1, perPage: sessions.length, pages: 1 },
   };
+}
+
+function getDevCreateCourseSessionFallback(
+  courseId: string,
+  payload: {
+    title: string;
+    starts_at: string;
+    ends_at?: string | null;
+    meeting_url?: string | null;
+    status?: string | null;
+    notes?: string | null;
+  },
+): ApiItemResponse<ApiClassSession> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const existing = getDevCourseSessionsFallback(courseId);
+  if (!existing) return null;
+
+  const startsAt = new Date(payload.starts_at);
+  const endsAt = payload.ends_at ? new Date(payload.ends_at) : new Date(startsAt.getTime() + 60 * 60000);
+  const id = `dev-session-${courseId}-${Date.now()}`;
+  const session: ApiClassSession = {
+    id,
+    courseId,
+    title: payload.title,
+    date: startsAt.toISOString(),
+    time: startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    duration: `${Math.max(1, Math.round((endsAt.getTime() - startsAt.getTime()) / 60000))} min`,
+    status: (payload.status as ApiClassSession['status']) || 'live',
+    attendees: null,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
+  };
+
+  try {
+    const storageKey = `${DEV_CLASS_SESSIONS_STORAGE_PREFIX}${courseId}`;
+    const sessions = readDevJson<ApiClassSession[]>(storageKey, existing.data);
+    sessions.push(session);
+    writeDevJson(storageKey, sessions);
+  } catch {
+    // Ignore persistence errors
+  }
+
+  return { data: session };
+}
+
+function getDevUpdateCourseSessionFallback(
+  courseId: string,
+  sessionId: string,
+  payload: {
+    title?: string;
+    starts_at?: string;
+    ends_at?: string | null;
+    meeting_url?: string | null;
+    status?: string | null;
+    notes?: string | null;
+  },
+): ApiItemResponse<ApiClassSession> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const storageKey = `${DEV_CLASS_SESSIONS_STORAGE_PREFIX}${courseId}`;
+  const existing = getDevCourseSessionsFallback(courseId);
+  if (!existing) return null;
+
+  const idx = existing.data.findIndex((session) => String(session.id) === String(sessionId));
+  if (idx === -1) return null;
+
+  const previous = existing.data[idx];
+  const startsAt = payload.starts_at ? new Date(payload.starts_at) : (previous.startsAt ? new Date(previous.startsAt) : new Date());
+  const endsAt = payload.ends_at !== undefined
+    ? (payload.ends_at ? new Date(payload.ends_at) : null)
+    : (previous.endsAt ? new Date(previous.endsAt) : null);
+
+  const updated: ApiClassSession = {
+    ...previous,
+    title: payload.title ?? previous.title,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt ? endsAt.toISOString() : null,
+    date: startsAt.toISOString(),
+    time: startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    duration: endsAt ? `${Math.max(1, Math.round((endsAt.getTime() - startsAt.getTime()) / 60000))} min` : previous.duration,
+    status: (payload.status as ApiClassSession['status']) || previous.status,
+  };
+
+  try {
+    const sessions = readDevJson<ApiClassSession[]>(storageKey, existing.data);
+    const persistedIndex = sessions.findIndex((session) => String(session.id) === String(sessionId));
+    if (persistedIndex !== -1) {
+      sessions[persistedIndex] = updated;
+      writeDevJson(storageKey, sessions);
+    }
+  } catch {
+    // Ignore persistence errors
+  }
+
+  return { data: updated };
+}
+
+function getDevClassroomMessagesFallback(sessionId: string): ApiListResponse<{
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  body: string;
+  createdAt: string;
+}> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const storageKey = `${DEV_CLASSROOM_MESSAGES_STORAGE_PREFIX}${sessionId}`;
+  const messages = readDevJson<Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    userRole: string;
+    body: string;
+    createdAt: string;
+  }>>(storageKey, []);
+
+  return {
+    data: messages,
+    meta: {
+      total: messages.length,
+      page: 1,
+      perPage: messages.length || 1,
+      pages: 1,
+    },
+  };
+}
+
+function getDevClassroomParticipantsFallback(sessionId: string): ApiListResponse<{
+  id: string;
+  name: string;
+  role: 'teacher' | 'student';
+  isMuted: boolean;
+  isVideoOn: boolean;
+  isHandRaised: boolean;
+}> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  let course = getDevCourseCatalog().find((candidate) => candidate.id === sessionId) || null;
+  if (!course) {
+    for (const candidate of getDevCourseCatalog()) {
+      const sessions = getDevCourseSessionsFallback(candidate.id);
+      if (sessions?.data.some((session) => String(session.id) === String(sessionId))) {
+        course = candidate;
+        break;
+      }
+    }
+  }
+  if (!course) return null;
+
+  const participants: Array<{
+    id: string;
+    name: string;
+    role: 'teacher' | 'student';
+    isMuted: boolean;
+    isVideoOn: boolean;
+    isHandRaised: boolean;
+  }> = [];
+
+  const teacher = getDevAllUsers().find((user) => String(user.id) === String(course.teacherId)) || null;
+  if (teacher) {
+    participants.push({
+      id: teacher.id,
+      name: teacher.name,
+      role: 'teacher',
+      isMuted: false,
+      isVideoOn: true,
+      isHandRaised: false,
+    });
+  }
+
+  const enrollments = getDevCourseEnrollmentsFallback(course.id);
+  const studentIds = new Set(
+    (enrollments?.data || [])
+      .filter((enrollment) => enrollment.status !== 'dropped')
+      .map((enrollment) => String(enrollment.student?.id || enrollment.studentId)),
+  );
+
+  for (const student of getDevAllUsers()) {
+    if (student.role !== 'student') continue;
+    if (!studentIds.has(String(student.id))) continue;
+    participants.push({
+      id: student.id,
+      name: student.name,
+      role: 'student',
+      isMuted: true,
+      isVideoOn: false,
+      isHandRaised: false,
+    });
+  }
+
+  return {
+    data: participants,
+    meta: {
+      total: participants.length,
+      page: 1,
+      perPage: participants.length || 1,
+      pages: 1,
+    },
+  };
+}
+
+function getDevSendClassroomMessageFallback(sessionId: string, body: string): ApiItemResponse<{
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  body: string;
+  createdAt: string;
+}> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  let currentUser: ApiUser | null = null;
+  try {
+    const stored = sessionStorage.getItem('edlearn_user');
+    currentUser = stored ? (JSON.parse(stored) as ApiUser) : null;
+  } catch {
+    // Ignore
+  }
+
+  const message = {
+    id: `dev-classroom-msg-${Date.now()}`,
+    userId: currentUser?.id ? String(currentUser.id) : 'dev-user',
+    userName: currentUser?.name || 'Current User',
+    userRole: currentUser?.role || 'student',
+    body,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const storageKey = `${DEV_CLASSROOM_MESSAGES_STORAGE_PREFIX}${sessionId}`;
+    const messages = readDevJson<Array<typeof message>>(storageKey, []);
+    messages.push(message);
+    writeDevJson(storageKey, messages);
+  } catch {
+    // Ignore persistence errors
+  }
+
+  return { data: message };
 }
 
 function getDevCourseAssignmentsFallback(courseId: string): ApiListResponse<ApiAssignment> | null {
@@ -1097,11 +1485,15 @@ function getDevCourseMaterialsFallback(courseId: string): ApiListResponse<ApiMat
 
   const materials: ApiMaterial[] = Array.from({ length: course.materials }).map((_, i) => ({
     id: `dev-material-${courseId}-${i + 1}`,
+    courseId,
     title: `${course.title} Material ${i + 1}`,
+    description: '',
     originalName: `${course.code}-material-${i + 1}.pdf`,
+    mimeType: 'application/pdf',
+    sizeBytes: 1024 * 1024,
     downloadPath: `/storage/dev/${courseId}/material-${i + 1}.pdf`,
-    uploadedAt: new Date().toISOString(),
-  } as ApiMaterial));
+    createdAt: new Date().toISOString(),
+  }));
 
   return { data: materials, meta: { total: materials.length, page: 1, perPage: materials.length, pages: 1 } };
 }
@@ -1176,10 +1568,12 @@ function getDevCourseEnrollmentsFallback(courseId: string): ApiListResponse<ApiE
   const courseStudents = studentUsers.slice(startIdx, startIdx + numStudents);
   const enrollments: ApiEnrollment[] = courseStudents.map((s, idx) => ({
     id: `${courseId}-enroll-${idx + 1}`,
+    courseId,
+    studentId: String(s.id),
     student: s,
     status: 'active',
     enrolledAt: new Date(Date.now() - idx * 86400000).toISOString(),
-  } as ApiEnrollment));
+  }));
 
   // Add any manually enrolled students (stored in session)
   try {
@@ -1209,6 +1603,8 @@ function getDevEnrollStudentFallback(courseId: string, studentId: string): ApiIt
 
   const enrollment: ApiEnrollment = {
     id: `${courseId}-enroll-${Date.now()}`,
+    courseId,
+    studentId: String(student.id),
     student,
     status: 'active',
     enrolledAt: new Date().toISOString(),
@@ -1248,6 +1644,47 @@ function getDevDropEnrollmentFallback(courseId: string, enrollmentId: string): A
   }
   
   return { message: 'Enrollment removed successfully' };
+}
+
+function getDevUserEnrollmentsFallback(userId: string): ApiListResponse<ApiUserEnrollment> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const catalog = getDevCourseCatalog();
+  const userEnrollments: ApiUserEnrollment[] = [];
+
+  for (const course of catalog) {
+    const courseEnrollments = getDevCourseEnrollmentsFallback(course.id);
+    if (!courseEnrollments) continue;
+
+    for (const enrollment of courseEnrollments.data) {
+      const studentId = enrollment.student?.id ? String(enrollment.student.id) : '';
+      if (studentId !== String(userId)) continue;
+      if (enrollment.status === 'dropped') continue;
+
+      userEnrollments.push({
+        id: enrollment.id,
+        courseId: course.id,
+        status: enrollment.status === 'active' ? 'enrolled' : enrollment.status,
+        enrolledAt: enrollment.enrolledAt ?? null,
+        course: {
+          id: course.id,
+          code: course.code,
+          title: course.title,
+          status: course.status,
+        },
+      });
+    }
+  }
+
+  return {
+    data: userEnrollments,
+    meta: {
+      total: userEnrollments.length,
+      page: 1,
+      perPage: userEnrollments.length || 1,
+      pages: 1,
+    },
+  };
 }
 
 function getDevUpdateCourseFallback(courseId: string, payload: Partial<ApiCourseUpsert>): ApiItemResponse<ApiCourse> | null {
@@ -1315,6 +1752,77 @@ function getDevCreateUserFallback(payload: {
   }
 
   return user;
+}
+
+function getDevUserFallback(userId: string): ApiUser | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const all = getDevUserListFallback({ page: 1, perPage: 10000, limit: 10000 });
+  if (!all) return null;
+
+  return all.data.find((user) => String(user.id) === String(userId)) ?? null;
+}
+
+function getDevUpdateUserFallback(
+  userId: string,
+  payload: {
+    name?: string;
+    email?: string;
+    new_password?: string;
+    new_password_confirmation?: string;
+  },
+): ApiUser | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const existing = getDevUserFallback(userId);
+  if (!existing) return null;
+
+  const updated: ApiUser = {
+    ...existing,
+    name: payload.name ?? existing.name,
+    email: payload.email ?? existing.email,
+  };
+
+  try {
+    const createdUsers = readDevJson<ApiUser[]>(DEV_USERS_STORAGE_KEY, []);
+    const createdIndex = createdUsers.findIndex((user) => String(user.id) === String(userId));
+
+    if (createdIndex >= 0) {
+      createdUsers[createdIndex] = {
+        ...createdUsers[createdIndex],
+        name: updated.name,
+        email: updated.email,
+      };
+      writeDevJson(DEV_USERS_STORAGE_KEY, createdUsers);
+    } else {
+      const edits = readDevJson<Record<string, Partial<ApiUser>>>(DEV_USER_EDITS_STORAGE_KEY, {});
+      edits[String(userId)] = {
+        ...(edits[String(userId)] ?? {}),
+        name: updated.name,
+        email: updated.email,
+      };
+      writeDevJson(DEV_USER_EDITS_STORAGE_KEY, edits);
+    }
+
+    const storedUser = sessionStorage.getItem('edlearn_user');
+    if (storedUser) {
+      const current = JSON.parse(storedUser) as ApiUser;
+      if (String(current.id) === String(userId)) {
+        sessionStorage.setItem(
+          'edlearn_user',
+          JSON.stringify({
+            ...current,
+            name: updated.name,
+            email: updated.email,
+          }),
+        );
+      }
+    }
+  } catch {
+    // Ignore storage errors
+  }
+
+  return updated;
 }
 
 function getDevProgramsFallback(params?: {
@@ -1527,6 +2035,10 @@ const DEV_MESSAGE_MODS_KEY = 'edlearn_message_mods';
 const DEV_EVENTS_STORAGE_KEY = 'edlearn_dev_events';
 const DEV_ANNOUNCEMENTS_STORAGE_KEY = 'edlearn_dev_announcements';
 const DEV_USERS_STORAGE_KEY = 'edlearn_dev_users';
+const DEV_USER_EDITS_STORAGE_KEY = 'edlearn_dev_user_edits';
+const DEV_LESSONS_STORAGE_PREFIX = 'edlearn_dev_lessons_';
+const DEV_CLASS_SESSIONS_STORAGE_PREFIX = 'edlearn_dev_class_sessions_';
+const DEV_CLASSROOM_MESSAGES_STORAGE_PREFIX = 'edlearn_dev_classroom_messages_';
 
 function readDevJson<T>(key: string, fallback: T): T {
   let localValue: any = undefined;
@@ -1606,7 +2118,7 @@ function getDevMessageCreateFallback(payload: {
   }
 
   // Get recipient info
-  let recipient = null;
+  let recipient: ApiMessageParty | null = null;
   if (payload.toUserId) {
     // Look up teacher info by ID
     const teacherInfo = getTeacherInfoById(payload.toUserId);
@@ -1615,11 +2127,13 @@ function getDevMessageCreateFallback(payload: {
           id: payload.toUserId,
           name: teacherInfo.name,
           email: teacherInfo.email,
+          role: 'teacher',
         }
       : {
           id: payload.toUserId,
           name: 'Recipient',
           email: `user-${payload.toUserId}@dev.local`,
+          role: 'student',
         };
   }
 
@@ -1631,7 +2145,14 @@ function getDevMessageCreateFallback(payload: {
     sentAt: payload.status === 'sent' ? new Date().toISOString() : null,
     readAt: null,
     createdAt: new Date().toISOString(),
-    sender: currentUser ? { id: currentUser.id, name: currentUser.name, email: currentUser.email } : { id: 'dev-user', name: 'Current User', email: 'user@dev.local' },
+    sender: currentUser
+      ? {
+          id: String(currentUser.id),
+          name: currentUser.name,
+          email: currentUser.email,
+          role: (currentUser.role as ApiUserRole) || 'student',
+        }
+      : { id: 'dev-user', name: 'Current User', email: 'user@dev.local', role: 'student' },
     recipient,
   };
 
@@ -2361,6 +2882,56 @@ export const api = {
     }
   },
 
+  async createCourseSession(courseId: string, payload: {
+    title: string;
+    starts_at: string;
+    ends_at?: string | null;
+    meeting_url?: string | null;
+    status?: string | null;
+    notes?: string | null;
+  }) {
+    try {
+      return await apiFetch<ApiItemResponse<ApiClassSession>>(
+        `/api/courses/${encodeURIComponent(courseId)}/sessions`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      const fallback = getDevCreateCourseSessionFallback(courseId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
+  },
+
+  async updateCourseSession(courseId: string, sessionId: string, payload: {
+    title?: string;
+    starts_at?: string;
+    ends_at?: string | null;
+    meeting_url?: string | null;
+    status?: string | null;
+    notes?: string | null;
+  }) {
+    try {
+      return await apiFetch<ApiItemResponse<ApiClassSession>>(
+        `/api/courses/${encodeURIComponent(courseId)}/sessions/${encodeURIComponent(sessionId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      const fallback = getDevUpdateCourseSessionFallback(courseId, sessionId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
+  },
+
   async courseAssignments(courseId: string) {
     try {
       return await apiFetch<ApiListResponse<ApiAssignment>>(
@@ -2495,13 +3066,21 @@ export const api = {
     period?: string | null;
     week_in_period?: number | null;
   }) {
-    return apiFetch<ApiItemResponse<ApiLesson>>(
-      `/api/courses/${encodeURIComponent(courseId)}/lessons`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      },
-    );
+    try {
+      return await apiFetch<ApiItemResponse<ApiLesson>>(
+        `/api/courses/${encodeURIComponent(courseId)}/lessons`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      const fallback = getDevCreateCourseLessonFallback(courseId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async generateQuiz(courseId: string, payload: { lesson_id?: number | null; material_id?: number | null; count?: number; types?: string[] }) {
@@ -2519,22 +3098,38 @@ export const api = {
     duration: string | null;
     status: string;
   }>) {
-    return apiFetch<ApiItemResponse<ApiLesson>>(
-      `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-      },
-    );
+    try {
+      return await apiFetch<ApiItemResponse<ApiLesson>>(
+        `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      const fallback = getDevUpdateCourseLessonFallback(courseId, lessonId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async deleteCourseLesson(courseId: string, lessonId: string) {
-    return apiFetch<ApiMessageResponse>(
-      `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}`,
-      {
-        method: 'DELETE',
-      },
-    );
+    try {
+      return await apiFetch<ApiMessageResponse>(
+        `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}`,
+        {
+          method: 'DELETE',
+        },
+      );
+    } catch (err) {
+      const fallback = getDevDeleteCourseLessonFallback(courseId, lessonId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async courseMaterials(courseId: string) {
@@ -2954,13 +3549,29 @@ export const api = {
   },
 
   async user(userId: string) {
-    return apiFetch<ApiUser>(`/api/users/${encodeURIComponent(userId)}`);
+    try {
+      return await apiFetch<ApiUser>(`/api/users/${encodeURIComponent(userId)}`);
+    } catch (err) {
+      const fallback = getDevUserFallback(userId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async userEnrollments(userId: string) {
-    return apiFetch<ApiListResponse<ApiUserEnrollment>>(
-      `/api/users/${encodeURIComponent(userId)}/enrollments`,
-    );
+    try {
+      return await apiFetch<ApiListResponse<ApiUserEnrollment>>(
+        `/api/users/${encodeURIComponent(userId)}/enrollments`,
+      );
+    } catch (err) {
+      const fallback = getDevUserEnrollmentsFallback(userId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async updateUser(
@@ -2972,10 +3583,18 @@ export const api = {
       new_password_confirmation?: string;
     },
   ) {
-    return apiFetch<ApiUser>(`/api/users/${encodeURIComponent(userId)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ApiUser>(`/api/users/${encodeURIComponent(userId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevUpdateUserFallback(userId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async archiveUser(userId: string) {
@@ -3036,31 +3655,55 @@ export const api = {
   },
 
   async getClassroomMessages(sessionId: string) {
-    return apiFetch<ApiListResponse<{
-      id: string;
-      userId: string;
-      userName: string;
-      userRole: string;
-      body: string;
-      createdAt: string;
-    }>>(`/api/sessions/${encodeURIComponent(sessionId)}/messages`);
+    try {
+      return await apiFetch<ApiListResponse<{
+        id: string;
+        userId: string;
+        userName: string;
+        userRole: string;
+        body: string;
+        createdAt: string;
+      }>>(`/api/sessions/${encodeURIComponent(sessionId)}/messages`);
+    } catch (err) {
+      const fallback = getDevClassroomMessagesFallback(sessionId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async sendClassroomMessage(sessionId: string, body: string) {
-    return apiFetch<ApiItemResponse<{
-      id: string;
-      userId: string;
-      userName: string;
-      userRole: string;
-      body: string;
-      createdAt: string;
-    }>>(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ body }),
-    });
+    try {
+      return await apiFetch<ApiItemResponse<{
+        id: string;
+        userId: string;
+        userName: string;
+        userRole: string;
+        body: string;
+        createdAt: string;
+      }>>(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ body }),
+      });
+    } catch (err) {
+      const fallback = getDevSendClassroomMessageFallback(sessionId, body);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
   async getClassroomParticipants(sessionId: string) {
-    return apiFetch<ApiListResponse<any>>(`/api/sessions/${encodeURIComponent(sessionId)}/participants`);
+    try {
+      return await apiFetch<ApiListResponse<any>>(`/api/sessions/${encodeURIComponent(sessionId)}/participants`);
+    } catch (err) {
+      const fallback = getDevClassroomParticipantsFallback(sessionId);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async backups() {

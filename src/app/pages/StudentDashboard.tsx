@@ -188,17 +188,14 @@ export default function StudentDashboard() {
           
           {/* Top Hero & Nav Area */}
           <div
-            className="text-white pb-6 pt-12 px-6 shadow-lg relative border-b border-white/10 overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #059669 0%, #0d9488 40%, #047857 100%)' }}
+            className="text-white pb-6 pt-12 px-6 shadow-lg relative border-b border-white/10 overflow-hidden bg-[linear-gradient(135deg,_#059669_0%,_#0d9488_40%,_#047857_100%)]"
           >
             {/* Decorative orb */}
             <div
-              className="pointer-events-none absolute -top-20 right-0 w-[400px] h-[400px] rounded-full opacity-20"
-              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%)' }}
+              className="pointer-events-none absolute -top-20 right-0 w-[400px] h-[400px] rounded-full opacity-20 bg-[radial-gradient(circle,_rgba(255,255,255,0.4)_0%,_transparent_70%)]"
             />
             <div
-              className="pointer-events-none absolute bottom-0 left-1/3 w-64 h-64 rounded-full opacity-10"
-              style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.8) 0%, transparent 70%)' }}
+              className="pointer-events-none absolute bottom-0 left-1/3 w-64 h-64 rounded-full opacity-10 bg-[radial-gradient(circle,_rgba(20,184,166,0.8)_0%,_transparent_70%)]"
             />
 
             <div className="max-w-7xl mx-auto flex flex-col gap-8 relative z-10">
