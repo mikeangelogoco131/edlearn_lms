@@ -25,7 +25,10 @@ class AnnouncementController extends Controller
         }
 
         $announcements = Announcement::query()
-            ->where('course_id', $course->id)
+            ->where(function ($query) use ($course) {
+                $query->where('course_id', $course->id)
+                    ->orWhereNull('course_id');
+            })
             ->with(['author'])
             ->orderByDesc('is_pinned')
             ->orderByDesc('published_at')

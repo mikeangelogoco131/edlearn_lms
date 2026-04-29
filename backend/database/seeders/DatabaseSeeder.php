@@ -449,6 +449,16 @@ class DatabaseSeeder extends Seeder
                 'published_at' => now()->subDays(2),
             ]
         );
+
+        Announcement::query()->updateOrCreate(
+            ['course_id' => null, 'title' => 'Welcome to EdLearn LMS'],
+            [
+                'author_id' => $admin->id,
+                'body' => 'This is a global announcement from the admin. Teachers and students can see this in their announcements tab.',
+                'is_pinned' => true,
+                'published_at' => now()->subDay(),
+            ]
+        );
     }
 
     private function enroll(Course $course, User $student): void
