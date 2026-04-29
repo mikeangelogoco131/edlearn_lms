@@ -681,8 +681,12 @@ function getDevUserListFallback(params?: {
   }
 
   let mockUsers = buildDevUsersList();
+  
+  // Include newly created dev users from storage
+  const createdUsers = readDevJson<ApiUser[]>(DEV_USERS_STORAGE_KEY, []);
+  let allUsers = [...mockUsers, ...createdUsers];
 
-  let filtered = mockUsers.slice();
+  let filtered = allUsers.slice();
 
   if (params?.role) {
     filtered = filtered.filter((u) => u.role === params.role);
@@ -740,7 +744,23 @@ function getDevAnalyticsFallback(params?: {
   let totalTeachers = 7;
   let totalStudents = 34;
   
-  // Count newly added students from sessionStorage
+  // Count newly created users from localStorage
+  try {
+    const createdUsers = readDevJson<ApiUser[]>(DEV_USERS_STORAGE_KEY, []);
+    for (const user of createdUsers) {
+      if (user.role === 'admin') {
+        totalAdmins += 1;
+      } else if (user.role === 'teacher') {
+        totalTeachers += 1;
+      } else if (user.role === 'student') {
+        totalStudents += 1;
+      }
+    }
+  } catch (e) {
+    // Ignore storage errors
+  }
+  
+  // Count newly added students from sessionStorage (enrollments)
   try {
     for (let i = 1; i <= 9; i++) {
       const storageKey = `edlearn_added_enrollments_dev-course-${i}`;
