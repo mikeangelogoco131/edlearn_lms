@@ -1265,6 +1265,33 @@ function getDevUpdateCourseFallback(courseId: string, payload: Partial<ApiCourse
   return { data: updated };
 }
 
+function getDevCreateUserFallback(payload: {
+  name: string;
+  email: string;
+  role: 'admin' | 'teacher' | 'student';
+}): ApiUser | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const id = `dev-user-${Date.now()}`;
+  const user: ApiUser = {
+    id,
+    name: payload.name,
+    email: payload.email,
+    role: payload.role,
+  };
+
+  // Persist created user to localStorage for consistency across dev sessions
+  try {
+    const users = readDevJson<ApiUser[]>(DEV_USERS_STORAGE_KEY, []);
+    users.push(user);
+    writeDevJson(DEV_USERS_STORAGE_KEY, users);
+  } catch (e) {
+    // Ignore persistence errors
+  }
+
+  return user;
+}
+
 function getDevProgramsFallback(params?: {
   archived?: boolean;
 }): ApiListResponse<ApiProgram> | null {
@@ -1474,6 +1501,7 @@ const DEV_MESSAGE_STORAGE_KEY = 'edlearn_dev_messages';
 const DEV_MESSAGE_MODS_KEY = 'edlearn_message_mods';
 const DEV_EVENTS_STORAGE_KEY = 'edlearn_dev_events';
 const DEV_ANNOUNCEMENTS_STORAGE_KEY = 'edlearn_dev_announcements';
+const DEV_USERS_STORAGE_KEY = 'edlearn_dev_users';
 
 function readDevJson<T>(key: string, fallback: T): T {
   let localValue: any = undefined;
@@ -2886,10 +2914,18 @@ export const api = {
   },
 
   async createUser(payload: { name: string; email: string; role: 'admin' | 'teacher' | 'student' }) {
-    return apiFetch<ApiUser>('/api/users', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ApiUser>('/api/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevCreateUserFallback(payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
   },
 
   async user(userId: string) {
