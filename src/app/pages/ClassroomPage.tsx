@@ -638,19 +638,19 @@ export default function ClassroomPage() {
                       </div>
 
                       <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-[#171a21]/95 px-3 py-2 shadow-2xl backdrop-blur-md">
-                        <button type="button" onClick={() => void toggleMute()} className={`grid h-12 w-12 place-items-center rounded-full transition ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                        <button type="button" onClick={() => void toggleMute()} aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'} title={isMuted ? 'Unmute microphone' : 'Mute microphone'} className={`grid h-12 w-12 place-items-center rounded-full transition ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                           {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                         </button>
-                        <button type="button" onClick={() => void toggleVideo()} className={`grid h-12 w-12 place-items-center rounded-full transition ${isVideoOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white'}`}>
+                        <button type="button" onClick={() => void toggleVideo()} aria-label={isVideoOn ? 'Turn camera off' : 'Turn camera on'} title={isVideoOn ? 'Turn camera off' : 'Turn camera on'} className={`grid h-12 w-12 place-items-center rounded-full transition ${isVideoOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white'}`}>
                           {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
                         </button>
-                        <button type="button" onClick={() => void toggleScreenShare()} className={`grid h-12 w-12 place-items-center rounded-full transition ${isScreenSharing ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                        <button type="button" onClick={() => void toggleScreenShare()} aria-label={isScreenSharing ? 'Stop screen share' : 'Share screen'} title={isScreenSharing ? 'Stop screen share' : 'Share screen'} className={`grid h-12 w-12 place-items-center rounded-full transition ${isScreenSharing ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                           <Monitor className="h-5 w-5" />
                         </button>
-                        <button type="button" onClick={() => setIsHandRaised((value) => !value)} className={`grid h-12 w-12 place-items-center rounded-full transition ${isHandRaised ? 'bg-amber-400 text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                        <button type="button" onClick={() => setIsHandRaised((value) => !value)} aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'} title={isHandRaised ? 'Lower hand' : 'Raise hand'} className={`grid h-12 w-12 place-items-center rounded-full transition ${isHandRaised ? 'bg-amber-400 text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                           <Hand className="h-5 w-5" />
                         </button>
-                        <button type="button" onClick={() => setShowSidebar((value) => !value)} className="grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 lg:hidden">
+                        <button type="button" onClick={() => setShowSidebar((value) => !value)} aria-label={showSidebar ? 'Hide chat and participants panel' : 'Show chat and participants panel'} title={showSidebar ? 'Hide chat and participants panel' : 'Show chat and participants panel'} className="grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 lg:hidden">
                           <MessageSquare className="h-5 w-5" />
                         </button>
                         <button type="button" onClick={() => void handleEndClass()} disabled={endingClass} className="ml-2 inline-flex h-12 items-center gap-2 rounded-full bg-rose-500 px-5 text-sm font-semibold text-white transition hover:bg-rose-600 disabled:opacity-70">

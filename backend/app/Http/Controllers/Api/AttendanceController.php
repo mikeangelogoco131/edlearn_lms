@@ -30,18 +30,21 @@ class AttendanceController extends Controller
                 ->get();
 
             $draft = $enrollments->map(function ($en) use ($sessionId) {
+                $student = $en->student;
                 return [
-                    'id' => null,
+                    'id' => 'draft-' . $sessionId . '-' . $en->student_id,
                     'session_id' => $sessionId,
                     'student_id' => (string) $en->student_id,
                     'status' => 'absent',
                     'remarks' => null,
                     'student' => [
-                        'id' => (string) $en->student->id,
-                        'name' => $en->student->name,
-                        'email' => $en->student->email,
-                        'role' => $en->student->role,
+                        'id' => $student ? (string) $student->id : (string) $en->student_id,
+                        'name' => $student ? $student->name : 'Unknown Student',
+                        'email' => $student ? $student->email : '',
+                        'role' => $student ? $student->role : 'student',
                     ],
+                    'created_at' => null,
+                    'updated_at' => null,
                 ];
             });
 

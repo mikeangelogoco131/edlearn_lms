@@ -33,14 +33,15 @@ export function CourseAnnouncements(props: {
 
   useEffect(() => {
     if (!courseId && courses.length) {
-      setCourseId(courses[0].id);
+      const firstCourse = courses[0];
+      if (firstCourse) setCourseId(firstCourse.id);
     }
   }, [courseId, courses]);
 
-  const selectedCourse = useMemo(
-    () => courses.find((c) => c.id === courseId) || (courseId === '__global__' ? null : null),
-    [courses, courseId],
-  );
+  const selectedCourse = useMemo(() => {
+    if (courseId === '__global__') return null;
+    return courses.find((c) => c.id === courseId) ?? null;
+  }, [courses, courseId]);
 
   async function loadAnnouncements(activeCourseId: string) {
     setLoading(true);

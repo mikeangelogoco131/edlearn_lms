@@ -49,6 +49,7 @@ export default function StudentDashboard() {
     progress: 0,
     totalCourses: 0,
     upcomingSessions: 0,
+    recentGrades: [] as Array<{ id: string; courseName: string; grade: number }>,
   });
   const [joiningCourseId, setJoiningCourseId] = useState<string | null>(null);
   const coursesScrollerRef = useRef<HTMLDivElement | null>(null);
