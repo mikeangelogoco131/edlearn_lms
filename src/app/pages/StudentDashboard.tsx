@@ -154,8 +154,12 @@ export default function StudentDashboard() {
       })
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [assignments, studentCourses]);
+  const liveClasses = useMemo(
+    () => sessions.filter((s) => (s.status || '').toLowerCase() === 'live'),
+    [sessions]
+  );
   const upcomingClasses = useMemo(
-    () => sessions.filter((s) => s.status === 'scheduled'),
+    () => sessions.filter((s) => (s.status || '').toLowerCase() === 'scheduled'),
     [sessions]
   );
 
@@ -296,7 +300,7 @@ export default function StudentDashboard() {
                   <CardDescription>Your scheduled virtual classroom sessions</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="text-sm text-muted-foreground mr-2">{upcomingClasses.length} scheduled</div>
+                  <div className="text-sm text-muted-foreground mr-2">{liveClasses.length} live, {upcomingClasses.length} scheduled</div>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -321,6 +325,37 @@ export default function StudentDashboard() {
             ) : (
               <CardContent>
                 <div className="space-y-4">
+                  {liveClasses.length > 0 ? (
+                    <div className="space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-emerald-700">Live Now</div>
+                          <div className="text-xs text-emerald-700/80">Join the current class in progress</div>
+                        </div>
+                        <div className="text-xs rounded-full bg-emerald-600 px-2.5 py-1 font-semibold text-white">
+                          {liveClasses.length} room{liveClasses.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      {liveClasses.map((session) => {
+                        const course = studentCourses.find((c) => c.id === session.courseId);
+                        return (
+                          <div key={session.id} className="flex items-center justify-between gap-4 rounded-lg bg-white/70 p-4">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-slate-900">{session.title}</div>
+                              <div className="text-sm text-slate-600 truncate">{course?.code} - {course?.title}</div>
+                            </div>
+                            <Link to={`/classroom/${session.courseId}`}>
+                              <Button className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
+                                <Video className="w-4 h-4 mr-2" />
+                                Join Live
+                              </Button>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
                   {upcomingClasses.map((session) => {
                     const course = studentCourses.find(c => c.id === session.courseId);
                     const sessionDate = session.date ? new Date(session.date) : null;
