@@ -38,7 +38,7 @@ export function CourseAnnouncements(props: {
   }, [courseId, courses]);
 
   const selectedCourse = useMemo(
-    () => courses.find((c) => c.id === courseId) || null,
+    () => courses.find((c) => c.id === courseId) || (courseId === '__global__' ? null : null),
     [courses, courseId],
   );
 
@@ -46,7 +46,12 @@ export function CourseAnnouncements(props: {
     setLoading(true);
     setError('');
     try {
-      const res = await api.courseAnnouncements(activeCourseId);
+      let res;
+      if (activeCourseId === '__global__') {
+        res = await api.globalAnnouncements();
+      } else {
+        res = await api.courseAnnouncements(activeCourseId);
+      }
       setAnnouncements(res.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load announcements');
@@ -82,10 +87,11 @@ export function CourseAnnouncements(props: {
 
     setSaving(true);
     try {
-      await api.createCourseAnnouncement(courseId, {
-        title: title.trim(),
-        body: body.trim(),
-      });
+      if (courseId === '__global__') {
+        await api.createGlobalAnnouncement({ title: title.trim(), body: body.trim() });
+      } else {
+        await api.createCourseAnnouncement(courseId, { title: title.trim(), body: body.trim() });
+      }
 
       setTitle('');
       setBody('');
@@ -132,6 +138,9 @@ export function CourseAnnouncements(props: {
                 <SelectValue placeholder="Select a course" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem key="__global__" value="__global__">
+                  Announcement for all
+                </SelectItem>
                 {courses.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.code} • {c.section}

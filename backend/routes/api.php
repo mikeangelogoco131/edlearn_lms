@@ -109,6 +109,9 @@ Route::middleware('jwt')->group(function () {
     Route::post('/courses/{course}/announcements', [AnnouncementController::class, 'store'])->middleware('role:admin,teacher');
     Route::patch('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'update'])->middleware('role:admin,teacher');
     Route::delete('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->middleware('role:admin,teacher');
+    // Global announcements (admin)
+    Route::get('/announcements', [AnnouncementController::class, 'indexGlobal']);
+    Route::post('/announcements', [AnnouncementController::class, 'storeGlobal'])->middleware('role:admin');
 
     // Analytics
     Route::get('/analytics/admin', [AnalyticsController::class, 'admin'])->middleware('role:admin');

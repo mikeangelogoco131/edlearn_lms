@@ -39,6 +39,27 @@ class AnnouncementController extends Controller
         ]);
     }
 
+    public function indexGlobal(Request $request)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // Only allow authenticated users to view global announcements
+        $announcements = Announcement::query()
+            ->whereNull('course_id')
+            ->with(['author'])
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('published_at')
+            ->get();
+
+        return response()->json([
+            'data' => $announcements->map(fn (Announcement $a) => $this->announcementToArray($a))->values(),
+        ]);
+    }
+
     public function store(Request $request, Course $course)
     {
         /** @var User|null $user */
@@ -66,6 +87,47 @@ class AnnouncementController extends Controller
 
         $announcement = Announcement::query()->create([
             'course_id' => $course->id,
+            'author_id' => $user->id,
+            'title' => $validated['title'],
+            'body' => $validated['body'],
+            'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
+            'published_at' => $effectivePublishedAt,
+            'expires_at' => $validated['expires_at'] ?? null,
+        ]);
+
+        $announcement->load('author');
+
+        return response()->json(['data' => $this->announcementToArray($announcement)], 201);
+    }
+
+    public function storeGlobal(Request $request)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // Only admins can create global announcements
+        if ($user->role !== User::ROLE_ADMIN) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string'],
+            'is_pinned' => ['nullable', 'boolean'],
+            'published_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date'],
+        ]);
+
+        $effectivePublishedAt = $validated['published_at'] ?? now();
+        if (! empty($validated['expires_at']) && Carbon::parse((string) $validated['expires_at'])->lt(Carbon::parse((string) $effectivePublishedAt))) {
+            return response()->json(['message' => 'Expiration must be after or equal to publish time'], 422);
+        }
+
+        $announcement = Announcement::query()->create([
+            'course_id' => null,
             'author_id' => $user->id,
             'title' => $validated['title'],
             'body' => $validated['body'],
