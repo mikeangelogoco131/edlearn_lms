@@ -322,6 +322,10 @@ export interface ApiNotification {
   id: string;
   type: ApiNotificationType;
   title: string;
+  message?: string; // Added for compatibility
+  data?: any; // Added for URL navigation
+  readAt?: string | null; // Added for read status
+  createdAt?: string; // Added for date display
   publishedAt: string | null;
   isPinned: boolean;
   course: ApiNotificationCourse | null;
@@ -542,10 +546,10 @@ function getDevCredentialLoginFallback(email: string, password: string): ApiLogi
 
     // 2 admins for testing
     for (let i = 0; i < adminNames.length; i++) {
-      const full = adminNames[i];
+      const full = adminNames[i]!;
       const parts = full.split(' ');
-      const first = parts[0].toLowerCase();
-      const last = parts[parts.length - 1].toLowerCase();
+      const first = parts[0]!.toLowerCase();
+      const last = parts[parts.length - 1]!.toLowerCase();
       const local = `${first}.${last}`;
       users.push({
         email: `${local}@admin.edu.ph`,
@@ -561,10 +565,10 @@ function getDevCredentialLoginFallback(email: string, password: string): ApiLogi
 
     // 7 teachers
     for (let i = 0; i < 7; i++) {
-      const full = teacherAndStudentNames[i];
+      const full = teacherAndStudentNames[i]!;
       const parts = full.split(' ');
-      const first = parts[0].toLowerCase();
-      const last = parts[parts.length - 1].toLowerCase();
+      const first = parts[0]!.toLowerCase();
+      const last = parts[parts.length - 1]!.toLowerCase();
       const local = `${first}.${last}`;
       users.push({
         email: `${local}@teacher.edu.ph`,
@@ -580,10 +584,10 @@ function getDevCredentialLoginFallback(email: string, password: string): ApiLogi
 
     // 34 students
     for (let i = 7; i < 41; i++) {
-      const full = teacherAndStudentNames[i];
+      const full = teacherAndStudentNames[i]!;
       const parts = full.split(' ');
-      const first = parts[0].toLowerCase();
-      const last = parts[parts.length - 1].toLowerCase();
+      const first = parts[0]!.toLowerCase();
+      const last = parts[parts.length - 1]!.toLowerCase();
       const local = `${first}.${last}`;
       users.push({
         email: `${local}@student.edu.ph`,
@@ -659,20 +663,20 @@ function getDevUserListFallback(params?: {
 
     // 7 teachers
     for (let i = 0; i < 7; i++) {
-      const full = teacherAndStudentNames[i];
+      const full = teacherAndStudentNames[i]!;
       const parts = full.split(' ');
-      const first = parts[0].toLowerCase();
-      const last = parts[parts.length - 1].toLowerCase();
+      const first = parts[0]!.toLowerCase();
+      const last = parts[parts.length - 1]!.toLowerCase();
       const local = `${first}.${last}`;
       users.push({ id: `dev-teacher-${i + 1}`, name: full, email: `${local}@teacher.edu.ph`, role: 'teacher' });
     }
 
     // 34 students
     for (let i = 7; i < 41; i++) {
-      const full = teacherAndStudentNames[i];
+      const full = teacherAndStudentNames[i]!;
       const parts = full.split(' ');
-      const first = parts[0].toLowerCase();
-      const last = parts[parts.length - 1].toLowerCase();
+      const first = parts[0]!.toLowerCase();
+      const last = parts[parts.length - 1]!.toLowerCase();
       const local = `${first}.${last}`;
       users.push({ id: `dev-student-${i - 6}`, name: full, email: `${local}@student.edu.ph`, role: 'student' });
     }
@@ -734,9 +738,9 @@ function getDevAnalyticsFallback(params?: {
   if (!(import.meta as any).env?.DEV) return null;
 
   const now = new Date();
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
   const weeklyEngagement = Array.from({ length: 7 }).map((_, i) => ({
-    day: days[(now.getDay() - 6 + i) % 7],
+    day: days[(now.getDay() - 6 + i) % 7] as string,
     hours: Math.floor(Math.random() * 8) + 2,
   }));
 
@@ -798,8 +802,8 @@ function getDevAnalyticsFallback(params?: {
   };
 
   // Add ENG to CS teacher, HIST to CS teacher
-  subjectTeacherMap['Computer Science'].add(1); // Carol for ENG101
-  subjectTeacherMap['Computer Science'].add(2); // David for HIST101
+  subjectTeacherMap['Computer Science']!.add(1); // Carol for ENG101
+  subjectTeacherMap['Computer Science']!.add(2); // David for HIST101
 
   const subjectTeachers = Object.entries(subjectTeacherMap).map(([subject, teacherSet]) => ({
     subject,
@@ -1143,14 +1147,14 @@ function getDevUpdateCourseLessonFallback(
   if (index === -1) return null;
 
   const updated: ApiLesson = {
-    ...existing.data[index],
-    title: payload.title ?? existing.data[index].title,
-    description: payload.description ?? existing.data[index].description,
-    content: payload.content ?? existing.data[index].content,
-    order: payload.lesson_order ?? existing.data[index].order,
-    duration: payload.duration ?? existing.data[index].duration,
-    status: payload.status ?? existing.data[index].status,
-  };
+    ...existing.data[index]!,
+    title: payload.title ?? existing.data[index]!.title,
+    description: payload.description ?? existing.data[index]!.description,
+    content: payload.content ?? existing.data[index]!.content,
+    order: payload.lesson_order ?? existing.data[index]!.order,
+    duration: payload.duration ?? existing.data[index]!.duration,
+    status: payload.status ?? existing.data[index]!.status,
+  } as ApiLesson;
 
   const next = existing.data.slice();
   next[index] = updated;
@@ -1283,7 +1287,7 @@ function getDevUpdateCourseSessionFallback(
   const idx = existing.data.findIndex((session) => String(session.id) === String(sessionId));
   if (idx === -1) return null;
 
-  const previous = existing.data[idx];
+  const previous = existing.data[idx]!;
   const startsAt = payload.starts_at ? new Date(payload.starts_at) : (previous.startsAt ? new Date(previous.startsAt) : new Date());
   const endsAt = payload.ends_at !== undefined
     ? (payload.ends_at ? new Date(payload.ends_at) : null)
@@ -1298,7 +1302,7 @@ function getDevUpdateCourseSessionFallback(
     time: startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     duration: endsAt ? `${Math.max(1, Math.round((endsAt.getTime() - startsAt.getTime()) / 60000))} min` : previous.duration,
     status: (payload.status as ApiClassSession['status']) || previous.status,
-  };
+  } as ApiClassSession;
 
   try {
     const sessions = readDevJson<ApiClassSession[]>(storageKey, existing.data);
@@ -1516,28 +1520,28 @@ function getDevAllUsers(): ApiUser[] {
   const users: ApiUser[] = [];
 
   for (let i = 0; i < adminNames.length; i++) {
-    const full = adminNames[i];
+    const full = adminNames[i]!;
     const parts = full.split(' ');
-    const first = parts[0].toLowerCase();
-    const last = parts[parts.length - 1].toLowerCase();
+    const first = parts[0]!.toLowerCase();
+    const last = parts[parts.length - 1]!.toLowerCase();
     const local = `${first}.${last}`;
     users.push({ id: `dev-admin-${i + 1}`, name: full, email: `${local}@admin.edu.ph`, role: 'admin' });
   }
 
   for (let i = 0; i < 7; i++) {
-    const full = teacherAndStudentNames[i];
+    const full = teacherAndStudentNames[i]!;
     const parts = full.split(' ');
-    const first = parts[0].toLowerCase();
-    const last = parts[parts.length - 1].toLowerCase();
+    const first = parts[0]!.toLowerCase();
+    const last = parts[parts.length - 1]!.toLowerCase();
     const local = `${first}.${last}`;
     users.push({ id: `dev-teacher-${i + 1}`, name: full, email: `${local}@teacher.edu.ph`, role: 'teacher' });
   }
 
   for (let i = 7; i < teacherAndStudentNames.length; i++) {
-    const full = teacherAndStudentNames[i];
+    const full = teacherAndStudentNames[i]!;
     const parts = full.split(' ');
-    const first = parts[0].toLowerCase();
-    const last = parts[parts.length - 1].toLowerCase();
+    const first = parts[0]!.toLowerCase();
+    const last = parts[parts.length - 1]!.toLowerCase();
     const local = `${first}.${last}`;
     users.push({ id: `dev-student-${i - 6}`, name: full, email: `${local}@student.edu.ph`, role: 'student' });
   }
@@ -1635,7 +1639,7 @@ function getDevDropEnrollmentFallback(courseId: string, enrollmentId: string): A
       const added = JSON.parse(stored) as ApiEnrollment[];
       const idx = added.findIndex(e => e.id === enrollmentId);
       if (idx !== -1) {
-        added[idx].status = 'dropped';
+        added[idx]!.status = 'dropped';
         sessionStorage.setItem(storageKey, JSON.stringify(added));
       }
     }
@@ -1704,7 +1708,7 @@ function getDevUpdateCourseFallback(courseId: string, payload: Partial<ApiCourse
   if (payload.teacher_id !== undefined && payload.teacher_id !== null) {
     const teacherId = Number(payload.teacher_id);
     if (teacherId > 0 && teacherId <= teacherNames.length) {
-      const teacherName = teacherNames[teacherId - 1];
+      const teacherName = teacherNames[teacherId - 1]!;
       newTeacher = teacherName;
       newTeacherId = `dev-teacher-${teacherId}`;
     }
@@ -1788,8 +1792,9 @@ function getDevUpdateUserFallback(
     const createdIndex = createdUsers.findIndex((user) => String(user.id) === String(userId));
 
     if (createdIndex >= 0) {
+      const existingCreatedUser = createdUsers[createdIndex]!;
       createdUsers[createdIndex] = {
-        ...createdUsers[createdIndex],
+        ...existingCreatedUser,
         name: updated.name,
         email: updated.email,
       };
@@ -1941,8 +1946,8 @@ function getDevMessagesFallback(params?: {
       sentAt: new Date(now.getTime() - minutesAgo * 60000).toISOString(),
       readAt: idx % 3 === 0 ? new Date(now.getTime() - (minutesAgo - 10) * 60000).toISOString() : null,
       createdAt: new Date(now.getTime() - minutesAgo * 60000).toISOString(),
-      sender: { id: `dev-teacher-${(idx % 7) + 1}`, name: `Teacher ${idx}`, email: `teacher${(idx % 7) + 1}@dev.local` },
-      recipient: currentUserId ? { id: currentUserId, name: 'You', email: 'admin@dev.local' } : null,
+      sender: { id: `dev-teacher-${(idx % 7) + 1}`, name: `Teacher ${idx}`, email: `teacher${(idx % 7) + 1}@dev.local`, role: 'teacher' },
+      recipient: currentUserId ? { id: currentUserId, name: 'You', email: 'admin@dev.local', role: 'student' } : null,
     } as ApiMessage;
 
     // Apply any modifications (status changes, readAt)
@@ -2018,13 +2023,13 @@ function getTeacherInfoById(teacherId: string): { name: string; email: string } 
   const match = teacherId.match(/dev-teacher-(\d+)/);
   if (!match) return null;
 
-  const idx = parseInt(match[1], 10) - 1; // Convert 1-indexed to 0-indexed
+  const idx = parseInt(match[1]!, 10) - 1; // Convert 1-indexed to 0-indexed
   if (idx < 0 || idx >= teacherAndStudentNames.length) return null;
 
-  const full = teacherAndStudentNames[idx];
+  const full = teacherAndStudentNames[idx]!;
   const parts = full.split(' ');
-  const first = parts[0].toLowerCase();
-  const last = parts[parts.length - 1].toLowerCase();
+  const first = parts[0]!.toLowerCase();
+  const last = parts[parts.length - 1]!.toLowerCase();
   const email = `${first}.${last}@teacher.edu.ph`;
 
   return { name: full, email };
@@ -2178,15 +2183,16 @@ function getDevMessageUpdateFallback(
     const messages = readDevJson<ApiMessage[]>(DEV_MESSAGE_STORAGE_KEY, []);
     const idx = messages.findIndex((m) => m.id === id);
     if (idx !== -1) {
+      const message = messages[idx]!;
       messages[idx] = {
-        ...messages[idx],
-        subject: payload.subject !== undefined ? payload.subject : messages[idx].subject,
-        body: payload.body !== undefined ? payload.body : messages[idx].body,
-        status: payload.send ? 'sent' : messages[idx].status,
-        sentAt: payload.send && !messages[idx].sentAt ? new Date().toISOString() : messages[idx].sentAt,
+        ...message,
+        subject: payload.subject !== undefined ? payload.subject : message.subject,
+        body: payload.body !== undefined ? payload.body : message.body,
+        status: payload.send ? 'sent' : message.status,
+        sentAt: payload.send && !message.sentAt ? new Date().toISOString() : message.sentAt,
       };
       writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
-      return { data: messages[idx] };
+      return { data: messages[idx]! };
     }
   } catch (e) {
     // Ignore
@@ -2209,7 +2215,7 @@ function getDevMessageTrashFallback(id: string): ApiMessageResponse | null {
     if (messages.length) {
       const idx = messages.findIndex((m) => m.id === id);
       if (idx !== -1) {
-        messages[idx].status = 'deleted';
+        messages[idx]!.status = 'deleted';
         writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
       }
     }
@@ -2236,7 +2242,7 @@ function getDevMessageRestoreFallback(id: string): ApiMessageResponse | null {
     if (messages.length) {
       const idx = messages.findIndex((m) => m.id === id);
       if (idx !== -1) {
-        messages[idx].status = 'sent';
+        messages[idx]!.status = 'sent';
         writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
       }
     }
@@ -2264,9 +2270,9 @@ function getDevMessageReadFallback(id: string): ApiItemResponse<ApiMessage> | nu
     if (messages.length) {
       const idx = messages.findIndex((m) => m.id === id);
       if (idx !== -1) {
-        messages[idx].readAt = new Date().toISOString();
+        messages[idx]!.readAt = new Date().toISOString();
         writeDevJson(DEV_MESSAGE_STORAGE_KEY, messages);
-        return { data: messages[idx] };
+        return { data: messages[idx]! };
       }
     }
 
@@ -2280,7 +2286,7 @@ function getDevMessageReadFallback(id: string): ApiItemResponse<ApiMessage> | nu
         sentAt: new Date().toISOString(),
         readAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        sender: { id: 'dev-user', name: 'User', email: 'user@dev.local' },
+        sender: { id: 'dev-user', name: 'User', email: 'user@dev.local', role: 'student' },
         recipient: null,
       } as ApiMessage,
     };
@@ -2412,9 +2418,9 @@ function getDevNotificationsFallback(): ApiListResponse<ApiNotification> | null 
 
   const items: ApiNotification[] = Array.from({ length: 20 }).map((_, i) => {
     const idx = i + 1;
-    const t = types[i % types.length];
+    const t = types[i % types.length]!;
     const courseIdx = (idx % 12);
-    const course = catalog[courseIdx];
+    const course = catalog[courseIdx]!;
     return {
       id: `dev-notif-${idx}`,
       type: t,
@@ -2539,15 +2545,16 @@ function getDevUpdateEventFallback(
     const idx = events.findIndex((e) => e.id === eventId);
     
     if (idx !== -1) {
+      const event = events[idx]!;
       events[idx] = {
-        ...events[idx],
-        title: payload.title !== undefined ? payload.title : events[idx].title,
-        description: payload.description !== undefined ? payload.description : events[idx].description,
-        startsAt: payload.starts_at !== undefined ? payload.starts_at : events[idx].startsAt,
-        endsAt: payload.ends_at !== undefined ? payload.ends_at : events[idx].endsAt,
+        ...event,
+        title: payload.title !== undefined ? payload.title : event.title,
+        description: payload.description !== undefined ? payload.description : event.description,
+        startsAt: payload.starts_at !== undefined ? payload.starts_at : event.startsAt,
+        endsAt: payload.ends_at !== undefined ? payload.ends_at : event.endsAt,
       };
       writeDevJson(DEV_EVENTS_STORAGE_KEY, events);
-      return { data: events[idx] };
+      return { data: events[idx]! };
     }
   } catch (e) {
     // Ignore persistence errors
@@ -2729,14 +2736,15 @@ function getDevCreateCourseAnnouncementFallback(
 export const api = {
   async login(email: string, password: string) {
     try {
-      return await apiFetch<ApiLoginResponse>('/api/auth/login', {
+      const response = await apiFetch<ApiLoginResponse>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+      return response.user;
     } catch (err) {
       const fallback = getDevCredentialLoginFallback(email, password);
       if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
-        return fallback;
+        return fallback.user;
       }
 
       throw err;

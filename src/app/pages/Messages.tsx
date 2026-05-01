@@ -187,7 +187,7 @@ export default function MessagesPage() {
 			try {
 				const res = await api.chatUsers({ q: contactQuery.trim(), limit: 10 });
 				if (cancelled) return;
-				setContactResults(res.data);
+				setContactResults(res?.data || []);
 			} catch {
 				if (!cancelled) setContactResults([]);
 			} finally {
@@ -262,25 +262,27 @@ export default function MessagesPage() {
 		try {
 			const after = mode === 'append' ? threadLastIsoRef.current : undefined;
 			const res = await api.messageThread(targetUserId, { after: after || undefined, limit: 200 });
-			setThreadMessages((prev) => (mode === 'replace' ? res.data : mergeUniqueMessages(prev, res.data)));
+			if (res) {
+				setThreadMessages((prev) => (mode === 'replace' ? res.data : mergeUniqueMessages(prev, res.data)));
 
-			const last = res.data.length ? res.data[res.data.length - 1] : null;
-			const lastIso = last ? last.sentAt || last.createdAt || null : null;
-			if (lastIso) threadLastIsoRef.current = lastIso;
+				const last = res.data.length ? res.data[res.data.length - 1] : null;
+				const lastIso = last ? last.sentAt || last.createdAt || null : null;
+				if (lastIso) threadLastIsoRef.current = lastIso;
 
-			// Mark any newly received messages as read.
-			for (const m of res.data) {
-				if (m.status !== 'sent') continue;
-				if (!m.recipient?.id || !currentUserId) continue;
-				if (String(m.recipient.id) !== String(currentUserId)) continue;
-				if (m.readAt) continue;
-				api
-					.messageRead(m.id)
-					.then((readRes) => {
-						setThreadMessages((prev) => prev.map((x) => (x.id === m.id ? readRes.data : x)));
+				// Mark any newly received messages as read.
+				for (const m of res.data) {
+					if (m.status !== 'sent') continue;
+					if (!m.recipient?.id || !currentUserId) continue;
+					if (String(m.recipient.id) !== String(currentUserId)) continue;
+					if (m.readAt) continue;
+					api
+						.messageRead(m.id)
+						.then((readRes) => {
+							setThreadMessages((prev) => prev.map((x) => (x.id === m.id ? readRes.data : x)));
 						setMessages((prev) => prev.map((x) => (x.id === m.id ? readRes.data : x)));
 					})
 					.catch(() => undefined);
+			}
 			}
 		} catch (e: any) {
 			setThreadError(e?.message || 'Failed to load chat.');

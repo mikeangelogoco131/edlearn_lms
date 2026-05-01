@@ -339,7 +339,7 @@ export default function AdminDashboard() {
 			return;
 		}
 		if (!addStudentCourseId && courses.length) {
-			setAddStudentCourseId(courses[0].id);
+			setAddStudentCourseId(courses[0]!.id);
 		}
 	}, [addRole, addStudentCourseId, courses]);
 
@@ -988,7 +988,7 @@ export default function AdminDashboard() {
 		setCourseSection('');
 		setCourseTerm('');
 		setCourseSchedule('');
-		setCourseTeacherId(teachers?.length ? teachers[0].id : '');
+		setCourseTeacherId(teachers.length ? teachers[0]!.id : '');
 		setEnrollFromCourseId('');
 		setEnrollFromRoster([]);
 		setEnrollFromLoading(false);

@@ -206,8 +206,8 @@ function ChartTooltipContent({
                         viewBox={indicator === "dot" ? "0 0 10 10" : "0 0 10 100"}
                         className={cn("shrink-0", {
                           "h-2.5 w-2.5": indicator === "dot",
-                          "w-1 self-stretch": indicator === "line" || indicator === "dashed",
-                          "my-0.5": nestLabel && indicator === "dashed",
+                          "w-1 self-stretch": (indicator as string) === "line" || (indicator as string) === "dashed",
+                          "my-0.5": nestLabel && (indicator as string) === "dashed",
                         })}
                       >
                         {indicator === "dashed" ? (
@@ -227,7 +227,7 @@ function ChartTooltipContent({
                             width="10"
                             height={indicator === "dot" ? "10" : "100"}
                             rx="2"
-                            fill={indicator === "dashed" ? "none" : indicatorColor}
+                            fill={(indicator as string) === "dashed" ? "none" : indicatorColor}
                             stroke={indicatorColor}
                             strokeWidth={indicator === "dot" ? "1" : "0"}
                           />

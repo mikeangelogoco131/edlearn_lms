@@ -66,7 +66,10 @@ export default function TeacherDashboard() {
 
         const analyticsRes = await api.analyticsTeacher();
         if (!cancelled) {
-          setTeacherAnalytics(analyticsRes.data);
+          setTeacherAnalytics({
+            ...analyticsRes.data,
+            pendingGrading: 0,
+          } as typeof teacherAnalytics);
         }
 
         const studentsRes = await api.users({ role: 'student', limit: 5 });
