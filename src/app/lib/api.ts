@@ -2644,6 +2644,57 @@ function getDevCourseAnnouncementsFallback(courseId: string): ApiListResponse<Ap
   };
 }
 
+function getDevGlobalAnnouncementsFallback(): ApiListResponse<ApiAnnouncement> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const now = new Date();
+  const globalAnnouncements: ApiAnnouncement[] = [
+    {
+      id: 'dev-announce-global-1',
+      courseId: null,
+      title: 'Admin Announcement',
+      body: 'This is a global announcement from the admin. Teachers and students can view it in their announcements tab.',
+      isPinned: true,
+      publishedAt: new Date(now.getTime() - 2 * 24 * 3600000).toISOString(),
+      author: { id: '1', name: 'Admin User', email: 'mike.goco@admin.edu.ph', role: 'admin' },
+    },
+  ];
+
+  // Load persisted announcements from localStorage
+  const allAnnouncements = readDevJson<Record<string, ApiAnnouncement[]>>(DEV_ANNOUNCEMENTS_STORAGE_KEY, {});
+  const announcements = allAnnouncements.__global__ || globalAnnouncements;
+
+  return {
+    data: announcements,
+    meta: { total: announcements.length, page: 1, perPage: announcements.length, pages: 1 },
+  };
+}
+
+function getDevCreateGlobalAnnouncementFallback(payload: { title: string; body: string }): ApiItemResponse<ApiAnnouncement> | null {
+  if (!(import.meta as any).env?.DEV) return null;
+
+  const announcement: ApiAnnouncement = {
+    id: `dev-announce-${Date.now()}`,
+    courseId: null,
+    title: payload.title,
+    body: payload.body,
+    isPinned: false,
+    publishedAt: new Date().toISOString(),
+    author: { id: 'dev-user-1', name: 'Current User', email: 'user@school.edu', role: 'admin' },
+  };
+
+  try {
+    const allAnnouncements = readDevJson<Record<string, ApiAnnouncement[]>>(DEV_ANNOUNCEMENTS_STORAGE_KEY, {});
+    if (!allAnnouncements.__global__) allAnnouncements.__global__ = [];
+    allAnnouncements.__global__.push(announcement);
+    writeDevJson(DEV_ANNOUNCEMENTS_STORAGE_KEY, allAnnouncements);
+  } catch (e) {
+    // ignore
+  }
+
+  return { data: announcement };
+}
+
 function getDevCreateCourseAnnouncementFallback(
   courseId: string,
   payload: { title: string; body: string },
@@ -3206,6 +3257,18 @@ export const api = {
     }
   },
 
+  async globalAnnouncements() {
+    try {
+      return await apiFetch<ApiListResponse<ApiAnnouncement>>('/api/announcements');
+    } catch (err) {
+      const fallback = getDevGlobalAnnouncementsFallback();
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
+  },
+
   async courseEnrollments(courseId: string) {
     try {
       return await apiFetch<ApiListResponse<ApiEnrollment>>(
@@ -3279,6 +3342,21 @@ export const api = {
       );
     } catch (err) {
       const fallback = getDevCreateCourseAnnouncementFallback(courseId, payload);
+      if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
+        return fallback;
+      }
+      throw err;
+    }
+  },
+
+  async createGlobalAnnouncement(payload: { title: string; body: string }) {
+    try {
+      return await apiFetch<ApiItemResponse<ApiAnnouncement>>('/api/announcements', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      const fallback = getDevCreateGlobalAnnouncementFallback(payload);
       if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
         return fallback;
       }
