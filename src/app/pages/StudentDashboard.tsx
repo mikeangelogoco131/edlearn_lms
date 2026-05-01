@@ -52,6 +52,13 @@ export default function StudentDashboard() {
   });
   const [joiningCourseId, setJoiningCourseId] = useState<string | null>(null);
   const coursesScrollerRef = useRef<HTMLDivElement | null>(null);
+  const [upcomingCollapsed, setUpcomingCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('student_upcoming_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +158,14 @@ export default function StudentDashboard() {
     () => sessions.filter((s) => s.status === 'scheduled'),
     [sessions]
   );
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('student_upcoming_collapsed', upcomingCollapsed ? '1' : '0');
+    } catch {
+      // ignore storage failures
+    }
+  }, [upcomingCollapsed]);
 
   const enrolledCourses = useMemo(
     () => studentCourses.filter((c) => (c.status || '').toLowerCase() !== 'completed'),
@@ -275,41 +290,68 @@ export default function StudentDashboard() {
               <div className="lg:col-span-2">
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>Upcoming Classes</CardTitle>
-              <CardDescription>Your scheduled virtual classroom sessions</CardDescription>
+              <div className="w-full flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle>Upcoming Classes</CardTitle>
+                  <CardDescription>Your scheduled virtual classroom sessions</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-muted-foreground mr-2">{upcomingClasses.length} scheduled</div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-pressed={upcomingCollapsed}
+                    aria-label={upcomingCollapsed ? 'Expand upcoming classes' : 'Minimize upcoming classes'}
+                    onClick={() => setUpcomingCollapsed((v) => !v)}
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${upcomingCollapsed ? 'rotate-180' : 'rotate-0'}`} />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {upcomingClasses.map((session) => {
-                  const course = studentCourses.find(c => c.id === session.courseId);
-                  const sessionDate = session.date ? new Date(session.date) : null;
-                  return (
-                    <div key={session.id} className="flex items-center justify-between p-4 glass-item">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-blue-600 rounded-lg flex flex-col items-center justify-center text-white">
-                          <div className="text-xs">{sessionDate ? format(sessionDate, 'MMM') : '—'}</div>
-                          <div className="text-xl font-bold">{sessionDate ? format(sessionDate, 'd') : '—'}</div>
-                        </div>
-                        <div>
-                          <div className="font-semibold">{session.title}</div>
-                          <div className="text-sm text-gray-600">{course?.code} - {course?.title}</div>
-                          <div className="text-sm text-gray-500 mt-1">
-                            <Clock className="w-3 h-3 inline mr-1" />
-                            {session.time} • {session.duration}
+            {upcomingCollapsed ? (
+              <CardContent>
+                <div className="flex items-center justify-between p-4">
+                  <div className="text-sm text-gray-600">{upcomingClasses.length} upcoming class{upcomingClasses.length !== 1 ? 'es' : ''}</div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setUpcomingCollapsed(false)}>Expand</Button>
+                  </div>
+                </div>
+              </CardContent>
+            ) : (
+              <CardContent>
+                <div className="space-y-4">
+                  {upcomingClasses.map((session) => {
+                    const course = studentCourses.find(c => c.id === session.courseId);
+                    const sessionDate = session.date ? new Date(session.date) : null;
+                    return (
+                      <div key={session.id} className="flex items-center justify-between p-4 glass-item">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-blue-600 rounded-lg flex flex-col items-center justify-center text-white">
+                            <div className="text-xs">{sessionDate ? format(sessionDate, 'MMM') : '—'}</div>
+                            <div className="text-xl font-bold">{sessionDate ? format(sessionDate, 'd') : '—'}</div>
+                          </div>
+                          <div>
+                            <div className="font-semibold">{session.title}</div>
+                            <div className="text-sm text-gray-600">{course?.code} - {course?.title}</div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              {session.time} • {session.duration}
+                            </div>
                           </div>
                         </div>
+                        <Link to={`/classroom/${session.courseId}`}>
+                          <Button className="bg-blue-600 hover:bg-blue-700">
+                            <Video className="w-4 h-4 mr-2" />
+                            Join
+                          </Button>
+                        </Link>
                       </div>
-                      <Link to={`/classroom/${session.courseId}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
-                          <Video className="w-4 h-4 mr-2" />
-                          Join
-                        </Button>
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            )}
           </Card>
         </div>
 
