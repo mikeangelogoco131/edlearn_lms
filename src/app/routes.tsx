@@ -18,7 +18,7 @@ const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
 // Lazy-load other pages
 const MessagesPage = lazy(() => import("./pages/Messages"));
 const Profile = lazy(() => import("./pages/Profile"));
-const VirtualClassroom = lazy(() => import("./pages/VirtualClassroom"));
+const VirtualClassroom = lazy(() => import("./pages/ClassroomPage"));
 const CourseDetails = lazy(() => import("./pages/CourseDetails"));
 const NotificationsPage = lazy(() => import("./pages/Notifications"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -97,7 +97,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/classroom/:classId",
-    Component: withSuspense(VirtualClassroom),
+    Component: VirtualClassroom,
   },
   {
     path: "/course/:courseId",
