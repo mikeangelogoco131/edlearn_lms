@@ -391,6 +391,18 @@ export function getApiBaseUrl() {
     return envBaseUrl;
   }
 
+  // If deployed on the Vercel production domain, call Railway directly.
+  try {
+    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+      const host = window.location.hostname;
+      if (host.includes('edlearn-lms.vercel.app')) {
+        return 'https://edlearnlms-production.up.railway.app';
+      }
+    }
+  } catch {
+    // ignore access errors in non-browser environments
+  }
+
   // In dev, prefer same-origin so Vite can proxy `/api/*` to Laravel.
   if ((import.meta as any).env?.DEV) return '';
 
