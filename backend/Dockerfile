@@ -25,6 +25,9 @@ WORKDIR /app
 # Copy project files
 COPY backend/ .
 
+# Remove .env from repo so Railway environment variables are used instead of dev defaults.
+RUN rm -f .env
+
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader
 
