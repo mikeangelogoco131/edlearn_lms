@@ -1,0 +1,15 @@
+{
+  "rewrites": [
+    {
+      "source": "/(api|storage)/:path*",
+      "destination": "https://edlearn-lms.up.railway.app/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://edlearn-lms.up.railway.app"
+  }
+}
