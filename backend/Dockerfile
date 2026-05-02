@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-FROM php:8.2-cli
 FROM php:8.2-cli
 
 # Install dependencies and PHP extensions required by Laravel + MySQL.
@@ -18,11 +16,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
-
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
     php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
-    rm composer-setup.php && \
-    composer install --no-dev --optimize-autoloader --quiet
+    rm composer-setup.php
+
+WORKDIR /app
 
 # Copy project files (supports either repo-root context or backend-only context).
 COPY . .
@@ -38,38 +36,9 @@ RUN set -eux; \
     composer install --no-dev --optimize-autoloader; \
     mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs; \
     chmod -R 777 database storage bootstrap/cache
-    postgresql-client \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql \
-# Start Laravel on Railway-assigned PORT using PHP's built-in server.
-CMD ["sh", "-c", "cd /app/laravel && php -S 0.0.0.0:${PORT:-8000} -t public"]
-
-# Install Composer
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
-    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
-    rm composer-setup.php
-
-WORKDIR /app
-
-# Copy project files
-COPY backend/ .
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Create necessary directories
-RUN mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs && \
-    chmod -R 777 database storage bootstrap/cache
-
-# Install Nginx
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
-
-# Copy Nginx config
-COPY backend/nginx.conf /etc/nginx/sites-available/default
 
 # Expose port
 EXPOSE 8000
 
-# Start PHP-FPM and Nginx
-CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
->>>>>>> c34fa1c (Add Railway + Vercel deployment configuration)
+# Start Laravel on Railway-assigned PORT using PHP's built-in server.
+CMD ["sh", "-c", "cd /app/laravel && php -S 0.0.0.0:${PORT:-8000} -t public"]
