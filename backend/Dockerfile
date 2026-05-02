@@ -6,9 +6,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     sqlite3 \
-    postgresql-client \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql \
+    default-mysql-client \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql gd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Composer

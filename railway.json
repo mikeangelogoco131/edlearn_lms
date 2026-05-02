@@ -1,16 +1,25 @@
-services:
-  - type: web
-    name: edlearn-backend
-    runtime: docker
-    dockerfilePath: backend/Dockerfile
-    region: us-east
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: "false"
-
-databases:
-  - name: edlearn-postgres
-    engine: postgres
-    version: "15"
+{
+  "services": [
+    {
+      "type": "web",
+      "name": "edlearn-backend",
+      "runtime": "docker",
+      "dockerfilePath": "backend/Dockerfile",
+      "region": "us-east",
+      "envVars": [
+        {
+          "key": "APP_ENV",
+          "value": "production"
+        },
+        {
+          "key": "APP_DEBUG",
+          "value": "false"
+        },
+        {
+          "key": "DB_CONNECTION",
+          "value": "mysql"
+        }
+      ]
+    }
+  ]
+}
