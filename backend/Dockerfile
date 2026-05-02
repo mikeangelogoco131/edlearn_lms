@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     sqlite3 \
+    php-mysql \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
