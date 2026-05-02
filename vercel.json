@@ -5,7 +5,7 @@
       "destination": "https://edlearnlms-production.up.railway.app/storage/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "^/(?!api(?:/|$)|storage(?:/|$)).*$",
       "destination": "/index.html"
     }
   ],
