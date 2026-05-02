@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(api|storage)/:path*",
-      "destination": "https://edlearn-lms.up.railway.app/:path*"
+      "destination": "https://edlearnlms-production.up.railway.app/:path*"
     },
     {
       "source": "/(.*)",
@@ -10,6 +10,6 @@
     }
   ],
   "env": {
-    "VITE_API_BASE_URL": "https://edlearn-lms.up.railway.app"
+    "VITE_API_BASE_URL": "https://edlearnlms-production.up.railway.app"
   }
 }
