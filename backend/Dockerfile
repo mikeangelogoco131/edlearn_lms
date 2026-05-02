@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     sqlite3 \
-    php8.2-mysql \
+    php-pdo-mysql \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
