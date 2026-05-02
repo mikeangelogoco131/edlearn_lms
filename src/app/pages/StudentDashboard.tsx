@@ -97,7 +97,17 @@ export default function StudentDashboard() {
 
         const analyticsRes = await api.analyticsStudent();
         if (!cancelled) {
-          setStudentAnalytics(analyticsRes.data);
+          const data = analyticsRes.data;
+          // Transform recentGrades to match state shape
+          const recentGrades = (data.recentGrades || []).map((g: any) => ({
+            id: g.assignment || '',
+            courseName: g.course || '',
+            grade: g.grade || 0,
+          }));
+          setStudentAnalytics({
+            ...data,
+            recentGrades,
+          });
         }
 
         const catalogRes = await api.courses({ available: true });
@@ -424,10 +434,10 @@ export default function StudentDashboard() {
                     studentAnalytics.recentGrades.map((rg, idx) => (
                       <div key={idx} className="flex justify-between text-sm">
                         <div className="flex flex-col">
-                          <span className="text-gray-600 font-medium">{rg.assignment}</span>
-                          <span className="text-[10px] text-gray-500 uppercase">{rg.course}</span>
+                          <span className="text-gray-600 font-medium">{rg.id}</span>
+                          <span className="text-[10px] text-gray-500 uppercase">{rg.courseName}</span>
                         </div>
-                        <span className="font-semibold text-emerald-600">{rg.grade}/{rg.points}</span>
+                        <span className="font-semibold text-emerald-600">{rg.grade}%</span>
                       </div>
                     ))
                   ) : (

@@ -187,7 +187,7 @@ export default function MessagesPage() {
 			try {
 				const res = await api.chatUsers({ q: contactQuery.trim(), limit: 10 });
 				if (cancelled) return;
-				setContactResults(res?.data || []);
+			setContactResults((res?.data || []).map((u: any) => ({ ...u, role: u.role as any })));
 			} catch {
 				if (!cancelled) setContactResults([]);
 			} finally {
@@ -433,8 +433,8 @@ export default function MessagesPage() {
 			readAt: null,
 			createdAt: new Date().toISOString(),
 			sender: user
-				? { id: String(user.id), name: user.name, email: user.email }
-				: { id: 'dev-user', name: 'You', email: 'user@dev.local' },
+				? { id: String(user.id), name: user.name, email: user.email, role: user.role }
+				: { id: 'dev-user', name: 'You', email: 'user@dev.local', role: 'student' },
 			recipient: chatUser,
 		};
 

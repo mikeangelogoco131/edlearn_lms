@@ -169,7 +169,7 @@ export default function Login() {
                 setError('');
                 setLoading(true);
                 try {
-                  const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
+                  const { user } = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
                   navigateByRole(user.role);
                 } catch (err: any) {
                   setError(err.message || 'Google sign-in failed.');
@@ -213,7 +213,7 @@ export default function Login() {
                     setError('');
                     setLoading(true);
                     try {
-                      const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_ADMIN');
+                      const { user } = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_ADMIN');
                       navigateByRole(user.role);
                     } catch (err: any) {
                       setError(err.message || 'Login failed');
@@ -232,7 +232,7 @@ export default function Login() {
                     setError('');
                     setLoading(true);
                     try {
-                      const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_TEACHER');
+                      const { user } = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_TEACHER');
                       navigateByRole(user.role);
                     } catch (err: any) {
                       setError(err.message || 'Login failed');
@@ -251,7 +251,7 @@ export default function Login() {
                     setError('');
                     setLoading(true);
                     try {
-                      const user = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
+                      const { user } = await api.loginWithGoogle('MOCK_GOOGLE_CREDENTIAL_STUDENT');
                       navigateByRole(user.role);
                     } catch (err: any) {
                       setError(err.message || 'Login failed');

@@ -1,0 +1,961 @@
+﻿src/app/components/CourseAnnouncements.tsx(36,19): error TS2532: Object is possibly 'undefined'.
+src/app/components/ui/chart.tsx(230,35): error TS2367: This comparison appears to be unintentional because the types '"line" | "dot"' and '"dashed"' have no overlap.
+src/app/lib/api.ts(546,21): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(547,21): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(548,20): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(555,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(565,21): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(566,21): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(567,20): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(574,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(584,21): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(585,21): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(586,20): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(593,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(663,21): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(664,21): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(665,20): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(667,48): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(673,21): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(674,21): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(675,20): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(677,48): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(801,3): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(802,3): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(819,5): error TS2322: Type '{ day: string | undefined; hours: number; }[]' is not assignable to type '{ day: string; hours: number; }[]'.
+  Type '{ day: string | undefined; hours: number; }' is not assignable to type '{ day: string; hours: number; }'.
+    Types of property 'day' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1145,9): error TS2322: Type '{ title: string; description: string; content: string; order: number; duration: string | null; status: string; id?: string | undefined; courseId?: string | undefined; period?: string; weekInPeriod?: number; publishedAt?: string | ... 1 more ... | undefined; createdAt?: string | ... 1 more ... | undefined; }' is not assignable to type 'ApiLesson'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1147,29): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1148,41): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1149,33): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1150,36): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1151,35): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1152,31): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1287,71): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1287,100): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1290,8): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1290,35): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1292,9): error TS2322: Type '{ title: string; startsAt: string; endsAt: string | null; date: string; time: string; duration: string | null; status: string; id?: string | undefined; courseId?: string | undefined; attendees?: number | null; }' is not assignable to type 'ApiClassSession'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1294,29): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1299,108): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1300,62): error TS18048: 'previous' is possibly 'undefined'.
+src/app/lib/api.ts(1520,19): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(1521,19): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1522,18): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1524,44): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1529,19): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(1530,19): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1531,18): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1533,46): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1538,19): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(1539,19): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1540,18): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1542,46): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1638,9): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(1708,7): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(1791,7): error TS2322: Type '{ name: string; email: string; id?: string | undefined; role?: ApiUserRole | undefined; archivedAt?: string | null; avatarUrl?: string | null; }' is not assignable to type 'ApiUser'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(2021,24): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(2025,17): error TS18048: 'full' is possibly 'undefined'.
+src/app/lib/api.ts(2026,17): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2027,16): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2030,12): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(2181,7): error TS2322: Type '{ subject: string | null; body: string; status: "draft" | "sent" | "deleted"; sentAt: string | null; id?: string | undefined; readAt?: string | null | undefined; createdAt?: string | null | undefined; sender?: ApiMessageParty | ... 1 more ... | undefined; recipient?: ApiMessageParty | ... 1 more ... | undefined; }' is not assignable to type 'ApiMessage'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(2183,68): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2184,59): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2185,41): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2186,34): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2186,84): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2189,16): error TS2322: Type 'ApiMessage | undefined' is not assignable to type 'ApiMessage'.
+  Type 'undefined' is not assignable to type 'ApiMessage'.
+src/app/lib/api.ts(2212,9): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2239,9): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2267,9): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2269,18): error TS2322: Type 'ApiMessage | undefined' is not assignable to type 'ApiMessage'.
+  Type 'undefined' is not assignable to type 'ApiMessage'.
+src/app/lib/api.ts(2421,17): error TS18048: 't' is possibly 'undefined'.
+src/app/lib/api.ts(2424,21): error TS18048: 'course' is possibly 'undefined'.
+src/app/lib/api.ts(2424,38): error TS18048: 'course' is possibly 'undefined'.
+src/app/lib/api.ts(2424,58): error TS18048: 'course' is possibly 'undefined'.
+src/app/lib/api.ts(2542,7): error TS2322: Type '{ title: string; description: string | null; startsAt: string; endsAt: string | null; id?: string | undefined; }' is not assignable to type 'ApiEvent'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/lib/api.ts(2544,62): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2545,80): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2546,73): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2547,67): error TS2532: Object is possibly 'undefined'.
+src/app/lib/api.ts(2550,16): error TS2322: Type 'ApiEvent | undefined' is not assignable to type 'ApiEvent'.
+  Type 'undefined' is not assignable to type 'ApiEvent'.
+src/app/pages/AdminDashboard.tsx(342,26): error TS2532: Object is possibly 'undefined'.
+src/app/pages/AdminDashboard.tsx(991,41): error TS2532: Object is possibly 'undefined'.
+src/app/pages/AdminUserDetails.tsx(151,37): error TS2532: Object is possibly 'undefined'.
+src/app/pages/ClassroomPage.tsx(445,52): error TS18047: 'session' is possibly 'null'.
+src/app/pages/ClassroomPage.tsx(464,56): error TS18047: 'session' is possibly 'null'.
+src/app/pages/CourseDetails.tsx(2423,64): error TS2532: Object is possibly 'undefined'.
+src/app/pages/CourseDetails.tsx(2425,32): error TS2532: Object is possibly 'undefined'.
+src/app/pages/CourseDetails.tsx(2660,60): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/pages/Login.tsx(173,39): error TS2339: Property 'role' does not exist on type 'ApiLoginResponse'.
+src/app/pages/Login.tsx(217,43): error TS2339: Property 'role' does not exist on type 'ApiLoginResponse'.
+src/app/pages/Login.tsx(236,43): error TS2339: Property 'role' does not exist on type 'ApiLoginResponse'.
+src/app/pages/Login.tsx(255,43): error TS2339: Property 'role' does not exist on type 'ApiLoginResponse'.
+src/app/pages/Messages.tsx(190,23): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(190,23): error TS2345: Argument of type 'ApiUser[] | { id: string; name: string; email: string; role: string; }[]' is not assignable to parameter of type 'SetStateAction<ApiUser[]>'.
+  Type '{ id: string; name: string; email: string; role: string; }[]' is not assignable to type 'SetStateAction<ApiUser[]>'.
+    Type '{ id: string; name: string; email: string; role: string; }[]' is not assignable to type 'ApiUser[]'.
+      Type '{ id: string; name: string; email: string; role: string; }' is not assignable to type 'ApiUser'.
+        Types of property 'role' are incompatible.
+          Type 'string' is not assignable to type 'ApiUserRole'.
+src/app/pages/Messages.tsx(265,54): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(265,91): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(267,17): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(267,35): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(267,44): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(272,20): error TS18047: 'res' is possibly 'null'.
+src/app/pages/Messages.tsx(433,4): error TS2741: Property 'role' is missing in type '{ id: string; name: string; email: string; }' but required in type 'ApiMessageParty'.
+src/app/pages/Notifications.tsx(67,12): error TS2339: Property 'readAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(70,11): error TS2339: Property 'data' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(71,18): error TS2339: Property 'data' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(88,65): error TS2339: Property 'readAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(105,49): error TS2339: Property 'readAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(127,116): error TS2339: Property 'readAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(131,27): error TS2339: Property 'readAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(139,68): error TS2339: Property 'readAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(144,46): error TS2339: Property 'createdAt' does not exist on type 'ApiNotification'.
+src/app/pages/Notifications.tsx(148,28): error TS2339: Property 'message' does not exist on type 'ApiNotification'.
+src/app/pages/StudentDashboard.tsx(422,37): error TS2339: Property 'recentGrades' does not exist on type '{ avgGrade: number; attendanceRate: number; pendingTasks: number; progress: number; totalCourses: number; upcomingSessions: number; }'.
+src/app/pages/StudentDashboard.tsx(422,70): error TS2339: Property 'recentGrades' does not exist on type '{ avgGrade: number; attendanceRate: number; pendingTasks: number; progress: number; totalCourses: number; upcomingSessions: number; }'.
+src/app/pages/StudentDashboard.tsx(423,38): error TS2339: Property 'recentGrades' does not exist on type '{ avgGrade: number; attendanceRate: number; pendingTasks: number; progress: number; totalCourses: number; upcomingSessions: number; }'.
+src/app/pages/TeacherDashboard.tsx(69,31): error TS2345: Argument of type '{ totalCourses: number; totalStudents: number; upcomingSessions: number; assignments: number; }' is not assignable to parameter of type 'SetStateAction<{ totalCourses: number; totalStudents: number; upcomingSessions: number; assignments: number; pendingGrading: number; }>'.
+  Property 'pendingGrading' is missing in type '{ totalCourses: number; totalStudents: number; upcomingSessions: number; assignments: number; }' but required in type '{ totalCourses: number; totalStudents: number; upcomingSessions: number; assignments: number; pendingGrading: number; }'.
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es5.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2016.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2018.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2019.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2021.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2023.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.dom.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.dom.iterable.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.dom.asynciterable.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.webworker.importscripts.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.scripthost.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.core.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.collection.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.generator.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.iterable.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.promise.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.proxy.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.reflect.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.symbol.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2016.array.include.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2016.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.date.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.object.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.string.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2017.typedarrays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2018.asynciterable.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2018.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2018.promise.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2018.regexp.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2019.array.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2019.object.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2019.string.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2019.symbol.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2019.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.bigint.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.date.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.promise.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.string.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2020.number.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2021.promise.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2021.string.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2021.weakref.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2021.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.array.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.error.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.object.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.string.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2022.regexp.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2023.array.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2023.collection.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2023.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.arraybuffer.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.collection.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.object.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.promise.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.regexp.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.sharedmemory.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.es2024.string.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.array.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.collection.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.intl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.disposable.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.promise.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.decorators.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.iterator.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.float16.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.error.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.sharedmemory.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.decorators.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.decorators.legacy.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/typescript/lib/lib.esnext.full.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/compatibility/iterators.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/globals.typedarray.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/buffer.buffer.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/globals.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/abortcontroller.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/blob.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/console.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/crypto.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/domexception.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/encoding.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/events.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/utility.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/header.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/readable.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/fetch.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/formdata.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/connector.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/client-stats.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/client.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/errors.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/dispatcher.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/global-dispatcher.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/global-origin.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/pool-stats.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/pool.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/handlers.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/balanced-pool.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/round-robin-pool.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/h2c-client.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/agent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/mock-interceptor.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/mock-call-history.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/mock-agent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/mock-client.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/mock-pool.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/snapshot-agent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/mock-errors.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/proxy-agent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/env-http-proxy-agent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/retry-handler.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/retry-agent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/api.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/cache-interceptor.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/interceptors.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/util.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/cookies.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/patch.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/websocket.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/eventsource.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/diagnostics-channel.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/content-type.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/cache.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/undici-types/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/fetch.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/importmeta.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/messaging.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/navigator.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/performance.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/storage.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/streams.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/timers.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/web-globals/url.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/assert.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/assert/strict.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/async_hooks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/buffer.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/child_process.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/cluster.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/console.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/constants.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/crypto.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/dgram.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/diagnostics_channel.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/dns.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/dns/promises.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/domain.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/events.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/fs.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/fs/promises.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/http.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/http2.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/https.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/inspector.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/inspector.generated.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/inspector/promises.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/module.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/net.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/os.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/path.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/path/posix.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/path/win32.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/perf_hooks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/process.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/punycode.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/querystring.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/quic.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/readline.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/readline/promises.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/repl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/sea.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/sqlite.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/stream.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/stream/consumers.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/stream/promises.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/stream/web.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/string_decoder.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/test.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/test/reporters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/timers.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/timers/promises.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/tls.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/trace_events.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/tty.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/url.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/util.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/util/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/v8.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/vm.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/wasi.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/worker_threads.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/zlib.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/node/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/react/global.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/csstype/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/prop-types/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/react/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/react/jsx-runtime.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/estree/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/rollup/dist/rollup.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/rollup/dist/parseAst.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/hmrPayload.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/customEvent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/hot.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/dist/node/module-runner.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/esbuild/lib/main.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/source-map-js/source-map.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/previous-map.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/input.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/css-syntax-error.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/declaration.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/root.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/warning.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/lazy-result.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/no-work-result.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/processor.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/result.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/document.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/rule.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/node.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/comment.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/container.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/at-rule.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/list.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/postcss.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/postcss/lib/postcss.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/lightningcss/node/ast.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/lightningcss/node/targets.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/lightningcss/node/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/internal/lightningcssOptions.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/internal/cssPreprocessorOptions.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/importGlob.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/types/metadata.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vite/dist/node/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@tailwindcss/vite/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@babel/types/lib/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/babel__generator/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@babel/parser/typings/babel-parser.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/babel__template/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/babel__traverse/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/babel__core/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@vitejs/plugin-react/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/vite.config.ts
+C:/Users/Mike Angelo/edlearn_lms/src/global.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/react-dom/client.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-router/dist/development/router-5iOvts3c.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-router/dist/development/register-CS_tiXsm.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-router/dist/development/index-react-server-client-MKTlCGL3.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/cookie/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-router/dist/development/browser-BEPxnEBW.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-router/dist/development/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/lib/api.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/contexts/AuthContext.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/contexts/ThemeContext.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/lucide-react/dist/lucide-react.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Alignment.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/NodeRects.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Axis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/SlidesToScroll.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Limit.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollContain.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/DragTracker.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/utils.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Animations.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Counter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/EventHandler.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/EventStore.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/PercentOfView.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ResizeHandler.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Vector1d.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollBody.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollBounds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollLooper.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollProgress.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/SlideRegistry.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollTarget.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/ScrollTo.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/SlideFocus.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Translate.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/SlideLooper.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/SlidesHandler.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/SlidesInView.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Engine.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/OptionsHandler.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Plugins.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/EmblaCarousel.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/DragHandler.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/components/Options.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel/esm/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel-react/esm/components/useEmblaCarousel.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/embla-carousel-react/esm/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-slot/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/clsx/clsx.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/class-variance-authority/dist/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/class-variance-authority/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/tailwind-merge/dist/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/utils.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/button.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/figma/ImageWithFallback.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/Home.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/input.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-primitive/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-label/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/label.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/alert.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/Login.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/AdminLogin.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/card.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/AdminForgotPassword.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/AdminResetPassword.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/container/Surface.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/container/Layer.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/d3-time/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/d3-scale/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/victory-vendor/d3-scale.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/XAxis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/YAxis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/DefaultLegendContent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/payload/getUniqPayload.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/Legend.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/DefaultTooltipContent.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/Tooltip.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/ResponsiveContainer.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/Cell.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/Text.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/Label.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/LabelList.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/component/Customized.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Sector.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/d3-path/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@types/d3-shape/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/victory-vendor/d3-shape.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Curve.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Rectangle.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Polygon.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Dot.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Cross.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Symbols.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/polar/PolarGrid.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/polar/PolarRadiusAxis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/polar/PolarAngleAxis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/polar/Pie.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/polar/Radar.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/polar/RadialBar.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/Brush.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/IfOverflowMatches.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/ReferenceLine.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/ReferenceDot.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/ReferenceArea.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/CartesianAxis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/CartesianGrid.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/Line.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/Area.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/BarUtils.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/Bar.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/ZAxis.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/ErrorBar.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/cartesian/Scatter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/getLegendProps.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/ChartUtils.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/AccessibilityManager.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/generateCategoricalChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/LineChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/BarChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/PieChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/Treemap.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/Sankey.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/RadarChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/ScatterChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/AreaChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/RadialBarChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/ComposedChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/SunburstChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/shape/Trapezoid.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/numberAxis/Funnel.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/chart/FunnelChart.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/util/Global.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/recharts/types/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/locale/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/fp/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/add.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addBusinessDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addISOWeekYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addMonths.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addQuarters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addWeeks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/addYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/areIntervalsOverlapping.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/clamp.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/closestIndexTo.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/closestTo.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/compareAsc.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/compareDesc.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/constructFrom.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/constructNow.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/daysToWeeks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInBusinessDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarISOWeekYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarISOWeeks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarMonths.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarQuarters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarWeeks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInCalendarYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInISOWeekYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInMonths.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInQuarters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInWeeks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/differenceInYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachDayOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachHourOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachMinuteOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachMonthOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachQuarterOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachWeekOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachWeekendOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachWeekendOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachWeekendOfYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/eachYearOfInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfDecade.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfHour.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfISOWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfMinute.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfSecond.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfToday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfTomorrow.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/endOfYesterday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/_lib/format/formatters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/_lib/format/longFormatters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/format.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatDistance.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatDistanceStrict.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatDistanceToNow.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatDistanceToNowStrict.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatDuration.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatISO.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatISO9075.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatISODuration.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatRFC3339.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatRFC7231.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/formatRelative.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/fromUnixTime.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDate.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDayOfYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDaysInMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDaysInYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDecade.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/_lib/defaultOptions.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getDefaultOptions.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getISODay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getISOWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getISOWeeksInYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getOverlappingDaysInIntervals.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getTime.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getUnixTime.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getWeekOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getWeeksInMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/getYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/hoursToMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/hoursToMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/hoursToSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/interval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/intervalToDuration.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/intlFormat.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/intlFormatDistance.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isAfter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isBefore.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isDate.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isEqual.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isExists.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isFirstDayOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isFriday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isFuture.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isLastDayOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isLeapYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isMatch.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isMonday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isPast.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameHour.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameISOWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameMinute.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameSecond.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSameYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSaturday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isSunday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisHour.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisMinute.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisSecond.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThisYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isThursday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isToday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isTomorrow.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isTuesday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isValid.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isWednesday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isWeekend.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isWithinInterval.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/isYesterday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfDecade.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfISOWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lastDayOfYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/_lib/format/lightFormatters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/lightFormat.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/max.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/milliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/millisecondsToHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/millisecondsToMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/millisecondsToSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/min.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/minutesToHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/minutesToMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/minutesToSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/monthsToQuarters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/monthsToYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextFriday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextMonday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextSaturday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextSunday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextThursday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextTuesday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/nextWednesday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parse/_lib/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parse/_lib/Setter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parse/_lib/Parser.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parse/_lib/parsers.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parse.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parseISO.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/parseJSON.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousFriday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousMonday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousSaturday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousSunday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousThursday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousTuesday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/previousWednesday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/quartersToMonths.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/quartersToYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/roundToNearestHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/roundToNearestMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/secondsToHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/secondsToMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/secondsToMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/set.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setDate.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setDayOfYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setDefaultOptions.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setISODay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setISOWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/setYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfDay.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfDecade.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfHour.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfISOWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfISOWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfMinute.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfMonth.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfQuarter.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfSecond.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfToday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfTomorrow.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfWeek.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfWeekYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfYear.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/startOfYesterday.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/sub.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subBusinessDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subHours.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subISOWeekYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subMilliseconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subMinutes.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subMonths.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subQuarters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subSeconds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subWeeks.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/subYears.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/toDate.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/transpose.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/weeksToDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/yearsToDays.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/yearsToMonths.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/yearsToQuarters.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/date-fns/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/badge.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/textarea.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-context/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-dismissable-layer/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-focus-scope/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-arrow/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/rect/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-popper/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-portal/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-select/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/select.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/CourseAnnouncements.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-roving-focus/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-menu/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-dropdown-menu/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/dropdown-menu.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-avatar/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/avatar.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/DashboardLayout.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-day-picker/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/calendar.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/EventsCalendar.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-checkbox/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/checkbox.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-switch/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/switch.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-tabs/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/tabs.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/AdminDashboard.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/AdminProfile.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/AdminUserDetails.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-progress/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/progress.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/TeacherDashboard.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/sonner/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/StudentDashboard.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/Messages.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/Profile.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-scroll-area/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/scroll-area.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/ClassroomPage.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-dialog/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/dialog.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/CourseDetails.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/Notifications.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/NotFound.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/routes.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/next-themes/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/sonner.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/App.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/main.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-collapsible/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-accordion/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/accordion.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-alert-dialog/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/alert-dialog.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-aspect-ratio/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/aspect-ratio.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/breadcrumb.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/carousel.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/chart.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/collapsible.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/cmdk/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/command.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-context-menu/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/context-menu.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/vaul/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/drawer.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/constants.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/utils/createSubject.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/events.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/path/common.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/path/eager.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/path/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/fieldArray.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/resolvers.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/form.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/utils.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/fields.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/errors.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/validator.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/controller.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/types/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/controller.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/form.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/logic/appendErrors.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/logic/createFormControl.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/logic/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/useController.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/useFieldArray.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/useForm.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/useFormContext.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/useFormState.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/useWatch.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/utils/get.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/utils/set.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/utils/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-hook-form/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/form.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-hover-card/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/hover-card.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/input-otp/dist/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/input-otp.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-menubar/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/menubar.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-visually-hidden/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-navigation-menu/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/navigation-menu.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/pagination.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-popover/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/popover.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-radio-group/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/radio-group.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/vendor/react.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/Panel.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/PanelGroup.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/PanelResizeHandleRegistry.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/PanelResizeHandle.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/assert.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/csp.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/cursor.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getPanelElement.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getPanelElementsForGroup.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getPanelGroupElement.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getResizeHandleElement.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getResizeHandleElementIndex.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getResizeHandleElementsForGroup.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/dom/getResizeHandlePanelIds.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/rects/types.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/rects/getIntersectingRectangle.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/utils/rects/intersects.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/declarations/src/index.d.ts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/react-resizable-panels/dist/react-resizable-panels.cjs.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/resizable.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-separator/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/separator.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/sheet.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/use-mobile.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/skeleton.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-tooltip/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/tooltip.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/sidebar.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-slider/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/slider.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/table.tsx
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-toggle/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/node_modules/@radix-ui/react-toggle-group/dist/index.d.mts
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/toggle.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/components/ui/toggle-group.tsx
+C:/Users/Mike Angelo/edlearn_lms/src/app/data/mockData.ts
+C:/Users/Mike Angelo/edlearn_lms/src/app/pages/VirtualClassroom.tsx

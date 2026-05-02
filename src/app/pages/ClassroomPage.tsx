@@ -442,7 +442,7 @@ export default function ClassroomPage() {
 
     async function loadMessages() {
       try {
-        const res = await api.getClassroomMessages(session.id);
+        const res = await api.getClassroomMessages(session!.id);
         if (!cancelled) {
           setMessages(
             (Array.isArray(res.data) ? res.data : []).map((msg: any) => ({
@@ -461,7 +461,7 @@ export default function ClassroomPage() {
 
     async function loadParticipants() {
       try {
-        const res = await api.getClassroomParticipants(session.id);
+        const res = await api.getClassroomParticipants(session!.id);
         if (!cancelled) {
           setParticipants(
             (Array.isArray(res.data) ? res.data : []).map((participant: any) => ({
@@ -557,8 +557,9 @@ export default function ClassroomPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background text-foreground">
-      <div className="border-b border-border bg-background/70 backdrop-blur px-4 py-3 flex items-center justify-between">
+    <div className="flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
+      <div className="border-b border-border bg-background/70 px-4 py-3 backdrop-blur">
+        <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link to="/teacher">
             <Button variant="ghost" size="sm" className="hover:bg-accent">
@@ -572,10 +573,11 @@ export default function ClassroomPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-sm px-3 py-1.5 bg-muted rounded-lg">{participants.length} Participants</div>
-          <div className={`text-sm px-3 py-1.5 rounded-lg ${session?.status === 'live' ? 'bg-emerald-600 text-white' : 'bg-muted text-foreground'}`}>
-            {session?.status === 'live' ? 'Live' : safeText(session?.status, 'Session')}
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-muted px-3 py-1.5 text-sm">{participants.length} Participants</div>
+            <div className={`rounded-lg px-3 py-1.5 text-sm ${session?.status === 'live' ? 'bg-emerald-600 text-white' : 'bg-muted text-foreground'}`}>
+              {session?.status === 'live' ? 'Live' : safeText(session?.status, 'Session')}
+            </div>
           </div>
         </div>
       </div>
@@ -586,11 +588,11 @@ export default function ClassroomPage() {
         </div>
       ) : null}
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 p-4 overflow-auto">
-          <div className="grid gap-4 h-full xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.7fr)]">
-            <Card className="h-full overflow-hidden border-border bg-[#0f1115] text-white shadow-2xl">
-              <CardContent className="p-0 h-full flex flex-col">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 lg:p-4">
+          <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(360px,0.8fr)]">
+            <Card className="min-h-0 overflow-hidden border-border bg-[#0f1115] text-white shadow-2xl">
+              <CardContent className="flex h-full min-h-0 flex-col p-0">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 bg-white/5 backdrop-blur">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -615,16 +617,16 @@ export default function ClassroomPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 p-4 lg:p-5">
-                  <div className="grid h-full gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                    <div className="relative min-h-[520px] overflow-hidden rounded-3xl border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                <div className="flex min-h-0 flex-1 p-3 lg:p-4">
+                  <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
+                    <div className="relative min-h-[min(72vh,700px)] overflow-hidden rounded-3xl border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                       <div ref={meetingContainerRef} className="absolute inset-0 h-full w-full" />
 
                       {!meetingReady ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white/70 p-6">
                           <div className="text-2xl font-semibold">{course ? course.title : 'Classroom'}</div>
                           <div className="text-sm mt-2">{meetingStatus}</div>
-                          <div className="mt-4 h-44 w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-black/80">
+                          <div className="mt-4 h-48 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-black/80">
                             <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
                           </div>
                         </div>
@@ -661,8 +663,8 @@ export default function ClassroomPage() {
                     </div>
 
                     {showSidebar ? (
-                      <Card className="overflow-hidden border-white/10 bg-white/5 text-white shadow-xl backdrop-blur">
-                        <Tabs value={sidebarTab} onValueChange={(value) => setSidebarTab(value as 'chat' | 'participants')} className="flex h-full flex-col">
+                      <Card className="min-h-0 overflow-hidden border-white/10 bg-white/5 text-white shadow-xl backdrop-blur">
+                        <Tabs value={sidebarTab} onValueChange={(value) => setSidebarTab(value as 'chat' | 'participants')} className="flex h-full min-h-0 flex-col">
                           <CardHeader className="pb-0">
                             <div className="flex items-center justify-between gap-3">
                               <CardTitle className="text-lg text-white">People & Chat</CardTitle>
@@ -681,7 +683,7 @@ export default function ClassroomPage() {
                               </TabsTrigger>
                             </TabsList>
                           </CardHeader>
-                          <CardContent className="flex-1 overflow-hidden p-0">
+                          <CardContent className="flex-1 min-h-0 overflow-hidden p-0">
                             <TabsContent value="chat" className="m-0 flex h-full flex-col">
                               <ScrollArea className="flex-1 px-4 pt-4">
                                 <div className="space-y-4 pb-4">

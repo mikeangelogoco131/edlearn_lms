@@ -2420,9 +2420,9 @@ export default function CourseDetails() {
                           </div>
                           {attendanceLoading ? (
                             <div className="text-muted-foreground">Loading...</div>
-                          ) : attendanceRecords[session.id] && attendanceRecords[session.id].length > 0 ? (
+                          ) : attendanceRecords[session.id]?.length ? (
                             <div className="space-y-2">
-                              {attendanceRecords[session.id].map((rec) => (
+                              {attendanceRecords[session.id]!.map((rec) => (
                                 <div key={rec.student_id} className="flex items-center gap-3">
                                   <span className="w-40 truncate">{rec.student?.name || rec.student_id}</span>
                                   <select
@@ -2657,7 +2657,7 @@ export default function CourseDetails() {
                               onClick={async () => {
                                 if (!confirm(`Are you sure you want to remove ${enrollment.student?.name} from this course?`)) return;
                                 try {
-                                  await api.dropEnrollment(courseId, enrollment.id);
+                                  await api.dropEnrollment(courseId!, enrollment.id);
                                   toast.success('Student removed from course');
                                   void loadEnrollments();
                                 } catch (e: any) {

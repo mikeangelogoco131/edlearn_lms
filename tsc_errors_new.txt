@@ -1,0 +1,6 @@
+﻿src/app/components/CourseAnnouncements.tsx(36,19): error TS2532: Object is possibly 'undefined'.
+src/app/components/ui/chart.tsx(230,35): error TS2367: This comparison appears to be unintentional because the types '"line" | "dot"' and '"dashed"' have no overlap.
+src/app/lib/api.ts(819,5): error TS2322: Type '{ day: string | undefined; hours: number; }[]' is not assignable to type '{ day: string; hours: number; }[]'.
+  Type '{ day: string | undefined; hours: number; }' is not assignable to type '{ day: string; hours: number; }'.
+    Types of property 'day' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
