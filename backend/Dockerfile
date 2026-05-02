@@ -22,21 +22,23 @@ RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" &&
 
 WORKDIR /app
 
-# Copy project files
-COPY backend/ .
+# Copy project files (supports either repo-root context or backend-only context).
+COPY . .
 
-# Remove .env from repo so Railway environment variables are used instead of dev defaults.
-RUN rm -f .env
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Create necessary directories
-RUN mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs && \
+# Resolve Laravel app directory regardless of build context and install dependencies.
+RUN set -eux; \
+    if [ -f /app/composer.json ]; then APP_DIR=/app; \
+    elif [ -f /app/backend/composer.json ]; then APP_DIR=/app/backend; \
+    else echo "composer.json not found in /app or /app/backend"; ls -la /app; exit 1; fi; \
+    ln -sfn "$APP_DIR" /app/laravel; \
+    rm -f /app/laravel/.env; \
+    cd /app/laravel; \
+    composer install --no-dev --optimize-autoloader; \
+    mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs; \
     chmod -R 777 database storage bootstrap/cache
 
 # Expose port
 EXPOSE 8000
 
 # Start Laravel on Railway-assigned PORT using PHP's built-in server.
-CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8000} -t public"]
+CMD ["sh", "-c", "cd /app/laravel && php -S 0.0.0.0:${PORT:-8000} -t public"]
