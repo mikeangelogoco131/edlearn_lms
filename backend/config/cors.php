@@ -18,8 +18,6 @@ return [
         '#^https://.*\.vercel\.app$#',
     ],
 
-    'allowed_origins_patterns' => [],
-
     'allowed_headers' => ['*'],
 
     'exposed_headers' => [],

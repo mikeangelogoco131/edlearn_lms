@@ -36,4 +36,4 @@ RUN mkdir -p database storage/app storage/framework/cache storage/framework/view
 EXPOSE 8000
 
 # Start Laravel on Railway-assigned PORT.
-CMD ["sh", "-c", "php artisan config:clear && php artisan route:clear && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+CMD ["sh", "-c", "php artisan config:clear && php artisan route:clear && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
