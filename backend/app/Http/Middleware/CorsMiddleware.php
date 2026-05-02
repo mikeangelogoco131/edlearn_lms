@@ -24,7 +24,10 @@ class CorsMiddleware
         $origin = $request->header('Origin');
 
         // Check if origin is allowed
-        $isAllowed = $origin && in_array($origin, $this->allowedOrigins);
+        $isAllowed = $origin && (
+            in_array($origin, $this->allowedOrigins, true) ||
+            str_ends_with($origin, '.vercel.app')
+        );
 
         // Handle preflight requests
         if ($request->getMethod() === 'OPTIONS') {
