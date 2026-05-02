@@ -97,7 +97,8 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
-    'key' => env('APP_KEY'),
+    // Fallback key keeps production bootable when APP_KEY is not injected.
+    'key' => env('APP_KEY', 'base64:mgF+qOfAB7TiLjyLXSa5azQL/36SirDACaxs73HhNs0='),
 
     'previous_keys' => [
         ...array_filter(
