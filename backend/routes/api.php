@@ -26,15 +26,6 @@ use Illuminate\Support\Facades\Route;
 // Health check - no auth required
 Route::get('/health', fn() => response()->json(['status' => 'ok']));
 
-// Debug endpoint to seed database (only in debug mode)
-if (config('app.debug')) {
-    Route::post('/debug/seed', function () {
-        $seeder = new \Database\Seeders\DatabaseSeeder();
-        $seeder->run();
-        return response()->json(['message' => 'Database seeded successfully']);
-    });
-}
-
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'google']);
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
