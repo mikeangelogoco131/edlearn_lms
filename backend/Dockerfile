@@ -5,8 +5,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     sqlite3 \
-    php-pdo-mysql \
     && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-install pdo_mysql
 
 WORKDIR /app
 
