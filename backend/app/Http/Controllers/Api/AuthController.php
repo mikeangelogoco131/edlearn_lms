@@ -13,6 +13,76 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    /**
+     * Demo accounts that can be recreated automatically when the app runs in debug mode.
+     *
+     * @return array<string, array{name: string, password: string, role: string}>
+     */
+    private function debugDemoAccounts(): array
+    {
+        return [
+            'mike.goco@admin.edu.ph' => [
+                'name' => 'Mike Goco',
+                'password' => 'admin1234',
+                'role' => User::ROLE_ADMIN,
+            ],
+            'sarah.johnson@teacher.edu.ph' => [
+                'name' => 'Prof. Sarah Johnson',
+                'password' => 'demo',
+                'role' => User::ROLE_TEACHER,
+            ],
+            'alex.martinez@student.edu.ph' => [
+                'name' => 'Alex Martinez',
+                'password' => 'demo',
+                'role' => User::ROLE_STUDENT,
+            ],
+        ];
+    }
+
+    private function provisionDebugDemoUserByEmail(string $email): ?User
+    {
+        if (! config('app.debug')) {
+            return null;
+        }
+
+        $email = strtolower(trim($email));
+        $account = $this->debugDemoAccounts()[$email] ?? null;
+        if (! is_array($account)) {
+            return null;
+        }
+
+        $user = User::query()->updateOrCreate(
+            ['email' => $email],
+            [
+                'name' => (string) $account['name'],
+                'password' => (string) $account['password'],
+                'role' => (string) $account['role'],
+                'archived_at' => null,
+            ]
+        );
+
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        return $user->refresh();
+    }
+
+    private function provisionDebugDemoUserByRole(string $role): ?User
+    {
+        if (! config('app.debug')) {
+            return null;
+        }
+
+        foreach ($this->debugDemoAccounts() as $email => $account) {
+            if (($account['role'] ?? null) === $role) {
+                return $this->provisionDebugDemoUserByEmail($email);
+            }
+        }
+
+        return null;
+    }
+
     private function avatarUrl(User $user): ?string
     {
         $path = $user->avatar_path;
@@ -55,7 +125,11 @@ class AuthController extends Controller
         $user = User::query()->where('email', $email)->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            $user = $this->provisionDebugDemoUserByEmail($email);
+
+            if (! $user || ! Hash::check($validated['password'], $user->password)) {
+                return response()->json(['message' => 'Invalid credentials'], 401);
+            }
         }
 
         if ($user->archived_at) {
@@ -95,6 +169,9 @@ class AuthController extends Controller
         if (config('app.debug') && Str::startsWith($validated['credential'], 'MOCK_GOOGLE_CREDENTIAL_')) {
             $role = strtolower(Str::after($validated['credential'], 'MOCK_GOOGLE_CREDENTIAL_'));
             $user = User::query()->where('role', $role)->first();
+            if (! $user) {
+                $user = $this->provisionDebugDemoUserByRole($role);
+            }
             if (!$user) {
                 return response()->json(['message' => "No user found with role: $role"], 404);
             }
