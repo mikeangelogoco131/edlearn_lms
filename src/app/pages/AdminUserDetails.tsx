@@ -148,7 +148,7 @@ export default function AdminUserDetails() {
     if (!isEdit) return;
     if (record?.role !== 'student') return;
     if (courseId) return;
-    if (courses.length) setCourseId(courses[0].id);
+    if (courses.length) setCourseId(courses[0]!.id);
   }, [isEdit, record?.role, courseId, courses]);
 
   const canSave = useMemo(() => {

@@ -141,7 +141,7 @@ export default function NotificationsPage() {
                         </span>
                         <span className="text-[10px] text-muted-foreground whitespace-nowrap flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {format(new Date(n.createdAt), 'MMM d, h:mm a')}
+                          {format(new Date(n.createdAt || new Date()), 'MMM d, h:mm a')}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">

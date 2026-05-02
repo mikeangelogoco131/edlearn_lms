@@ -2736,15 +2736,14 @@ function getDevCreateCourseAnnouncementFallback(
 export const api = {
   async login(email: string, password: string) {
     try {
-      const response = await apiFetch<ApiLoginResponse>('/api/auth/login', {
+      return await apiFetch<ApiLoginResponse>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-      return response.user;
     } catch (err) {
       const fallback = getDevCredentialLoginFallback(email, password);
       if (fallback && err instanceof Error && err.message.includes('Failed to reach the API server')) {
-        return fallback.user;
+        return fallback;
       }
 
       throw err;
