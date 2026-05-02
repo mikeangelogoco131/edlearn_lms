@@ -304,10 +304,135 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Create 10 new teachers with real names (last name = password)
+        $newTeachers = [];
+        $teacherData = [
+            ['James', 'Anderson'],
+            ['Maria', 'Garcia'],
+            ['Robert', 'Thompson'],
+            ['Lisa', 'Rodriguez'],
+            ['Michael', 'Johnson'],
+            ['Jennifer', 'Martinez'],
+            ['David', 'Lee'],
+            ['Patricia', 'Davis'],
+            ['Joseph', 'Brown'],
+            ['Mary', 'Wilson'],
+        ];
+
+        foreach ($teacherData as $idx => $data) {
+            $first = $data[0];
+            $last = $data[1];
+            $email = strtolower($first . '.' . $last) . '@teacher.edu.ph';
+            $newTeachers[] = User::query()->updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => "Prof. {$first} {$last}",
+                    'password' => Hash::make($last),
+                    'role' => User::ROLE_TEACHER,
+                    'archived_at' => null,
+                ]
+            );
+        }
+
+        // Create 50 courses (5 per teacher)
+        $allCourses = [$cs101, $math201, $eng102, $cs202, $it210, $it220, $net101, $se301, $hum101, $stat201];
+        $courseSubjects = [
+            'Introduction to',
+            'Fundamentals of',
+            'Principles of',
+            'Applied',
+            'Foundations of',
+            'Essentials of',
+            'Advanced',
+            'Intermediate',
+            'Professional',
+            'Specialized',
+        ];
+        
+        $subjectsForCourses = [
+            'Mathematics', 'English Literature', 'Computer Programming', 'Web Development',
+            'Database Systems', 'Networking Fundamentals', 'Cybersecurity', 'Cloud Computing',
+            'Software Engineering', 'Data Structures', 'Algorithms', 'Operating Systems',
+            'Information Systems', 'Business Communication', 'Financial Accounting', 'Taxation',
+            'Entrepreneurship', 'Research Methods', 'Mobile App Development', 'Statistics',
+            'Physics', 'Chemistry', 'Biology', 'History', 'Philosophy', 'Psychology',
+            'Sociology', 'Economics', 'Management', 'Leadership', 'Project Management',
+            'Digital Marketing', 'Content Creation', 'Graphic Design', 'UI/UX Design',
+            'Machine Learning', 'Artificial Intelligence', 'Robotics', 'IoT Fundamentals',
+            'Blockchain Technology', 'Cybersecurity Advanced', 'Ethical Hacking', 'Systems Admin',
+            'DevOps Practices', 'Microservices Architecture', 'Cloud Security', 'Data Analytics',
+        ];
+
+        $courseIdx = 0;
+        foreach ($newTeachers as $teacher) {
+            for ($subIdx = 0; $subIdx < 5; $subIdx++) {
+                if ($courseIdx >= count($subjectsForCourses)) {
+                    $courseIdx = 0;
+                }
+                $subject = $subjectsForCourses[$courseIdx];
+                $prefix = $courseSubjects[$subIdx % count($courseSubjects)];
+                $code = 'SUBJ' . str_pad((string) ($courseIdx + 1), 3, '0', STR_PAD_LEFT);
+                $section = 'SEC-' . chr(65 + ($subIdx % 26));
+                
+                $course = Course::query()->updateOrCreate(
+                    ['code' => $code, 'section' => $section, 'term' => 'Spring 2026'],
+                    [
+                        'title' => "{$prefix} {$subject}",
+                        'description' => "Course on {$subject} covering essential topics and practical applications.",
+                        'teacher_id' => $teacher->id,
+                        'schedule' => 'TBA',
+                        'status' => 'active',
+                    ]
+                );
+                $allCourses[] = $course;
+                $courseIdx++;
+            }
+        }
+
+        // Create 50 students with real names (last name = password)
+        $allStudents = [$studentAlex, $studentEmma];
+        $studentData = [
+            ['John', 'Smith'], ['Sarah', 'Johnson'], ['Michael', 'Williams'], ['Emily', 'Brown'], ['David', 'Jones'],
+            ['Jessica', 'Garcia'], ['James', 'Miller'], ['Amanda', 'Davis'], ['Robert', 'Rodriguez'], ['Lauren', 'Martinez'],
+            ['William', 'Hernandez'], ['Rachel', 'Lopez'], ['Richard', 'Gonzales'], ['Victoria', 'Wilson'], ['Joseph', 'Anderson'],
+            ['Samantha', 'Thomas'], ['Charles', 'Taylor'], ['Chloe', 'Moore'], ['Christopher', 'Jackson'], ['Sophia', 'Martin'],
+            ['Daniel', 'Perez'], ['Isabella', 'Thompson'], ['Matthew', 'White'], ['Mia', 'Harris'], ['Anthony', 'Sanchez'],
+            ['Charlotte', 'Clark'], ['Mark', 'Ramirez'], ['Amelia', 'Lewis'], ['Donald', 'Robinson'], ['Harper', 'Walker'],
+            ['Steven', 'Young'], ['Evelyn', 'Alonso'], ['Paul', 'Schultz'], ['Abigail', 'Bell'], ['Andrew', 'Combs'],
+            ['Emily', 'Pascal'], ['Joshua', 'Franco'], ['Ella', 'Herrera'], ['Kenneth', 'Gibbs'], ['Scarlett', 'Hinton'],
+            ['Kevin', 'Gibbs'], ['Madison', 'Inman'], ['Brian', 'Jacks'], ['Lillian', 'Keyes'], ['Edward', 'Lloyd'],
+            ['Mila', 'Malone'], ['Ronald', 'Nolan'], ['Nora', 'Owens'], ['Timothy', 'Palmer'],
+        ];
+
+        foreach ($studentData as $data) {
+            $first = $data[0];
+            $last = $data[1];
+            $email = strtolower($first . '.' . $last) . '@student.edu.ph';
+            $allStudents[] = User::query()->updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => "{$first} {$last}",
+                    'password' => Hash::make($last),
+                    'role' => User::ROLE_STUDENT,
+                    'archived_at' => null,
+                ]
+            );
+        }
+
+        // Enroll 10 students per course
+        $studentCount = count($allStudents);
+        foreach ($allCourses as $courseIdx => $course) {
+            for ($i = 0; $i < 10; $i++) {
+                $studentIdx = ($courseIdx * 10 + $i) % $studentCount;
+                $this->enroll($course, $allStudents[$studentIdx]);
+            }
+        }
+
         // Keep exactly 10 classes in Class Management (remove any other seeded courses).
         $seededCourses = [$cs101, $math201, $eng102, $cs202, $it210, $it220, $net101, $se301, $hum101, $stat201];
         $keepCourseIds = array_map(fn (Course $c) => (int) $c->id, $seededCourses);
-        Course::query()->whereNotIn('id', $keepCourseIds)->delete();
+        // Don't remove new courses - only keep old system courses if needed
+        // Course::query()->whereNotIn('id', $keepCourseIds)->delete();
 
         // Programs (course list like BSIT/BSN/BSA) for Course Management
         $defaultPrograms = [
