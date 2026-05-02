@@ -15,6 +15,7 @@ class CorsMiddleware
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
         'https://edlearn-lms-8n8n.vercel.app',
+        'https://edlearn-lms.vercel.app',
     ];
 
     public function handle(Request $request, Closure $next)
