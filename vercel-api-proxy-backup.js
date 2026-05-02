@@ -6,7 +6,7 @@ function getBackendBaseUrl() {
 }
 
 function buildTargetUrl(requestUrl) {
-  const incoming = new URL(requestUrl);
+  const incoming = new URL(requestUrl, 'http://localhost');
   const target = new URL(getBackendBaseUrl());
   const apiPath = incoming.pathname.replace(/^\/api/, '/api');
   target.pathname = apiPath;
