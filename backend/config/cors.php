@@ -12,7 +12,10 @@ return [
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
-        'https://edlearn-lms-8n8n.vercel.app',
+    ],
+
+    'allowed_origins_patterns' => [
+        '#^https://.*\.vercel\.app$#',
     ],
 
     'allowed_origins_patterns' => [],

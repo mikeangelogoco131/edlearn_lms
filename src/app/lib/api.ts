@@ -388,11 +388,6 @@ const DEFAULT_BASE_URL = 'http://127.0.0.1:8010';
 export function getApiBaseUrl() {
   const envBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
   if (envBaseUrl) {
-    // On Vercel, use same-origin `/api/*` so requests go through vercel.json rewrites.
-    if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
-      return '';
-    }
-
     return envBaseUrl;
   }
 
