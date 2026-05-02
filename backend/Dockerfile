@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.2-apache
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -31,14 +31,15 @@ RUN composer install --no-dev --optimize-autoloader
 RUN mkdir -p database storage/app storage/framework/cache storage/framework/views storage/framework/sessions storage/logs && \
     chmod -R 777 database storage bootstrap/cache
 
-# Install Nginx
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+# Enable Apache mod_rewrite for Laravel
+RUN a2enmod rewrite
 
-# Copy Nginx config
-COPY backend/nginx.conf /etc/nginx/sites-available/default
+# Set DocumentRoot to public
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /app/public|' /etc/apache2/sites-available/000-default.conf
+RUN sed -i '/<Directory \/var\/www\/html>/,/<\/Directory>/c\<Directory /app/public>\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted\n<\/Directory>' /etc/apache2/sites-available/000-default.conf
 
 # Expose port
-EXPOSE 8000
+EXPOSE 80
 
-# Start PHP-FPM and Nginx
-CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
+# Start Apache
+CMD ["apache2-foreground"]
