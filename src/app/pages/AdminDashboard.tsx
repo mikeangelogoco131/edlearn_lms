@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, BookOpen, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
 import {
 	Area,
 	AreaChart,
@@ -31,7 +31,6 @@ import {
 	SelectValue,
 } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
 import {
 	api,
