@@ -78,6 +78,7 @@ function normalizeSession(session: any): ApiClassSession {
     attendees: session?.attendees == null ? null : Number(session?.attendees) || 0,
     startsAt: session?.startsAt == null ? null : safeText(session?.startsAt),
     endsAt: session?.endsAt == null ? null : safeText(session?.endsAt),
+    meetingUrl: session?.meetingUrl == null ? null : safeText(session?.meetingUrl),
   };
 }
 
@@ -108,8 +109,8 @@ export default function ClassroomPage() {
 
   const meetingJoinUrl = useMemo(() => {
     if (typeof window === 'undefined') return `/classroom/${classId || ''}`;
-    return `${window.location.origin}/classroom/${classId || ''}`;
-  }, [classId]);
+    return session?.meetingUrl || `${window.location.origin}/classroom/${classId || ''}`;
+  }, [classId, session?.meetingUrl]);
 
   useEffect(() => {
     return () => {
@@ -417,7 +418,7 @@ export default function ClassroomPage() {
             title: `${nextCourse.code} Live Class`,
             starts_at: now.toISOString(),
             ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
-            meeting_url: `/classroom/${nextCourse.id}`,
+            meeting_url: `${window.location.origin}/classroom/${nextCourse.id}`,
             status: 'live',
             notes: `Auto-created live session for ${nextCourse.code}.`,
           });

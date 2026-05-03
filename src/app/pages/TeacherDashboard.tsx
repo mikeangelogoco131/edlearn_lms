@@ -129,17 +129,20 @@ export default function TeacherDashboard() {
       const liveSession = sessionsRes.data.find((session) => session.status === 'live');
       if (!liveSession) {
         const now = new Date();
-        await api.createCourseSession(course.id, {
+        const created = await api.createCourseSession(course.id, {
           title: `${course.code} Live Class`,
           starts_at: now.toISOString(),
           ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
-          meeting_url: `/classroom/${course.id}`,
+          meeting_url: `${window.location.origin}/classroom/${course.id}`,
           status: 'live',
           notes: `Live class started from ${course.code}.`,
         });
+
+        navigate(created.data.meetingUrl || `/classroom/${course.id}`);
+        return;
       }
 
-      navigate(`/classroom/${course.id}`);
+      navigate(liveSession?.meetingUrl || `/classroom/${course.id}`);
     } catch {
       // Keep the dashboard stable if session creation is unavailable.
     } finally {
@@ -431,7 +434,7 @@ export default function TeacherDashboard() {
                                 <div className="text-sm text-gray-500 mt-1">{session.time} • {session.duration}</div>
                               </div>
                             </div>
-                            <Link to={`/classroom/${session.courseId}`}>
+                            <Link to={session.meetingUrl || `/classroom/${session.courseId}`}>
                               <Button className="bg-blue-600 hover:bg-blue-700">
                                 <Video className="w-4 h-4 mr-2" />
                                 Start
