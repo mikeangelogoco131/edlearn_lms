@@ -425,6 +425,7 @@ export default function ClassroomPage() {
   const [endingClass, setEndingClass] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'chat' | 'participants'>('chat');
   const [error, setError] = useState('');
+  const [enrollmentError, setEnrollmentError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -442,9 +443,25 @@ export default function ClassroomPage() {
           resolvedSession = normalizeSession((await api.session(classId)).data);
           const sessionCourseRes = await api.course(resolvedSession.courseId);
           resolvedCourse = normalizeCourse(sessionCourseRes.data);
-        } catch {
-          const courseRes = await api.course(classId);
-          resolvedCourse = normalizeCourse(courseRes.data);
+        } catch (err: any) {
+          // Check if the error is a 403 Forbidden (not enrolled)
+          if (err?.response?.status === 403 && user?.role === 'student') {
+            setEnrollmentError(true);
+            setLoading(false);
+            return;
+          }
+          try {
+            const courseRes = await api.course(classId);
+            resolvedCourse = normalizeCourse(courseRes.data);
+          } catch (courseErr: any) {
+            // Check if the course access also fails with 403 (not enrolled)
+            if (courseErr?.response?.status === 403 && user?.role === 'student') {
+              setEnrollmentError(true);
+              setLoading(false);
+              return;
+            }
+            throw courseErr;
+          }
 
           const sessionsRes = await api.courseSessions(resolvedCourse.id);
           const nextSessions = (Array.isArray(sessionsRes.data) ? sessionsRes.data : []).map(normalizeSession);
@@ -597,6 +614,22 @@ export default function ClassroomPage() {
         <div className="text-center space-y-2">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <div className="text-sm text-muted-foreground">Loading classroom…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (enrollmentError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center space-y-4 max-w-md mx-auto">
+          <div className="text-3xl">🔒</div>
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-muted-foreground">You are not enrolled in this course. Only enrolled students can join this live class.</p>
+          <p className="text-sm text-muted-foreground">If you believe this is an error, please contact your teacher.</p>
+          <Link to={user?.role === 'student' ? '/student' : '/teacher'}>
+            <Button className="mt-4">Go to Dashboard</Button>
+          </Link>
         </div>
       </div>
     );
