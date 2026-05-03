@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, BookOpen, CalendarDays, LayoutGrid, Megaphone, MessageSquare, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, LayoutGrid, Menu, Megaphone, MessageSquare, Plus, Settings, TrendingUp, Users, Video, X } from 'lucide-react';
 import {
 	Area,
 	AreaChart,
@@ -32,6 +32,7 @@ import {
 } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { Textarea } from '../components/ui/textarea';
+import { Drawer, DrawerTrigger, DrawerPortal, DrawerOverlay, DrawerContent, DrawerClose } from '../components/ui/drawer';
 import {
 	api,
 	ApiAnalyticsAdmin,
@@ -223,6 +224,7 @@ export default function AdminDashboard() {
 	const [composeSuggestionsLoading, setComposeSuggestionsLoading] = useState(false);
 	const [backups, setBackups] = useState<any[]>([]);
 	const [backupsLoading, setBackupsLoading] = useState(false);
+	const [sidebarOpen, setSidebarOpen] = useState(false);
 
 	const selectedMessage = useMemo(() => {
 		return selectedMessageId ? messages.find((m) => m.id === selectedMessageId) || null : null;
@@ -2191,34 +2193,87 @@ export default function AdminDashboard() {
 			</div>
 
 			<div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-				<aside className="glass-card h-fit rounded-2xl border border-white/40 p-4 shadow-lg lg:sticky lg:top-6">
-					<div className="mb-4 border-b border-white/30 pb-4">
-						<p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Administrator</p>
-						<h2 className="mt-2 text-lg font-bold text-gray-900">Dashboard sections</h2>
-						<p className="mt-1 text-sm text-gray-600">Switch between the main admin areas from here.</p>
-					</div>
-					<div className="flex flex-col gap-2">
-						{adminNavItems.map((item) => {
-							const Icon = item.icon;
-							const isActive = activeTab === item.value;
-							return (
-								<Button
-									key={item.value}
-									type="button"
-									variant={isActive ? 'default' : 'ghost'}
-									className="w-full justify-start gap-3 rounded-xl"
-									onClick={() => {
-										setActiveTab(item.value);
-										setDashboardSearchParam('tab', item.value);
-									}}
-								>
-									<Icon className="h-4 w-4" />
-									<span>{item.label}</span>
-								</Button>
-							);
-						})}
-					</div>
-				</aside>
+			{/* Mobile hamburger menu - visible only on mobile */}
+			<div className="flex items-center justify-between lg:hidden mb-4">
+				<h3 className="text-lg font-semibold">Admin Dashboard</h3>
+				<Drawer open={sidebarOpen} onOpenChange={setSidebarOpen}>
+					<DrawerTrigger asChild>
+						<Button variant="outline" size="icon" className="h-9 w-9">
+							<Menu className="h-5 w-5" />
+						</Button>
+					</DrawerTrigger>
+					<DrawerPortal>
+						<DrawerOverlay />
+						<DrawerContent className="max-w-xs">
+							<div className="p-4 space-y-4">
+								<div className="flex items-center justify-between mb-4">
+									<div>
+										<p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Administrator</p>
+										<h2 className="mt-2 text-lg font-bold text-gray-900">Dashboard</h2>
+									</div>
+									<DrawerClose asChild>
+										<Button variant="ghost" size="icon" className="h-8 w-8">
+											<X className="h-4 w-4" />
+										</Button>
+									</DrawerClose>
+								</div>
+								<div className="flex flex-col gap-2">
+									{adminNavItems.map((item) => {
+										const Icon = item.icon;
+										const isActive = activeTab === item.value;
+										return (
+											<Button
+												key={item.value}
+												type="button"
+												variant={isActive ? 'default' : 'ghost'}
+												className="w-full justify-start gap-3 rounded-xl"
+												onClick={() => {
+													setActiveTab(item.value);
+													setDashboardSearchParam('tab', item.value);
+													setSidebarOpen(false); // Close drawer on mobile after selection
+												}}
+											>
+												<Icon className="h-4 w-4" />
+												<span>{item.label}</span>
+											</Button>
+										);
+									})}
+								</div>
+							</div>
+						</DrawerContent>
+					</DrawerPortal>
+				</Drawer>
+			</div>
+
+			{/* Desktop sidebar - hidden on mobile */}
+			<aside className="hidden lg:block glass-card h-fit rounded-2xl border border-white/40 p-4 shadow-lg lg:sticky lg:top-6">
+				<div className="mb-4 border-b border-white/30 pb-4">
+					<p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Administrator</p>
+					<h2 className="mt-2 text-lg font-bold text-gray-900">Dashboard sections</h2>
+					<p className="mt-1 text-sm text-gray-600">Switch between the main admin areas from here.</p>
+				</div>
+				<div className="flex flex-col gap-2">
+					{adminNavItems.map((item) => {
+						const Icon = item.icon;
+						const isActive = activeTab === item.value;
+						return (
+							<Button
+								key={item.value}
+								type="button"
+								variant={isActive ? 'default' : 'ghost'}
+								className="w-full justify-start gap-3 rounded-xl"
+								onClick={() => {
+									setActiveTab(item.value);
+									setDashboardSearchParam('tab', item.value);
+								}}
+							>
+								<Icon className="h-4 w-4" />
+								<span>{item.label}</span>
+							</Button>
+						);
+					})}
+				</div>
+			</aside>
 
 				<div className="space-y-6">
 					{activeTab === 'analytics' && (
