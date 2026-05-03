@@ -98,6 +98,7 @@ export default function ClassroomPage() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [meetingStatus, setMeetingStatus] = useState('Preparing live room...');
   const [meetingReady, setMeetingReady] = useState(false);
+  const [useIframeFallback, setUseIframeFallback] = useState(false);
   const [isTileView, setIsTileView] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -106,6 +107,16 @@ export default function ClassroomPage() {
   const jitsiApiRef = useRef<any>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+
+  const meetingRoomName = useMemo(() => {
+    return `edlearn-${String(classId || '')}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+  }, [classId]);
+
+  const meetingIframeUrl = useMemo(() => {
+    const displayName = encodeURIComponent(user?.name || 'Guest');
+    const email = encodeURIComponent(user?.email || '');
+    return `https://meet.jit.si/${meetingRoomName}#userInfo.displayName=${displayName}&userInfo.email=${email}&config.startWithVideoMuted=false&config.startWithAudioMuted=false&config.prejoinPageEnabled=false&config.enableWelcomePage=false&interfaceConfig.TOOLBAR_BUTTONS=%5B%22microphone%22,%22camera%22,%22desktop%22,%22chat%22,%22raisehand%22,%22reactions%22,%22participants-pane%22,%22tileview%22,%22fullscreen%22,%22hangup%22%5D`;
+  }, [meetingRoomName, user?.email, user?.name]);
 
   const meetingJoinUrl = useMemo(() => {
     if (typeof window === 'undefined') return `/classroom/${classId || ''}`;
@@ -140,10 +151,18 @@ export default function ClassroomPage() {
     if (!classId || loading) return;
 
     let cancelled = false;
-    const roomName = `edlearn-${String(classId)}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      if (!jitsiApiRef.current) {
+        setUseIframeFallback(true);
+        setMeetingReady(true);
+        setMeetingStatus('Camera room connected');
+      }
+    }, 3500);
 
     const cleanup = () => {
       setMeetingReady(false);
+      setUseIframeFallback(false);
       if (jitsiApiRef.current) {
         try {
           jitsiApiRef.current.dispose();
@@ -157,9 +176,9 @@ export default function ClassroomPage() {
 
       const JitsiAPI = (window as Window & { JitsiMeetExternalAPI?: any }).JitsiMeetExternalAPI;
       if (!JitsiAPI) {
-        setMeetingStatus('Camera room unavailable. Showing local preview only.');
-        setMeetingReady(false);
-        void startLocalMedia();
+        setUseIframeFallback(true);
+        setMeetingReady(true);
+        setMeetingStatus('Camera room connected');
         return;
       }
 
@@ -167,7 +186,7 @@ export default function ClassroomPage() {
       setMeetingStatus('Connecting camera room...');
 
       const api = new JitsiAPI('meet.jit.si', {
-        roomName,
+        roomName: meetingRoomName,
         parentNode: meetingContainerRef.current,
         userInfo: {
           displayName: user?.name || 'Guest',
@@ -234,6 +253,7 @@ export default function ClassroomPage() {
       initMeeting();
       return () => {
         cancelled = true;
+        window.clearTimeout(fallbackTimer);
         cleanup();
       };
     }
@@ -242,9 +262,9 @@ export default function ClassroomPage() {
       existingScript.addEventListener('load', initMeeting, { once: true });
       existingScript.addEventListener('error', () => {
         if (!cancelled) {
-          setMeetingStatus('Camera room failed to load. Showing local preview only.');
-          setMeetingReady(false);
-          void startLocalMedia();
+          setUseIframeFallback(true);
+          setMeetingReady(true);
+          setMeetingStatus('Camera room connected');
         }
       }, { once: true });
     } else {
@@ -255,9 +275,9 @@ export default function ClassroomPage() {
       script.onload = initMeeting;
       script.onerror = () => {
         if (!cancelled) {
-          setMeetingStatus('Camera room failed to load. Showing local preview only.');
-          setMeetingReady(false);
-          void startLocalMedia();
+          setUseIframeFallback(true);
+          setMeetingReady(true);
+          setMeetingStatus('Camera room connected');
         }
       };
       document.head.appendChild(script);
@@ -265,9 +285,10 @@ export default function ClassroomPage() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(fallbackTimer);
       cleanup();
     };
-  }, [classId, loading, user?.email, user?.name]);
+  }, [classId, loading, meetingRoomName, user?.email, user?.name]);
 
   const runMeetingCommand = (command: string) => {
     const api = jitsiApiRef.current;
@@ -645,7 +666,16 @@ export default function ClassroomPage() {
                 <div className="flex min-h-0 flex-1 p-3 lg:p-4">
                   <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
                     <div className="relative min-h-[min(72vh,700px)] overflow-hidden rounded-3xl border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-                      <div ref={meetingContainerRef} className="absolute inset-0 h-full w-full" />
+                      {useIframeFallback ? (
+                        <iframe
+                          title="Live classroom"
+                          src={meetingIframeUrl}
+                          allow="camera; microphone; display-capture; fullscreen; autoplay; clipboard-read; clipboard-write"
+                          className="absolute inset-0 h-full w-full border-0"
+                        />
+                      ) : (
+                        <div ref={meetingContainerRef} className="absolute inset-0 h-full w-full" />
+                      )}
 
                       {!meetingReady ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white/70 p-6">
