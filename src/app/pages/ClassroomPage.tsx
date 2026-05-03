@@ -137,7 +137,7 @@ export default function ClassroomPage() {
   }, []);
 
   useEffect(() => {
-    if (!classId || !meetingContainerRef.current) return;
+    if (!classId || loading) return;
 
     let cancelled = false;
     const roomName = `edlearn-${String(classId)}`.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -267,7 +267,7 @@ export default function ClassroomPage() {
       cancelled = true;
       cleanup();
     };
-  }, [classId, user?.email, user?.name]);
+  }, [classId, loading, user?.email, user?.name]);
 
   const runMeetingCommand = (command: string) => {
     const api = jitsiApiRef.current;
