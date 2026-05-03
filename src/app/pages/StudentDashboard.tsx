@@ -33,6 +33,25 @@ import { CourseAnnouncements } from '../components/CourseAnnouncements';
 import { useAuth } from '../contexts/AuthContext';
 import { format, isAfter, parseISO } from 'date-fns';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+
+function resolveMeetingPath(meetingUrl: string | null | undefined, fallbackPath: string): string {
+  if (!meetingUrl) return fallbackPath;
+
+  if (meetingUrl.startsWith('/')) {
+    return meetingUrl;
+  }
+
+  try {
+    const parsed = new URL(meetingUrl);
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || fallbackPath;
+    }
+  } catch {
+    // Fall through to the default classroom route.
+  }
+
+  return fallbackPath;
+}
 import { toast } from 'sonner';
 
 export default function StudentDashboard() {
@@ -355,7 +374,7 @@ export default function StudentDashboard() {
                               <div className="font-semibold text-slate-900">{session.title}</div>
                               <div className="text-sm text-slate-600 truncate">{course?.code} - {course?.title}</div>
                             </div>
-                            <Link to={session.meetingUrl || `/classroom/${session.courseId}`}>
+                            <Link to={resolveMeetingPath(session.meetingUrl, `/classroom/${session.courseId}`)}>
                               <Button className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
                                 <Video className="w-4 h-4 mr-2" />
                                 Join Live
@@ -386,7 +405,7 @@ export default function StudentDashboard() {
                             </div>
                           </div>
                         </div>
-                        <Link to={session.meetingUrl || `/classroom/${session.courseId}`}>
+                        <Link to={resolveMeetingPath(session.meetingUrl, `/classroom/${session.courseId}`)}>
                           <Button className="bg-blue-600 hover:bg-blue-700">
                             <Video className="w-4 h-4 mr-2" />
                             Join

@@ -26,6 +26,25 @@ import { CourseAnnouncements } from '../components/CourseAnnouncements';
 import { format } from 'date-fns';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
+function resolveMeetingPath(meetingUrl: string | null | undefined, fallbackPath: string): string {
+  if (!meetingUrl) return fallbackPath;
+
+  if (meetingUrl.startsWith('/')) {
+    return meetingUrl;
+  }
+
+  try {
+    const parsed = new URL(meetingUrl);
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || fallbackPath;
+    }
+  } catch {
+    // Fall through to the default classroom route.
+  }
+
+  return fallbackPath;
+}
+
 export default function TeacherDashboard() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -144,7 +163,7 @@ export default function TeacherDashboard() {
         return;
       }
 
-      navigate(liveSession?.meetingUrl || `/classroom/${course.id}`);
+      navigate(resolveMeetingPath(liveSession?.meetingUrl, `/classroom/${course.id}`));
     } catch {
       // Keep the dashboard stable if session creation is unavailable.
     } finally {
@@ -436,7 +455,7 @@ export default function TeacherDashboard() {
                                 <div className="text-sm text-gray-500 mt-1">{session.time} • {session.duration}</div>
                               </div>
                             </div>
-                            <Link to={session.meetingUrl || `/classroom/${session.courseId}`}>
+                            <Link to={resolveMeetingPath(session.meetingUrl, `/classroom/${session.courseId}`)}>
                               <Button className="bg-blue-600 hover:bg-blue-700">
                                 <Video className="w-4 h-4 mr-2" />
                                 Start
