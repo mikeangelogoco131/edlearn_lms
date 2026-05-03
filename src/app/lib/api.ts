@@ -1205,7 +1205,7 @@ function getDevCourseSessionsFallback(courseId: string): ApiListResponse<ApiClas
     startsAt: new Date(now + i * 86400000).toISOString(),
     endsAt: new Date(now + i * 86400000 + 60 * 60000).toISOString(),
     attendees: null,
-    meetingUrl: `${window.location.origin}/classroom/${courseId}`,
+    meetingUrl: `/classroom/${courseId}`,
   }));
 
   const sessions = readDevJson<ApiClassSession[]>(storageKey, defaultSessions)
@@ -1261,7 +1261,7 @@ function getDevCreateCourseSessionFallback(
     attendees: null,
     startsAt: startsAt.toISOString(),
     endsAt: endsAt.toISOString(),
-    meetingUrl: payload.meeting_url || `${window.location.origin}/classroom/${courseId}`,
+    meetingUrl: payload.meeting_url || `/classroom/${courseId}`,
   };
 
   try {
@@ -1312,7 +1312,7 @@ function getDevUpdateCourseSessionFallback(
     time: startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     duration: endsAt ? `${Math.max(1, Math.round((endsAt.getTime() - startsAt.getTime()) / 60000))} min` : previous.duration,
     status: (payload.status as ApiClassSession['status']) || previous.status,
-    meetingUrl: payload.meeting_url ?? previous.meetingUrl ?? `${window.location.origin}/classroom/${courseId}`,
+    meetingUrl: payload.meeting_url ?? previous.meetingUrl ?? `/classroom/${courseId}`,
   } as ApiClassSession;
 
   try {

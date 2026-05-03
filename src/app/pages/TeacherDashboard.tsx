@@ -133,12 +133,12 @@ export default function TeacherDashboard() {
           title: `${course.code} Live Class`,
           starts_at: now.toISOString(),
           ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
-          meeting_url: `${window.location.origin}/classroom/${course.id}`,
+          meeting_url: `/classroom/${course.id}`,
           status: 'live',
           notes: `Live class started from ${course.code}.`,
         });
 
-        const finalMeetingUrl = `${window.location.origin}/classroom/${created.data.id}`;
+        const finalMeetingUrl = `/classroom/${created.data.id}`;
         await api.updateCourseSession(course.id, created.data.id, { meeting_url: finalMeetingUrl });
         navigate(finalMeetingUrl);
         return;

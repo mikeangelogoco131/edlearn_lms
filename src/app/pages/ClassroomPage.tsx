@@ -109,7 +109,8 @@ export default function ClassroomPage() {
 
   const meetingJoinUrl = useMemo(() => {
     if (typeof window === 'undefined') return `/classroom/${classId || ''}`;
-    return session?.meetingUrl || `${window.location.origin}/classroom/${classId || ''}`;
+    const roomPath = session?.meetingUrl || `/classroom/${classId || ''}`;
+    return roomPath.startsWith('http') ? roomPath : `${window.location.origin}${roomPath}`;
   }, [classId, session?.meetingUrl]);
 
   useEffect(() => {
@@ -422,11 +423,11 @@ export default function ClassroomPage() {
               title: `${resolvedCourse.code} Live Class`,
               starts_at: now.toISOString(),
               ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
-              meeting_url: `${window.location.origin}/classroom/${resolvedCourse.id}`,
+              meeting_url: `/classroom/${resolvedCourse.id}`,
               status: 'live',
               notes: `Auto-created live session for ${resolvedCourse.code}.`,
             });
-            const finalMeetingUrl = `${window.location.origin}/classroom/${created.data.id}`;
+            const finalMeetingUrl = `/classroom/${created.data.id}`;
             const updated = await api.updateCourseSession(resolvedCourse.id, created.data.id, { meeting_url: finalMeetingUrl });
             resolvedSession = normalizeSession(updated.data);
           }
