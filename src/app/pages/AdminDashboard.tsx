@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, BookOpen, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, LayoutGrid, Megaphone, MessageSquare, Plus, Settings, TrendingUp, Users, Video } from 'lucide-react';
 import {
 	Area,
 	AreaChart,
@@ -31,7 +31,6 @@ import {
 	SelectValue,
 } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
 import {
 	api,
@@ -83,6 +82,17 @@ function isAdminTab(value: string | null): value is AdminTab {
 		value === 'settings'
 	);
 }
+
+const adminNavItems: Array<{ value: AdminTab; label: string; icon: typeof TrendingUp }> = [
+	{ value: 'analytics', label: 'Analytics', icon: TrendingUp },
+	{ value: 'calendar', label: 'Calendar', icon: CalendarDays },
+	{ value: 'announcements', label: 'Announcements', icon: Megaphone },
+	{ value: 'messages', label: 'Messages', icon: MessageSquare },
+	{ value: 'users', label: 'User Management', icon: Users },
+	{ value: 'courses', label: 'Class Management', icon: BookOpen },
+	{ value: 'courseManagement', label: 'Course Management', icon: LayoutGrid },
+	{ value: 'settings', label: 'System Settings', icon: Settings },
+];
 
 type MessageFolder = 'inbox' | 'sent' | 'drafts' | 'deleted';
 
@@ -2180,26 +2190,39 @@ export default function AdminDashboard() {
 				</Card>
 			</div>
 
-			<Tabs
-				value={activeTab}
-				onValueChange={(v) => {
-					if (!isAdminTab(v)) return;
-					setActiveTab(v);
-					setDashboardSearchParam('tab', v);
-				}}
-				className="space-y-6"
-			>
-				<TabsList>
-					<TabsTrigger value="analytics">Analytics</TabsTrigger>
-					<TabsTrigger value="calendar">Calendar</TabsTrigger>
-					<TabsTrigger value="announcements">Announcements</TabsTrigger>
-					<TabsTrigger value="users">User Management</TabsTrigger>
-					<TabsTrigger value="courses">Class Management</TabsTrigger>
-					<TabsTrigger value="courseManagement">Course Management</TabsTrigger>
-					<TabsTrigger value="settings">System Settings</TabsTrigger>
-				</TabsList>
+			<div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+				<aside className="glass-card h-fit rounded-2xl border border-white/40 p-4 shadow-lg lg:sticky lg:top-6">
+					<div className="mb-4 border-b border-white/30 pb-4">
+						<p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Administrator</p>
+						<h2 className="mt-2 text-lg font-bold text-gray-900">Dashboard sections</h2>
+						<p className="mt-1 text-sm text-gray-600">Switch between the main admin areas from here.</p>
+					</div>
+					<div className="flex flex-col gap-2">
+						{adminNavItems.map((item) => {
+							const Icon = item.icon;
+							const isActive = activeTab === item.value;
+							return (
+								<Button
+									key={item.value}
+									type="button"
+									variant={isActive ? 'default' : 'ghost'}
+									className="w-full justify-start gap-3 rounded-xl"
+									onClick={() => {
+										setActiveTab(item.value);
+										setDashboardSearchParam('tab', item.value);
+									}}
+								>
+									<Icon className="h-4 w-4" />
+									<span>{item.label}</span>
+								</Button>
+							);
+						})}
+					</div>
+				</aside>
 
-				<TabsContent value="analytics" className="space-y-6">
+				<div className="space-y-6">
+					{activeTab === 'analytics' && (
+						<div className="space-y-6">
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 						<Card className="glass-card">
 							<CardHeader>
@@ -2344,17 +2367,23 @@ export default function AdminDashboard() {
 							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
+					</div>
+					)}
 
-				<TabsContent value="calendar" className="space-y-6">
-					<EventsCalendar canManage={true} />
-				</TabsContent>
+					{activeTab === 'calendar' && (
+						<div className="space-y-6">
+							<EventsCalendar canManage={true} />
+						</div>
+					)}
 
-				<TabsContent value="announcements" className="space-y-6">
-					<CourseAnnouncements courses={courses} canPost={true} />
-				</TabsContent>
+					{activeTab === 'announcements' && (
+						<div className="space-y-6">
+							<CourseAnnouncements courses={courses} canPost={true} />
+						</div>
+					)}
 
-				<TabsContent value="messages" className="space-y-6">
+					{activeTab === 'messages' && (
+						<div className="space-y-6">
 					<div className="flex items-start justify-between gap-4 flex-wrap">
 						<div>
 							<h3 className="text-lg font-semibold">Messages</h3>
@@ -2745,9 +2774,11 @@ export default function AdminDashboard() {
 							</Card>
 						</div>
 					)}
-				</TabsContent>
+					</div>
+					)}
 
-				<TabsContent value="users" className="space-y-6">
+					{activeTab === 'users' && (
+						<div className="space-y-6">
 					<div className="flex items-start justify-between gap-4 flex-wrap">
 						<div>
 							<h3 className="text-lg font-semibold">User Management</h3>
@@ -3205,9 +3236,11 @@ export default function AdminDashboard() {
 							) : null}
 						</CardContent>
 					</Card>
-				</TabsContent>
+					</div>
+					)}
 
-				<TabsContent value="courses" className="space-y-6">
+					{activeTab === 'courses' && (
+						<div className="space-y-6">
 					{courseManagementContent(
 						'Class Management',
 						'Manage subjects, sections, and academic terms',
@@ -3217,13 +3250,17 @@ export default function AdminDashboard() {
 						true,
 						true,
 					)}
-				</TabsContent>
+						</div>
+					)}
 
-				<TabsContent value="courseManagement" className="space-y-6">
-					{programManagementContent()}
-				</TabsContent>
+					{activeTab === 'courseManagement' && (
+						<div className="space-y-6">
+							{programManagementContent()}
+						</div>
+					)}
 
-				<TabsContent value="settings" className="space-y-6">
+					{activeTab === 'settings' && (
+						<div className="space-y-6">
 					<Card className="glass-card">
 						<CardHeader>
 							<CardTitle>System Settings</CardTitle>
@@ -3630,8 +3667,10 @@ export default function AdminDashboard() {
 							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
-			</Tabs>
+						</div>
+					)}
+				</div>
+			</div>
 		</DashboardLayout>
 	);
 }
