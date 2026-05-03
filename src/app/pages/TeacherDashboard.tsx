@@ -138,7 +138,9 @@ export default function TeacherDashboard() {
           notes: `Live class started from ${course.code}.`,
         });
 
-        navigate(created.data.meetingUrl || `/classroom/${course.id}`);
+        const finalMeetingUrl = `${window.location.origin}/classroom/${created.data.id}`;
+        await api.updateCourseSession(course.id, created.data.id, { meeting_url: finalMeetingUrl });
+        navigate(finalMeetingUrl);
         return;
       }
 

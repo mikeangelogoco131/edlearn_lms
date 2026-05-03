@@ -2924,6 +2924,22 @@ export const api = {
     }
   },
 
+  async session(sessionId: string) {
+    try {
+      return await apiFetch<ApiItemResponse<ApiClassSession>>(`/api/sessions/${encodeURIComponent(sessionId)}`);
+    } catch (err) {
+      const courseCatalog = getDevCourseCatalog();
+      for (const course of courseCatalog) {
+        const sessions = getDevCourseSessionsFallback(course.id);
+        const found = sessions?.data.find((session) => String(session.id) === String(sessionId));
+        if (found) {
+          return { data: found } as ApiItemResponse<ApiClassSession>;
+        }
+      }
+      throw err;
+    }
+  },
+
   async updateCourse(courseId: string, payload: Partial<ApiCourseUpsert>) {
     try {
       return await apiFetch<ApiItemResponse<ApiCourse>>(`/api/courses/${encodeURIComponent(courseId)}`, {

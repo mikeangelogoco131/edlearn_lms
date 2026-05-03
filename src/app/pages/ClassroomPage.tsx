@@ -401,29 +401,40 @@ export default function ClassroomPage() {
       setError('');
 
       try {
-        const courseRes = await api.course(classId);
-        const nextCourse = normalizeCourse(courseRes.data);
-        if (cancelled) return;
-        setCourse(nextCourse);
+        let resolvedCourse: ApiCourse | null = null;
+        let resolvedSession: ApiClassSession | null = null;
 
-        const sessionsRes = await api.courseSessions(nextCourse.id);
-        const nextSessions = (Array.isArray(sessionsRes.data) ? sessionsRes.data : []).map(normalizeSession);
-        const liveSession = nextSessions.find((item) => item.status === 'live') ?? nextSessions[0] ?? null;
+        try {
+          resolvedSession = normalizeSession((await api.session(classId)).data);
+          const sessionCourseRes = await api.course(resolvedSession.courseId);
+          resolvedCourse = normalizeCourse(sessionCourseRes.data);
+        } catch {
+          const courseRes = await api.course(classId);
+          resolvedCourse = normalizeCourse(courseRes.data);
 
-        if (liveSession) {
-          if (!cancelled) setSession(liveSession);
-        } else if (user && (user.role === 'teacher' || user.role === 'admin')) {
-          const now = new Date();
-          const created = await api.createCourseSession(nextCourse.id, {
-            title: `${nextCourse.code} Live Class`,
-            starts_at: now.toISOString(),
-            ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
-            meeting_url: `${window.location.origin}/classroom/${nextCourse.id}`,
-            status: 'live',
-            notes: `Auto-created live session for ${nextCourse.code}.`,
-          });
-          if (!cancelled) setSession(normalizeSession(created.data));
+          const sessionsRes = await api.courseSessions(resolvedCourse.id);
+          const nextSessions = (Array.isArray(sessionsRes.data) ? sessionsRes.data : []).map(normalizeSession);
+          resolvedSession = nextSessions.find((item) => item.status === 'live') ?? nextSessions[0] ?? null;
+
+          if (!resolvedSession && user && (user.role === 'teacher' || user.role === 'admin')) {
+            const now = new Date();
+            const created = await api.createCourseSession(resolvedCourse.id, {
+              title: `${resolvedCourse.code} Live Class`,
+              starts_at: now.toISOString(),
+              ends_at: new Date(now.getTime() + 60 * 60000).toISOString(),
+              meeting_url: `${window.location.origin}/classroom/${resolvedCourse.id}`,
+              status: 'live',
+              notes: `Auto-created live session for ${resolvedCourse.code}.`,
+            });
+            const finalMeetingUrl = `${window.location.origin}/classroom/${created.data.id}`;
+            const updated = await api.updateCourseSession(resolvedCourse.id, created.data.id, { meeting_url: finalMeetingUrl });
+            resolvedSession = normalizeSession(updated.data);
+          }
         }
+
+        if (cancelled) return;
+        setCourse(resolvedCourse);
+        setSession(resolvedSession);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unable to load classroom');
       } finally {

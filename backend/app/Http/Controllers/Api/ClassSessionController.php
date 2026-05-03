@@ -12,6 +12,26 @@ use Illuminate\Http\Request;
 
 class ClassSessionController extends Controller
 {
+    public function show(Request $request, ClassSession $session)
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $session->loadMissing('course');
+        if (! $session->course) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        if (! $this->canViewCourse($user, $session->course)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        return response()->json(['data' => $this->sessionToArray($session)]);
+    }
+
     public function index(Request $request, Course $course)
     {
         /** @var User|null $user */

@@ -64,6 +64,7 @@ Route::middleware('jwt')->group(function () {
     Route::delete('/courses/{course}/enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->middleware('role:admin,teacher');
 
     // Sessions
+    Route::get('/sessions/{session}', [ClassSessionController::class, 'show']);
     Route::get('/courses/{course}/sessions', [ClassSessionController::class, 'index']);
     Route::post('/courses/{course}/sessions', [ClassSessionController::class, 'store'])->middleware('role:admin,teacher');
     Route::patch('/courses/{course}/sessions/{session}', [ClassSessionController::class, 'update'])->middleware('role:admin,teacher');
